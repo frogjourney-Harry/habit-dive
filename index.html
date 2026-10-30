@@ -1256,9 +1256,12 @@ function entryText(r) {
 function log(D) {
   const lv = levelOf(D.xp), ri = rankIdx(lv), nxt = RANKS[ri + 1], lo = xpFor(lv), hi = xpFor(lv + 1);
   const td = dayKey(), H = activeHabits();
-  // 「有打卡的日子」＝至少完成一個習慣；算出目前連續、最長連續、總天數
-  const active = k => H.some(h => (D.days[k] || {})[h.id]);
-  const allDays = Object.keys(D.days).filter(k => k <= td && active(k)).sort();
+  // 「有打卡的日子」＝當天有完成任何事：習慣打卡、六件事打勾、寫好清單、完成一段番茄鐘
+  const actDays = new Set(Object.keys(D.days).filter(k => H.some(h => D.days[k][h.id])));
+  for (const [d, P] of Object.entries(S.plans)) if (P.some(x => x.done && x.text.trim())) actDays.add(d);
+  for (const l of S.logs) if (l.k === 'plan' || l.k === 'pomo') actDays.add(l.d);
+  const active = k => actDays.has(k);
+  const allDays = [...actDays].filter(k => k <= td).sort();
   let curRun = 0; for (let k = active(td) ? td : addDays(td, -1); active(k); k = addDays(k, -1)) curRun++;
   let best = 0, run = 0, prevDay = null;
   for (const k of allDays) { run = prevDay && addDays(prevDay, 1) === k ? run + 1 : 1; best = Math.max(best, run); prevDay = k; }
