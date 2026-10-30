@@ -348,7 +348,8 @@ function catOf(id) {
   return habit(id) || CONFIG.generalCats.find(c => c.id === id) || CONFIG.generalCats[CONFIG.generalCats.length - 1];
 }
 const placeholder = c => c.ph || PH[c.id] || `${c.n}：今天要做什麼？`;
-const unitOf = h => h.weeks === 0 ? '天' : h.weeks === 1 ? '週' : '期';
+// 週期型習慣一律用實際單位顯示：本週／這兩週；連勝換算成「週」
+const periodWord = h => h.weeks === 1 ? '本週' : '這兩週';
 const countWord = h => h.kind === 'vocus' ? '篇' : '次';
 
 /* ========= 狀態推導 ========= */
@@ -432,7 +433,7 @@ const BONUS = {
   welcome: '🎁 歡迎下水！新手寶箱',
   top3: '✅ 前三件重要的事都完成了！額外寶箱',
   pubchest: '📰 今天發布了文章！寶箱',
-  period: '🏆 本期達標！額外寶箱',
+  period: '🏆 習慣達標！額外寶箱',
   weekly: '🏆 本週運動達標！額外寶箱',
 };
 
@@ -476,12 +477,12 @@ function reconcile(allowGrant) {
   S.held = S.held || {};
   const conds = [
     ['top3:' + d, 'top3', P.length > 0 && allDone(P.slice(0, CONFIG.rewardRows))],
-    ['art:' + d, 'pubchest', P.some(x => x.done && x.cat === 'vocus' && x.pub && x.pub.on)],
+    ['art:' + d, 'pubchest', !!habit('vocus') && P.some(x => x.done && x.cat === 'vocus' && x.pub && x.pub.on)],
   ];
   for (const h of activeHabits()) if (h.weeks && h.kind !== 'vocus') {
     const p = periodKey(d, h.weeks);
     conds.push([h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`, 'period',
-      periodDone(derive(), h, p), `🏆 ${h.e} ${h.n} 本${unitOf(h)}達標！額外寶箱`]);
+      periodDone(derive(), h, p), `🏆 ${h.e} ${h.n} ${periodWord(h)}達標！額外寶箱`]);
   }
   for (const [key, kind, ok, title] of conds) {
     const has = derive().claimed.has(key);
@@ -590,14 +591,14 @@ function habitEditor() {
     <small>圖示可以貼任何 emoji（Windows 按 Win＋. 叫出表情符號）。自訂習慣最多 ${CONFIG.maxCustom} 個。</small>
     ${S.habits.map((h, i) => h.off ? '' : `<div class="erow">
       <input data-hf="e" data-hi="${i}" value="${esc(h.e)}" style="width:48px;text-align:center" title="圖示">
-      ${h.kind === 'custom' ? `<input class="sp" data-hf="n" data-hi="${i}" value="${esc(h.n)}" placeholder="習慣名稱，例如：冥想 10 分鐘">`
-        : `<span class="sp">${esc(h.n)} <small class="dim">（內建）</small></span>`}
+      <input class="sp" data-hf="n" data-hi="${i}" value="${esc(h.n)}" placeholder="${h.kind === 'custom' ? '習慣名稱，例如：冥想 10 分鐘' : '習慣名稱'}">
       ${h.kind === 'plan' ? '<span class="dim">每天寫好清單</span>'
         : `<select data-hf="weeks" data-hi="${i}">${freqOpts(h, h.weeks)}</select>
            ${h.weeks ? `<span class="dim">至少</span><select data-hf="target" data-hi="${i}">${targetOpts(h.target)}</select><span class="dim">${countWord(h)}</span>` : ''}`}
-      ${h.kind === 'custom' ? `<button class="ghost" data-act="habdel" data-v="${i}" title="刪除">🗑</button>` : ''}</div>`).join('')}
-    <div class="row"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣（${customCount()}/${CONFIG.maxCustom}）</button></div>
-    <div class="mini">每天的習慣：不連續漏兩天就不會斷。每週／每兩週的習慣：沒達標那一期就會斷。</div></section>`;
+      <button class="ghost" data-act="habdel" data-v="${i}" title="刪除">🗑</button></div>`).join('')}
+    <div class="row"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣（${customCount()}/${CONFIG.maxCustom}）</button>
+      ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${h.id}">＋ 加回 ${esc(h.e)} ${esc(h.n)}</button>`).join('')}</div>
+    <div class="mini">每天的習慣：不連續漏兩天就不會斷。每週／每兩週的習慣：那一週（或那兩週）沒達標就會斷。</div></section>`;
 }
 
 function today(D) {
@@ -607,8 +608,8 @@ function today(D) {
     const s = st[h.id];
     if (h.weeks) {
       const p = periodKey(td, h.weeks);
-      return `<div class="${periodDone(D, h, p) ? 'on' : ''}">${esc(h.e)} ${esc(h.n)}<br><span class="streak">🔥 ${s.n} ${unitOf(h)}</span>
-        <span class="dim">本${unitOf(h)} ${perCount(D, h, p)}/${h.target} ${countWord(h)}${h.kind === 'vocus' ? `・共 ${D.articles} 篇` : ''}</span></div>`;
+      return `<div class="${periodDone(D, h, p) ? 'on' : ''}">${esc(h.e)} ${esc(h.n)}<br><span class="streak">🔥 ${s.n * h.weeks} 週</span>
+        <span class="dim">${periodWord(h)} ${perCount(D, h, p)}/${h.target} ${countWord(h)}${h.kind === 'vocus' ? `・共 ${D.articles} 篇` : ''}</span></div>`;
     }
     return `<div class="${dayDone(D, td, h.id) ? 'on' : ''}">${esc(h.e)} ${esc(h.n)}<br><span class="streak">🔥 ${s.n} 天</span>
       <span class="dim">${Math.min(s.n, CONFIG.habitDays)}/${CONFIG.habitDays} 天</span></div>`;
@@ -616,7 +617,7 @@ function today(D) {
   const risky = activeHabits().filter(h => st[h.id].risk).map(h => `${h.e} ${h.n}`);
   const pWarn = activeHabits().filter(h => h.weeks && st[h.id].n > 0 && !periodDone(D, h, periodKey(td, h.weeks))).map(h => {
     const p = periodKey(td, h.weeks), left = Math.round((parseKey(addDays(p, 7 * h.weeks)) - parseKey(td)) / 864e5);
-    return `<div class="warn">${esc(h.e)} ${esc(h.n)}：本${unitOf(h)}還剩 ${left} 天，再 ${h.target - perCount(D, h, p)} ${countWord(h)}就能延續連勝</div>`;
+    return `<div class="warn">${esc(h.e)} ${esc(h.n)}：${periodWord(h)}還剩 ${left} 天，再 ${h.target - perCount(D, h, p)} ${countWord(h)}就能延續連勝</div>`;
   }).join('');
   const V = habit('vocus');
   const setup = S.vocusSet || !V ? '' : `<section class="px"><b>✍️ 先設定你的 Vocus 發文節奏</b>
@@ -631,7 +632,7 @@ function today(D) {
   const rows = P.map((it, i) => {
     const c = catOf(it.cat);
     let ex = '';
-    if (it.cat === 'exercise' && it.done) {
+    if (it.cat === 'exercise' && it.done && habit('exercise')) {
       const e = it.ex || {};
       ex = `<div class="row exrow">
         <select data-ex="type" data-i="${i}">${ETAGS.map(t => `<option ${e.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
@@ -640,7 +641,7 @@ function today(D) {
         <span class="dim" id="pace${i}">${paceText(e)}</span>
         <input class="note" data-ex="note" data-i="${i}" value="${esc(e.note)}" placeholder="備註（例：河堤間歇 4×800、自由式）"></div>`;
     }
-    if (it.cat === 'vocus' && it.done) {
+    if (it.cat === 'vocus' && it.done && habit('vocus')) {
       const p = it.pub || {};
       ex = `<div class="row exrow"><label class="row" style="gap:6px;cursor:pointer">
           <input type="checkbox" data-act="pub" data-v="${i}" ${p.on ? 'checked' : ''}>📰 這次發布了文章</label>
@@ -720,7 +721,10 @@ function finishShop() {
   UI.shopEdit = false; save();
 }
 function finishHabits() {
-  for (const h of S.habits) if (h.kind === 'custom' && !h.n.trim()) h.off = true;
+  for (const h of S.habits) if (!h.n.trim()) {
+    if (h.kind === 'custom') h.off = true;
+    else h.n = DEFAULT_HABITS.find(x => x.id === h.id).n;
+  }
   UI.habEdit = false; save();
 }
 function shop(D) {
@@ -805,6 +809,7 @@ document.addEventListener('click', async e => {
     case 'habadd':
       if (customCount() >= CONFIG.maxCustom) break;
       S.habits.push({ id: 'h' + rid(), e: '⭐', n: '', kind: 'custom', weeks: 0, target: 1 }); save(); render(); break;
+    case 'habrestore': { const h = S.habits.find(x => x.id === v); h.off = false; save(); render(); break; }
     case 'habdel': {
       const h = S.habits[+v];
       if (!(await ask(`刪除習慣「${h.e} ${h.n || '（未命名）'}」？\n過去的紀錄會保留，只是不再顯示和計算。`, '刪除'))) break;
