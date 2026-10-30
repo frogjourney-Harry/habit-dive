@@ -796,7 +796,8 @@ function renderSheet() {
     el.style.textAlign = 'center';
     el.innerHTML = `<div class="row"><span class="rar" style="background:${R.color}">${R.name}</span><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
       ${img(c.px, Math.max(4, Math.min(10, Math.floor(150 / Math.max(...c.px.map(r => r.length))))), false, 'pop')}
-      <h2>${c.name} <small>×${n}</small></h2><p class="dim">${c.fact}</p>`;
+      <h2>${c.name} <small>×${n}</small></h2>
+      <div class="mini">水族箱 Lv.${growLv(fedOf(c.id))}・吃了 ${fedOf(c.id)} 顆飼料</div><p class="dim">${c.fact}</p>`;
     return;
   }
   el.style.textAlign = '';
@@ -854,7 +855,26 @@ function dex(D) {
 }
 
 /* ========= 水族箱小遊戲 ========= */
-// 收集到的生物會在這裡游；點水面撒飼料，生物會游過去吃；點生物看名字
+// 收集到的生物會在這裡游；點水面撒飼料，生物吃了會長大；點生物看名字和等級
+// 每種生物的體型（相對大小）與游速，照真實生物的感覺；ground = 在海底爬
+const TANK_SPECIES = {
+  clown: [1, .45], damsel: [.9, .6], butterfly: [1, .4], star: [1, .05, 1], hermit: [1, .18, 1], urchin: [1, .04, 1],
+  turtle: [1.7, .2], octopus: [1.3, .25], nudi: [.9, .07, 1], lion: [1.3, .2], puffer: [1.1, .25], cuttle: [1.3, .35],
+  seahorse: [1, .1], shark: [2.3, .7], moray: [1.8, .3], jelly: [1.3, .08], manta: [2.6, .35], mola: [2.3, .15],
+  dolphin: [2.2, .9], whaleshark: [3.3, .2],
+};
+const FEED = { free: 3, pack: 10, price: 30 };            // 每天免費 3 顆；商店 30 金幣買 10 顆
+const GROW = [0, 5, 15, 30, 50];                           // 吃到幾顆升到 Lv.2、3、4、5
+const growLv = n => GROW.filter(t => n >= t).length;
+const fedOf = id => (S.fed && S.fed[id]) || 0;
+const freeLeft = () => S.feedDay && S.feedDay.d === dayKey() ? Math.max(0, FEED.free - S.feedDay.used) : FEED.free;
+const feedLeft = () => freeLeft() + (S.feed || 0);
+function useFeed() {
+  if (freeLeft() > 0) { if (!S.feedDay || S.feedDay.d !== dayKey()) S.feedDay = { d: dayKey(), used: 0 }; S.feedDay.used++; }
+  else if ((S.feed || 0) > 0) S.feed--;
+  else return false;
+  save(); return true;
+}
 const spriteCv = {};
 function spriteCanvas(c) {
   if (spriteCv[c.id]) return spriteCv[c.id];
@@ -865,11 +885,17 @@ function spriteCanvas(c) {
   return spriteCv[c.id] = cv;
 }
 const TANK = { raf: 0 };
+function tankFeedText() {
+  const f = freeLeft(), b = S.feed || 0;
+  return `飼料：今天免費 ${f}/${FEED.free}${b ? `・另有 ${b} 顆` : ''}`;
+}
 function tank(D) {
   const n = Object.keys(D.col).length;
   return `<section class="px">${sh('水族箱', 'AQUARIUM', `<span class="dim">${n} 種生物</span>`)}
     <canvas id="tank" class="tank"></canvas>
-    <div class="mini">點水面撒飼料，看誰先游過去吃。點生物可以看名字。收集越多，水族箱越熱鬧。</div></section>`;
+    <div class="row" style="margin-top:8px"><span class="dim" id="feedInfo">${tankFeedText()}</span><span class="sp"></span>
+      <button data-act="buyfeed">買飼料 ${FEED.pack} 顆・${FEED.price}${COIN}</button></div>
+    <div class="mini">點水面撒飼料，生物吃了會長大。點生物可以看名字和等級。重複抽到的生物會多一隻（每種最多 3 隻）。</div></section>`;
 }
 function tankStart() {
   cancelAnimationFrame(TANK.raf);
@@ -877,23 +903,37 @@ function tankStart() {
   const W = Math.max(240, Math.floor(cv.clientWidth / 2)), H = Math.floor(cv.clientHeight / 2);   // 以 2 倍像素畫，維持像素感
   cv.width = W; cv.height = H;
   const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
-  const owned = CREATURES.filter(c => derive().col[c.id]);
-  const floorY = H - 16, bottomDwellers = ['star', 'hermit', 'urchin'];
+  const col = derive().col, floorY = H - 16;
   TANK.food = []; TANK.tip = null; TANK.bub = [];
-  TANK.fish = owned.map(c => {
-    const s = spriteCanvas(c), sc = c.r >= 3 ? 2 : 1, ground = bottomDwellers.includes(c.id);
-    const w = s.width * sc, h = s.height * sc;
-    // 海底生物慢慢爬：寄居蟹最快，海星、海膽很慢，偶爾停下來
-    return { c, s, sc, w, h, ground, x: Math.random() * (W - w), y: ground ? floorY - h + 2 : 10 + Math.random() * (floorY - h - 30),
-      vx: (ground ? (c.id === 'hermit' ? .18 : .06) : .25 + Math.random() * .35) * (Math.random() < .5 ? -1 : 1), ph: Math.random() * 6, rest: 0 };
-  });
-  TANK.fish.forEach(f => f.baseY = f.y);
+  // 體型＝物種大小 ×（1 + 每升一級多 15%）
+  const sizeOf = f => {
+    const sc = TANK_SPECIES[f.c.id][0] * (1 + .15 * (growLv(fedOf(f.c.id)) - 1));
+    f.w = Math.round(f.s.width * sc); f.h = Math.round(f.s.height * sc);
+  };
+  TANK.fish = [];
+  for (const c of CREATURES) {
+    const copies = Math.min(3, col[c.id] || 0), [, speed, ground] = TANK_SPECIES[c.id];
+    for (let k = 0; k < copies; k++) {
+      const f = { c, s: spriteCanvas(c), ground: !!ground, ph: Math.random() * 6, rest: 0,
+        vx: speed * (.8 + Math.random() * .4) * (Math.random() < .5 ? -1 : 1) };
+      sizeOf(f);
+      f.x = Math.random() * Math.max(1, W - f.w);
+      f.y = f.baseY = ground ? floorY - f.h + 2 : 6 + Math.random() * Math.max(1, floorY - f.h - 24);
+      TANK.fish.push(f);
+    }
+  }
+  // 大的畫在後面，小的在前面
+  TANK.fish.sort((a, b) => b.w * b.h - a.w * a.h);
   const weeds = Array.from({ length: Math.max(3, Math.floor(W / 60)) }, (_, i) => ({ x: 12 + i * (W - 24) / Math.max(1, Math.floor(W / 60) - 1), h: 18 + (i * 7) % 20 }));
+  const tipFor = f => { const n = fedOf(f.c.id); return `${f.c.name} Lv.${growLv(n)}・吃了 ${n} 顆`; };
   cv.onclick = e => {
     const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width, py = (e.clientY - r.top) * H / r.height;
-    const hit = TANK.fish.find(f => px >= f.x && px <= f.x + f.w && py >= f.y && py <= f.y + f.h);
-    if (hit) { TANK.tip = { text: hit.c.name, x: hit.x + hit.w / 2, y: hit.y - 4, until: performance.now() + 1800 }; SFX.tap(); return; }
-    if (py < floorY - 4) { TANK.food.push({ x: px, y: py, vy: .25 }); ac(); SFX.tap(); }
+    const hit = [...TANK.fish].reverse().find(f => px >= f.x && px <= f.x + f.w && py >= f.y && py <= f.y + f.h);
+    if (hit) { TANK.tip = { f: hit, until: performance.now() + 2200 }; SFX.tap(); return; }
+    if (py >= floorY - 4) return;
+    if (!useFeed()) { toast('飼料用完了，明天會再送 3 顆，也可以用金幣買'); return; }
+    TANK.food.push({ x: px, y: py, vy: .25 }); ac(); SFX.tap();
+    const el = document.getElementById('feedInfo'); if (el) el.textContent = tankFeedText();
   };
   let last = performance.now();
   const frame = now => {
@@ -911,30 +951,37 @@ function tankStart() {
     x.fillStyle = 'rgba(180,240,255,.55)'; TANK.bub.forEach(b => x.fillRect(Math.round(b.x), Math.round(b.y), b.s, b.s));
     // 飼料
     TANK.food.forEach(f => { if (f.y < floorY - 2) f.y += f.vy * dt; f.age = (f.age || 0) + dt; });
-    TANK.food = TANK.food.filter(f => f.age < 900);
+    TANK.food = TANK.food.filter(f => f.age < 1800);
     x.fillStyle = '#ef7d57'; TANK.food.forEach(f => x.fillRect(Math.round(f.x), Math.round(f.y), 2, 2));
-    // 生物
-    // 飼料碰到生物的身體就算吃到
+    // 生物：飼料碰到身體就算吃到；吃了會長大
     const eats = (f, p) => p.x >= f.x - 2 && p.x <= f.x + f.w + 2 && p.y >= f.y - 2 && p.y <= f.y + f.h + 2;
     for (const f of TANK.fish) {
+      const sp0 = Math.abs(f.vx);
       let food = null, best = 1e9;
-      // 海底生物只追掉到地上的飼料；會游的生物什麼都追
       for (const p of TANK.food) {
-        if (f.ground && p.y < floorY - 3) continue;
+        if (f.ground && p.y < floorY - 3) continue;   // 海底生物只吃掉到地上的
         const dd = Math.hypot(p.x - (f.x + f.w / 2), p.y - (f.y + f.h / 2)); if (dd < best) { best = dd; food = p; }
       }
       if (food) {
-        const dx = food.x - (f.x + f.w / 2), sp = (f.ground ? .35 : .9) * dt;
+        const dx = food.x - (f.x + f.w / 2), sp = Math.max(.12, sp0 * 1.8) * dt;   // 看到飼料會加速，但慢的還是慢
         f.x += Math.sign(dx) * Math.min(Math.abs(dx), sp);
-        if (Math.abs(dx) > .5) f.vx = Math.sign(dx) * (Math.abs(f.vx) || .06);
+        if (Math.abs(dx) > .5) f.vx = Math.sign(dx) * sp0;
         if (!f.ground) { const dy = food.y - (f.y + f.h / 2); f.baseY += Math.sign(dy) * Math.min(Math.abs(dy), sp * .8); }
-        if (eats(f, food)) { TANK.food.splice(TANK.food.indexOf(food), 1); SFX.eat(); }
+        if (eats(f, food)) {
+          TANK.food.splice(TANK.food.indexOf(food), 1); SFX.eat();
+          const before = growLv(fedOf(f.c.id));
+          S.fed = S.fed || {}; S.fed[f.c.id] = fedOf(f.c.id) + 1; save();
+          if (growLv(fedOf(f.c.id)) > before) {
+            TANK.fish.filter(g => g.c.id === f.c.id).forEach(g => { const cx = g.x + g.w / 2, by = g.y + g.h; sizeOf(g); g.x = cx - g.w / 2; if (g.ground) g.y = floorY - g.h + 2; else g.baseY = by - g.h; });
+            SFX.rank(); toast(`${f.c.name} 長大了！Lv.${growLv(fedOf(f.c.id))}`);
+          }
+        }
       } else if (f.ground) {
         if (f.rest > 0) f.rest -= dt; else { f.x += f.vx * dt; if (Math.random() < .004 * dt) f.rest = 60 + Math.random() * 180; }
       } else f.x += f.vx * dt;
       if (!f.ground) {
-        f.baseY = Math.max(4, Math.min(floorY - f.h + 2, f.baseY));
-        f.y = f.baseY + Math.sin(now / 900 + f.ph) * 3;
+        f.baseY = Math.max(2, Math.min(floorY - f.h + 2, f.baseY));
+        f.y = f.baseY + Math.sin(now / (f.c.id === 'jelly' ? 1600 : 900) + f.ph) * (f.c.id === 'jelly' ? 8 : 3);
       }
       if (f.x < 0) { f.x = 0; f.vx = Math.abs(f.vx); } else if (f.x > W - f.w) { f.x = W - f.w; f.vx = -Math.abs(f.vx); }
       x.save();
@@ -944,9 +991,10 @@ function tankStart() {
     }
     if (!TANK.fish.length) { x.fillStyle = '#eaf2ff'; x.font = '10px monospace'; x.textAlign = 'center'; x.fillText('還沒有生物，完成事情來開寶箱吧', W / 2, H / 2); }
     if (TANK.tip && now < TANK.tip.until) {
-      x.font = '10px "Microsoft JhengHei",monospace'; const tw = x.measureText(TANK.tip.text).width + 8;
-      const tx = Math.max(2, Math.min(W - tw - 2, TANK.tip.x - tw / 2)), ty = Math.max(2, TANK.tip.y - 14);
-      x.fillStyle = '#0d2442'; x.fillRect(tx, ty, tw, 13); x.fillStyle = '#ffcd75'; x.textAlign = 'left'; x.fillText(TANK.tip.text, tx + 4, ty + 10);
+      const f = TANK.tip.f, text = tipFor(f);
+      x.font = '10px "Microsoft JhengHei",monospace'; const tw = x.measureText(text).width + 8;
+      const tx = Math.max(2, Math.min(W - tw - 2, f.x + f.w / 2 - tw / 2)), ty = Math.max(2, f.y - 16);
+      x.fillStyle = '#0d2442'; x.fillRect(tx, ty, tw, 13); x.fillStyle = '#ffcd75'; x.textAlign = 'left'; x.fillText(text, tx + 4, ty + 10);
     }
     TANK.raf = requestAnimationFrame(frame);
   };
@@ -997,6 +1045,9 @@ function shop(D) {
       ${D.coins >= it.price ? `<button class="pri" data-act="redeem" data-v="${it.id}">兌換</button>`
         : `<span class="dim need">約 ${daysFor(it.price - D.coins)} 天</span>`}</div>`).join('')}
   </section>
+  <section class="px shop">${sh('水族箱用品', 'AQUARIUM')}
+    <div class="it"><span class="ic">🦐</span><span class="sp">飼料 ${FEED.pack} 顆<br><small>每天另有免費 ${FEED.free} 顆・目前還有 ${feedLeft()} 顆</small></span>
+      <span class="price">${FEED.price}${COIN}</span><button class="pri" data-act="buyfeed" ${D.coins < FEED.price ? 'disabled' : ''}>購買</button></div></section>
   <section class="px">${sh('兌換紀錄', 'HISTORY')}${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(l.name)}</span><span class="sp"></span><span class="price">${l.c}${COIN}</span></div>`).join('') : '<div class="dim">還沒有兌換過。</div>'}</section>`;
 }
 
@@ -1199,6 +1250,11 @@ document.addEventListener('click', async e => {
       save(); render(); SFX.buy(); toast(`${it.icon} 兌換成功，去享受吧！`); break;
     }
     case 'export': exportBackup(); break;
+    case 'buyfeed': {
+      if (derive().coins < FEED.price) { toast(`金幣不夠，飼料要 ${FEED.price} 金幣`); break; }
+      S.logs.push({ id: rid(), t: Date.now(), d: dayKey(), k: 'redeem', name: `飼料 ${FEED.pack} 顆`, c: -FEED.price });
+      S.feed = (S.feed || 0) + FEED.pack; save(); render(); SFX.buy(); toast(`買了 ${FEED.pack} 顆飼料`); break;
+    }
     case 'import': document.getElementById('importFile').click(); break;
   }
 });
