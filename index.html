@@ -61,7 +61,10 @@ nav{display:flex;flex-wrap:wrap;margin:0 0 12px}
 
 /* 今日 */
 .habits{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-.habits div{background:#123259;padding:6px 8px;font-size:13px}
+.habits > div{background:#123259;padding:6px 8px;font-size:13px}
+.habits b{font-size:14px}
+.goal{background:#123259;padding:8px 10px;margin:10px 0}
+.need{text-align:right;font-size:13px;white-space:nowrap}
 .habits .on{box-shadow:inset 0 0 0 2px var(--ok)}
 .streak{color:var(--warn)}
 .warn{color:var(--warn);font-size:13px;margin-top:8px}
@@ -108,7 +111,9 @@ nav{display:flex;flex-wrap:wrap;margin:0 0 12px}
 /* 商店 */
 .shop .it{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:2px dashed #1d3d66}
 .shop .ic{font-size:24px;width:36px;text-align:center}
-.price{color:var(--coin);min-width:90px;text-align:right}
+.price{color:var(--coin);text-align:right;white-space:nowrap}
+.shop .it{flex-wrap:wrap}
+.shop .it .sp{flex:1 1 120px;min-width:0}
 .mini .bar{height:8px;display:inline-block;width:120px;vertical-align:middle;margin:0 6px}
 
 /* 紀錄 */
@@ -148,7 +153,8 @@ const CONFIG = {
   maxCustom: 5,               // 自訂習慣最多幾個（不含內建的六件事、Vocus、運動）
   xp:    { check: 10, exercise: 20, plan: 10, pomo: 10, pubchest: 30, period: 30, top3: 15 },
   coins: { base: 5, rand: 6, critChance: 0.1, period: 40, welcome: 20, top3: 20, pubchest: 25 },
-  rewardRows: 3,              // 六件事只有前幾項打勾／番茄鐘會開寶箱，其餘只做紀錄
+  rewardRows: 3,
+  coinsPerDay: 60,            // 紀錄不夠時，商店用這個速度估計「要努力幾天」              // 六件事只有前幾項打勾／番茄鐘會開寶箱，其餘只做紀錄
   rarityRates: [55, 28, 12, 4.5, 0.5],   // 普通 / 少見 / 稀有 / 史詩 / 傳說（%）
   dupCoins: [2, 5, 15, 40, 100],         // 抽到重複生物時換成的金幣
   shop: [
@@ -604,15 +610,18 @@ function habitEditor() {
 function today(D) {
   const st = streaks(D), td = dayKey(), d = viewDay(), P = getPlan(d);
   const claimed = D.claimed.has('plan:' + d), doneN = filled(P).filter(x => x.done).length;
+  // 每張卡：名稱＋🔥連勝數／目標與目前進度／連勝說明
   const chips = activeHabits().map(h => {
-    const s = st[h.id];
+    const s = st[h.id], fire = s.n ? `<span class="streak">🔥 ${s.n}</span>` : '';
     if (h.weeks) {
-      const p = periodKey(td, h.weeks);
-      return `<div class="${periodDone(D, h, p) ? 'on' : ''}">${esc(h.e)} ${esc(h.n)}<br><span class="streak">🔥 ${s.n * h.weeks} 週</span>
-        <span class="dim">${periodWord(h)} ${perCount(D, h, p)}/${h.target} ${countWord(h)}${h.kind === 'vocus' ? `・共 ${D.articles} 篇` : ''}</span></div>`;
+      const p = periodKey(td, h.weeks), cnt = perCount(D, h, p);
+      return `<div class="${periodDone(D, h, p) ? 'on' : ''}"><div class="row"><b>${esc(h.e)} ${esc(h.n)}</b><span class="sp"></span>${fire}</div>
+        <div class="dim">目標：${h.weeks === 1 ? '每週' : '每兩週'} ${h.target} ${countWord(h)}（${periodWord(h)} ${cnt}/${h.target}）</div>
+        <div class="dim">${s.n ? `連續 ${s.n} ${h.weeks === 1 ? '週' : '次'}達標` : '還沒開始連勝'}${h.kind === 'vocus' ? `・累計 ${D.articles} 篇` : ''}</div></div>`;
     }
-    return `<div class="${dayDone(D, td, h.id) ? 'on' : ''}">${esc(h.e)} ${esc(h.n)}<br><span class="streak">🔥 ${s.n} 天</span>
-      <span class="dim">${Math.min(s.n, CONFIG.habitDays)}/${CONFIG.habitDays} 天</span></div>`;
+    return `<div class="${dayDone(D, td, h.id) ? 'on' : ''}"><div class="row"><b>${esc(h.e)} ${esc(h.n)}</b><span class="sp"></span>${fire}</div>
+      <div class="dim">${s.n ? `連續 ${s.n} 天` : '還沒開始連勝'}</div>
+      <div class="dim">習慣化 ${Math.min(s.n, CONFIG.habitDays)}/${CONFIG.habitDays} 天</div></div>`;
   }).join('');
   const risky = activeHabits().filter(h => st[h.id].risk).map(h => `${h.e} ${h.n}`);
   const pWarn = activeHabits().filter(h => h.weeks && st[h.id].n > 0 && !periodDone(D, h, periodKey(td, h.weeks))).map(h => {
@@ -738,13 +747,34 @@ function shop(D) {
       <input type="number" min="1" data-sf="price" data-si="${i}" value="${it.price}" style="width:90px"><span class="coin">🪙</span>
       <button class="ghost" data-act="shopdel" data-v="${i}" title="刪除">🗑</button></div>`).join('')}
     <div class="row"><button data-act="shopadd">＋ 新增獎勵</button></div></section>`;
-  return `<section class="px shop"><div class="row"><b>獎勵商店</b><small>（你可以自行設定想要的獎勵）</small><span class="sp"></span><span class="coin">🪙 ${D.coins.toLocaleString()}</span>
-      <button class="ghost" data-act="shopedit">✎ 編輯</button></div>
-    <small>兌換之後就真的去享受，不要心虛——這是你賺來的。</small>
-    ${shopItems().length ? '' : '<div class="dim" style="margin-top:8px">還沒有獎勵，按「✎ 編輯」新增。</div>'}
-    ${shopItems().map(it => `<div class="it"><span class="ic">${esc(it.icon)}</span><span class="sp">${esc(it.name)}
-      ${D.coins < it.price ? `<div class="mini">還差 ${it.price - D.coins} 🪙<span class="bar c"><i style="width:${Math.max(0, D.coins / it.price * 100)}%"></i></span></div>` : ''}</span>
-      <span class="price">${it.price} 🪙</span><button class="pri" data-act="redeem" data-v="${it.id}" ${D.coins < it.price ? 'disabled' : ''}>兌換</button></div>`).join('')}
+  // 用最近 14 天的平均收入估計「還要努力幾天」；有收入的日子不到 5 天時用 CONFIG.coinsPerDay
+  const since = addDays(dayKey(), -13), recent = S.logs.filter(l => l.d >= since && l.c > 0 && l.k !== 'welcome');
+  const activeDays = new Set(recent.map(l => l.d)).size;
+  const rate = activeDays >= 5 ? Math.max(10, Math.round(recent.reduce((a, l) => a + l.c, 0) / 14)) : CONFIG.coinsPerDay;
+  const daysFor = p => Math.max(1, Math.ceil(p / rate));
+  const left = it => it.price <= D.coins ? 0 : daysFor(it.price - D.coins);   // 分組照「從現在起還要幾天」，跟顯示的天數一致
+  const items = [...shopItems()].sort((a, b) => a.price - b.price), next = items.find(it => it.price > D.coins);
+  const tiers = [
+    ['☕ 小獎勵', '3 天內換得到', it => left(it) <= 3],
+    ['🍰 中獎勵', '一到兩週', it => left(it) > 3 && left(it) <= 14],
+    ['🎁 大獎勵', '兩週以上的目標', it => left(it) > 14],
+  ];
+  return `<section class="px shop"><div class="row"><b>獎勵商店</b><small class="dim">（你可以自行設定想要的獎勵）</small><span class="sp"></span>
+      <span class="coin">🪙 ${D.coins.toLocaleString()}</span><button class="ghost" data-act="shopedit">✎ 編輯</button></div>
+    <div class="mini">${activeDays >= 5 ? `最近 14 天平均每天賺 ${rate} 🪙` : `先用每天約 ${rate} 🪙 估算，累積一週後改用你的實際速度`}。兌換之後就真的去享受——這是你賺來的。</div>
+    ${next ? `<div class="goal"><div class="row"><span>🎯 下一個目標：${esc(next.icon)} ${esc(next.name)}</span><span class="sp"></span>
+      <span class="coin">${D.coins}/${next.price}</span></div>
+      <div class="bar c"><i style="width:${Math.max(0, D.coins / next.price * 100)}%"></i></div>
+      <div class="mini">再努力大約 ${daysFor(next.price - D.coins)} 天</div></div>` : ''}
+    ${items.length ? '' : '<div class="dim" style="margin-top:8px">還沒有獎勵，按「✎ 編輯」新增。</div>'}
+    ${tiers.map(([title, sub, fit]) => {
+      const g = items.filter(fit);
+      return g.length ? `<div class="grp"><b>${title}</b> <small class="dim">${sub}</small></div>
+        ${g.map(it => `<div class="it"><span class="ic">${esc(it.icon)}</span><span class="sp">${esc(it.name)}</span>
+          <span class="price">${it.price} 🪙</span>
+          ${D.coins >= it.price ? `<button class="pri" data-act="redeem" data-v="${it.id}">兌換</button>`
+            : `<span class="dim need">約 ${left(it)} 天</span>`}</div>`).join('')}` : '';
+    }).join('')}
   </section>
   <section class="px"><b>兌換紀錄</b>${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(l.name)}</span><span class="sp"></span><span class="coin">${l.c} 🪙</span></div>`).join('') : '<div class="dim">還沒有兌換過</div>'}</section>`;
 }
