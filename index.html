@@ -164,7 +164,7 @@ const CONFIG = {
     { id: 'meal',    icon: '🍜', name: '吃一頓喜歡的餐廳',   price: 1200 },
     { id: 'buy',     icon: '🛍', name: '買一樣想要很久的東西', price: 3500 },
   ],
-  // 六件事裡不算連勝的一般分類
+  // 六件事裡不算連勝的一般分類（預設值；使用者可在「✎ 編輯習慣」自訂，存在 S.gcats）
   generalCats: [
     { id: 'other',   e: '📌', n: '其他',     ph: '其他重要的事' },
   ],
@@ -291,6 +291,11 @@ function migrate(s) {
                     { id: 'research', e: '💻', n: '研究', kind: 'custom', weeks: 0, target: 1 });
     delete s.vcfg;
   }
+  if (!s.gcats) {
+    s.gcats = CONFIG.generalCats.map(c => ({ ...c }));
+    if (Object.values(s.plans || {}).some(P => P.some(it => it.cat === 'digital')))
+      s.gcats.unshift({ id: 'digital', e: '📘', n: '數位商品' });
+  }
   if (s.timer && s.timer.i === undefined) delete s.timer;   // v1 的番茄鐘格式
   s.v = 3;
   return s;
@@ -349,9 +354,11 @@ const activeHabits = () => S.habits.filter(h => !h.off);
 const habit = id => S.habits.find(h => h.id === id && !h.off);
 const customCount = () => activeHabits().filter(h => h.kind === 'custom').length;
 // 六件事的分類 = 啟用中的習慣（六件事本身除外）＋一般分類
-const catList = () => [...activeHabits().filter(h => h.kind !== 'plan'), ...CONFIG.generalCats];
+const gcats = () => S.gcats.filter(c => !c.off);
+const catList = () => [...activeHabits().filter(h => h.kind !== 'plan'), ...gcats()];
+// 刪掉的習慣／分類一律顯示成「其他」
 function catOf(id) {
-  return habit(id) || CONFIG.generalCats.find(c => c.id === id) || CONFIG.generalCats[CONFIG.generalCats.length - 1];
+  return habit(id) || gcats().find(c => c.id === id) || S.gcats.find(c => c.id === 'other');
 }
 const placeholder = c => c.ph || PH[c.id] || `${c.n}：今天要做什麼？`;
 // 週期型習慣一律用實際單位顯示：本週／這兩週；連勝換算成「週」
@@ -604,7 +611,13 @@ function habitEditor() {
       <button class="ghost" data-act="habdel" data-v="${i}" title="刪除">🗑</button></div>`).join('')}
     <div class="row"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣（${customCount()}/${CONFIG.maxCustom}）</button>
       ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${h.id}">＋ 加回 ${esc(h.e)} ${esc(h.n)}</button>`).join('')}</div>
-    <div class="mini">每天的習慣：不連續漏兩天就不會斷。每週／每兩週的習慣：那一週（或那兩週）沒達標就會斷。</div></section>`;
+    <div class="mini">每天的習慣：不連續漏兩天就不會斷。每週／每兩週的習慣：那一週（或那兩週）沒達標就會斷。</div>
+    <div class="grp"><b>一般分類</b> <small class="dim">六件事可以選，但不算連勝，例如：工作、家事</small></div>
+    ${S.gcats.map((c, i) => c.off ? '' : `<div class="erow">
+      <input data-gf="e" data-gi="${i}" value="${esc(c.e)}" style="width:48px;text-align:center" title="圖示">
+      <input class="sp" data-gf="n" data-gi="${i}" value="${esc(c.n)}" placeholder="分類名稱">
+      ${c.id === 'other' ? '<span class="dim">（固定）</span>' : `<button class="ghost" data-act="gcatdel" data-v="${i}" title="刪除">🗑</button>`}</div>`).join('')}
+    <div class="row"><button data-act="gcatadd" ${gcats().length >= 6 ? 'disabled' : ''}>＋ 新增分類</button></div></section>`;
 }
 
 function today(D) {
@@ -730,6 +743,7 @@ function finishShop() {
   UI.shopEdit = false; save();
 }
 function finishHabits() {
+  for (const c of S.gcats) if (!c.n.trim()) { if (c.id === 'other') c.n = '其他'; else c.off = true; }
   for (const h of S.habits) if (!h.n.trim()) {
     if (h.kind === 'custom') h.off = true;
     else h.n = DEFAULT_HABITS.find(x => x.id === h.id).n;
@@ -839,6 +853,8 @@ document.addEventListener('click', async e => {
     case 'habadd':
       if (customCount() >= CONFIG.maxCustom) break;
       S.habits.push({ id: 'h' + rid(), e: '⭐', n: '', kind: 'custom', weeks: 0, target: 1 }); save(); render(); break;
+    case 'gcatadd': S.gcats.push({ id: 'g' + rid(), e: '🔖', n: '' }); save(); render(); break;
+    case 'gcatdel': S.gcats[+v].off = true; save(); render(); break;
     case 'habrestore': { const h = S.habits.find(x => x.id === v); h.off = false; save(); render(); break; }
     case 'habdel': {
       const h = S.habits[+v];
@@ -931,6 +947,7 @@ document.addEventListener('click', async e => {
 document.addEventListener('input', e => {
   const el = e.target, i = el.dataset.i;
   if (el.dataset.sf) { S.shop[el.dataset.si][el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); return; }
+  if (el.dataset.gf) { S.gcats[el.dataset.gi][el.dataset.gf] = el.value; save(); return; }
   if (el.dataset.hf) {
     const h = S.habits[el.dataset.hi], f = el.dataset.hf;
     h[f] = f === 'weeks' || f === 'target' ? +el.value : el.value;
