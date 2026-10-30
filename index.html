@@ -363,7 +363,7 @@ const JUV = {
   clown: mini('o', { 4: 'w' }),                                      // 幼魚只有一條白帶
   damsel: mini('b', { 1: 'y', 2: 'y' }),                             // 尾巴黃色
   butterfly: mini('y', {}, [[3, 3, 'k'], [2, 3, 'w'], [4, 3, 'w']]),  // 背上有假眼斑
-  star: ['...k...', '..kok..', 'kkoookk', '.koyok.', '.koook.', 'kok.kok', 'k.....k'],
+  star: ['....k....', '...kok...', '...kok...', 'kkkoookkk', '.kooyook.', '..koook..', '.kok.kok.', 'kok...kok', 'kk.....kk'],   // 五隻腳的小海星
   hermit: ['...kk...', '..kttk..', '.kttttk.', 'ktktkttk', 'kkkkkkkk', '.krkrk..', '.k.k.k..'],   // 背著小小的螺殼
   urchin: ['k..k..k', '.kkPkk.', 'kkPPPkk', '.kkPkk.', 'k..k..k'],
   turtle: ['..kkkk...', '.kGgGgkk.', 'kGgGgGkgk', '.kyyyykkk', '.kgkkgk..'],   // 剛孵化的小海龜，頭大
@@ -377,32 +377,32 @@ const JUV = {
   moray: ['......kkk.', '.kkkkkgggk', 'kgygygggwk', '.kkkkkkkk.'],
   jelly: ['.c.c.c.', 'ccccccc', '.ccwcc.', 'ccccccc', '.c.c.c.'],      // 碟狀幼體
   manta: ['..kk.kk..', '.knnnnnk.', 'knnwnwnnk', '.kknnnkk.', '....k....'],
-  mola: ['....k....', '.k.ksk.k.', '..ksssk..', 'kksswsskk', '..ksssk..', '.k.ksk.k.', '....k....'],   // 翻車魚幼體全身是刺
+  mola: ['....k....', '...ksk...', '.kkssskk.', 'kssssskwk', 'ksssssssk', '.kkssskk.', '...ksk...', '....k....'],   // 小翻車魚：上下兩片鰭、圓圓的身體
   dolphin: ['.....k....', '....kbk...', 'k..kbbbkk.', 'kbkbbbbkbk', 'k..kwwwkk.'],
   whaleshark: ['......k.....', '.....knk....', 'k..kknnnkkk.', 'kkknwnnwnnkk', 'k..kkwwwwwk.'],
 };
-// 特殊型態：每種生物各自的稀有色型（參考真實存在的變異），名字＋要換掉的顏色
+// 特殊型態：真實存在、比較少見的色型或近親物種，名字＋要換掉的顏色
 const MORPH = {
-  clown: { n: '黑白小丑魚', map: { o: '#3a3f58' } },
-  damsel: { n: '黃尾雀鯛', map: { c: '#ffcd75', b: '#3b5dc9' } },
-  butterfly: { n: '白身蝴蝶魚', map: { y: '#f4f4f4', w: '#ef7d57' } },
-  star: { n: '藍海星', map: { o: '#41a6f6', y: '#73eff7' } },
-  hermit: { n: '紫殼寄居蟹', map: { t: '#b267e6', r: '#ef7d57' } },
-  urchin: { n: '紅海膽', map: { P: '#e43b44' } },
-  turtle: { n: '金甲綠蠵龜', map: { G: '#c59a3c', g: '#ffcd75' } },
-  octopus: { n: '藍環章魚', map: { r: '#ffcd75', w: '#41a6f6' } },
-  nudi: { n: '藍龍海蛞蝓', map: { P: '#41a6f6', o: '#73eff7', y: '#f4f4f4' } },
-  lion: { n: '黑獅子魚', map: { r: '#3a3f58', w: '#f4f4f4' } },
-  puffer: { n: '星斑河豚', map: { y: '#94b0c2', w: '#f4f4f4' } },
-  cuttle: { n: '火焰烏賊', map: { s: '#b267e6', w: '#ffcd75' } },
-  seahorse: { n: '豆丁海馬', map: { y: '#f5a3c7' } },
-  shark: { n: '虎鯊', map: { S: '#a0703c' } },
-  moray: { n: '黃邊裸胸鯙', map: { g: '#ffcd75', y: '#38b764' } },
-  jelly: { n: '粉紅水母', map: { c: '#f5a3c7', w: '#ffe0f0' } },
-  manta: { n: '黑化鬼蝠魟', map: { n: '#3a3f58', w: '#94b0c2' } },
-  mola: { n: '銀光翻車魚', map: { s: '#d8e6f0', w: '#ffffff' } },
-  dolphin: { n: '粉紅海豚', map: { b: '#f5a3c7', w: '#ffe0f0' } },
-  whaleshark: { n: '深海鯨鯊', map: { n: '#257179', w: '#73eff7' } },
+  clown: { n: '黑色小丑魚', map: { o: '#3a3f58' } },                      // 眼斑雙鋸魚的黑色型（達爾文小丑）
+  damsel: { n: '黃尾雀鯛', map: { c: '#ffcd75', b: '#3b5dc9' } },         // 近親 Chrysiptera parasema
+  butterfly: { n: '浣熊蝴蝶魚', map: { y: '#f39c3d' } },                  // 近親 Chaetodon lunula
+  star: { n: '藍指海星', map: { o: '#41a6f6', y: '#73eff7' } },           // Linckia laevigata
+  hermit: { n: '藍腿寄居蟹', map: { r: '#41a6f6' } },                     // Clibanarius tricolor
+  urchin: { n: '火焰海膽', map: { P: '#e43b44' } },                       // Asthenosoma varium
+  turtle: { n: '玳瑁', map: { G: '#7a4a1c', g: '#d9a441', y: '#ffe0a0' } },   // 綠蠵龜的近親，極度瀕危
+  octopus: { n: '藍環章魚', map: { r: '#ffcd75', w: '#41a6f6' } },        // Hapalochlaena
+  nudi: { n: '藍龍海蛞蝓', map: { P: '#41a6f6', o: '#73eff7', y: '#f4f4f4' } },   // Glaucus atlanticus
+  lion: { n: '黑色獅子魚', map: { r: '#3a3f58', w: '#f4f4f4' } },         // 魔鬼蓑鮋的黑色型
+  puffer: { n: '星斑河豚', map: { y: '#94b0c2', w: '#f4f4f4' } },         // 近親 Arothron stellatus
+  cuttle: { n: '火焰烏賊', map: { s: '#b267e6', w: '#ffcd75' } },         // Metasepia pfefferi
+  seahorse: { n: '豆丁海馬', map: { y: '#f5a3c7' } },                     // Hippocampus bargibanti
+  shark: { n: '白化白鰭鯊', map: { S: '#e8eef4' } },                      // 罕見的白化個體
+  moray: { n: '黃邊裸胸鯙', map: { g: '#ffcd75', y: '#38b764' } },        // Gymnothorax flavimarginatus
+  jelly: { n: '紫紋海刺水母', map: { c: '#b267e6', w: '#f4f4f4' } },      // Chrysaora colorata
+  manta: { n: '黑化鬼蝠魟', map: { n: '#3a3f58', w: '#94b0c2' } },        // 黑色型鬼蝠魟
+  mola: { n: '長翻車魚', map: { s: '#a9c8e8' } },                         // 近親 Ranzania laevis，很少被看到
+  dolphin: { n: '中華白海豚', map: { b: '#f5a3c7', w: '#ffe0f0' } },      // 台灣西海岸的粉紅色海豚
+  whaleshark: { n: '白化鯨鯊', map: { n: '#d8e6f0', w: '#ffffff' } },     // 罕見的白化個體
 };
 const stageName = (c, s) => s === 1 ? '幼體' : s === 2 ? '成體' : MORPH[c.id].n;
 
