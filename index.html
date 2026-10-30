@@ -351,6 +351,61 @@ const CREATURES = [
   { id:'whaleshark', name:'鯨鯊', r:4, fact:'世界上最大的魚，卻只吃浮游生物。', px: ['........kk........','.......knk........','k....kkknnkkkk....','kk.kknwnnnwnnnnkk.','knkknnnnwnnnnwnknk','knnnnwnnnnwnnnnnnk','kkkkwwwwwwwwwwwwk.','k...kkkkknkkkkkk..','.........k........'] },
 ];
 const CR = Object.fromEntries(CREATURES.map(c => [c.id, c]));
+// ===== 成長型態 =====
+// 幼體：每種生物各自的幼體造型（參考真實的幼體樣貌）
+const MINI = ['...kkk...', '.kkAAAk..', 'kAkAAAAk.', 'kAAAAAkAk', 'kAkAAAAk.', '.kkAAAk..', '...kkk...'];
+function mini(body, stripes = {}, dots = []) {
+  const rows = MINI.map(r => [...r].map((ch, i) => ch === 'A' ? (stripes[i] || body) : ch));
+  for (const [j, i, ch] of dots) rows[j][i] = ch;
+  return rows.map(r => r.join(''));
+}
+const JUV = {
+  clown: mini('o', { 4: 'w' }),                                      // 幼魚只有一條白帶
+  damsel: mini('b', { 1: 'y', 2: 'y' }),                             // 尾巴黃色
+  butterfly: mini('y', {}, [[3, 3, 'k'], [2, 3, 'w'], [4, 3, 'w']]),  // 背上有假眼斑
+  star: ['...k...', '..kok..', 'kkoookk', '.koyok.', '.koook.', 'kok.kok', 'k.....k'],
+  hermit: ['...kk...', '..kttk..', '.kttttk.', 'ktktkttk', 'kkkkkkkk', '.krkrk..', '.k.k.k..'],   // 背著小小的螺殼
+  urchin: ['k..k..k', '.kkPkk.', 'kkPPPkk', '.kkPkk.', 'k..k..k'],
+  turtle: ['..kkkk...', '.kGgGgkk.', 'kGgGgGkgk', '.kyyyykkk', '.kgkkgk..'],   // 剛孵化的小海龜，頭大
+  octopus: ['..kkk..', '.koook.', 'kowowok', 'koooook', '.koook.', '.o.o.o.', 'o.o.o.o'],   // 小章魚，腳還很短
+  nudi: ['..o.o.o..', '.kPPPPPk.', 'kPwPPPwPk', '.kyyyyyk.'],
+  lion: ['..r.r.r..', ...mini('r', { 3: 'w', 5: 'w' }), '..r.r....'],
+  puffer: ['.k.k.k.', '..kkk..', '.kyyyk.', 'kyyykyk', 'kywwwyk', '.kwwwk.', '..kkk..'],   // 圓滾滾、全身小刺
+  cuttle: ['..kkkk..', '.kwsswk.', 'kswskwsk', '.kwsswk.', '..kkkk..', '.s.s.s..'],   // 剛孵化的小烏賊，大眼睛
+  seahorse: ['.kk..', 'kyyk.', 'kykyk', '.kyk.', '.kyk.', 'kyk..', '.k...'],
+  shark: ['....kk.....', '...kSk.....', 'k.kSSSSkk..', 'kkSSSSSSkSk', 'k.kwwwwwkk.', '....kwk....'],
+  moray: ['......kkk.', '.kkkkkgggk', 'kgygygggwk', '.kkkkkkkk.'],
+  jelly: ['.c.c.c.', 'ccccccc', '.ccwcc.', 'ccccccc', '.c.c.c.'],      // 碟狀幼體
+  manta: ['..kk.kk..', '.knnnnnk.', 'knnwnwnnk', '.kknnnkk.', '....k....'],
+  mola: ['....k....', '.k.ksk.k.', '..ksssk..', 'kksswsskk', '..ksssk..', '.k.ksk.k.', '....k....'],   // 翻車魚幼體全身是刺
+  dolphin: ['.....k....', '....kbk...', 'k..kbbbkk.', 'kbkbbbbkbk', 'k..kwwwkk.'],
+  whaleshark: ['......k.....', '.....knk....', 'k..kknnnkkk.', 'kkknwnnwnnkk', 'k..kkwwwwwk.'],
+};
+// 特殊型態：每種生物各自的稀有色型（參考真實存在的變異），名字＋要換掉的顏色
+const MORPH = {
+  clown: { n: '黑白小丑魚', map: { o: '#3a3f58' } },
+  damsel: { n: '黃尾雀鯛', map: { c: '#ffcd75', b: '#3b5dc9' } },
+  butterfly: { n: '白身蝴蝶魚', map: { y: '#f4f4f4', w: '#ef7d57' } },
+  star: { n: '藍海星', map: { o: '#41a6f6', y: '#73eff7' } },
+  hermit: { n: '紫殼寄居蟹', map: { t: '#b267e6', r: '#ef7d57' } },
+  urchin: { n: '紅海膽', map: { P: '#e43b44' } },
+  turtle: { n: '金甲綠蠵龜', map: { G: '#c59a3c', g: '#ffcd75' } },
+  octopus: { n: '藍環章魚', map: { r: '#ffcd75', w: '#41a6f6' } },
+  nudi: { n: '藍龍海蛞蝓', map: { P: '#41a6f6', o: '#73eff7', y: '#f4f4f4' } },
+  lion: { n: '黑獅子魚', map: { r: '#3a3f58', w: '#f4f4f4' } },
+  puffer: { n: '星斑河豚', map: { y: '#94b0c2', w: '#f4f4f4' } },
+  cuttle: { n: '火焰烏賊', map: { s: '#b267e6', w: '#ffcd75' } },
+  seahorse: { n: '豆丁海馬', map: { y: '#f5a3c7' } },
+  shark: { n: '虎鯊', map: { S: '#a0703c' } },
+  moray: { n: '黃邊裸胸鯙', map: { g: '#ffcd75', y: '#38b764' } },
+  jelly: { n: '粉紅水母', map: { c: '#f5a3c7', w: '#ffe0f0' } },
+  manta: { n: '黑化鬼蝠魟', map: { n: '#3a3f58', w: '#94b0c2' } },
+  mola: { n: '銀光翻車魚', map: { s: '#d8e6f0', w: '#ffffff' } },
+  dolphin: { n: '粉紅海豚', map: { b: '#f5a3c7', w: '#ffe0f0' } },
+  whaleshark: { n: '深海鯨鯊', map: { n: '#257179', w: '#73eff7' } },
+};
+const stageName = (c, s) => s === 1 ? '幼體' : s === 2 ? '成體' : MORPH[c.id].n;
+
 
 const spriteCache = {};
 function spriteURL(rows, sil) {
@@ -697,7 +752,7 @@ function nextChest() {
     if (P.length <= MAX_PETS) { UI.opened = false; nextChest(); return; }
     m.innerHTML = `<h2>${c.name}已經有 ${MAX_PETS} 隻了</h2><p class="dim">每種最多養 ${MAX_PETS} 隻，選一隻放生回大海。</p>
       ${P.map((p, i) => `<div class="entry" style="text-align:left">${stageImg(c, stageOf(p.fed), 2)}
-        <span class="sp">${p.id === it.newId ? '<b class="new">新抽到的</b>' : `${i + 1} 號`}・${STAGE_NAME[stageOf(p.fed) - 1]}・吃了 ${p.fed} 顆</span>
+        <span class="sp">${p.id === it.newId ? '<b class="new">新抽到的</b>' : `${i + 1} 號`}・${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</span>
         <button class="${p.id === it.newId ? 'pri' : ''}" data-act="releasepick" data-v="${p.id}">放生</button></div>`).join('')}`;
     return;
   }
@@ -867,11 +922,11 @@ function renderSheet() {
     el.innerHTML = `<div class="row"><span class="rar" style="background:${R.color}">${R.name}</span><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
       ${stageImg(c, seen, big, false, 'pop')}
       <h2>${c.name}</h2><p class="dim" style="margin:0 0 8px">${c.fact}</p>
-      <div class="stages">${[1, 2, 3].map(s => `<div>${stageImg(c, s, 3, s > seen)}<small class="${s > seen ? 'dim' : ''}">${s > seen ? '？？？' : STAGE_NAME[s - 1]}</small></div>`).join('')}</div>
-      <div class="mini">吃到 ${GROW[1]} 顆長成成體、${GROW[2]} 顆變成閃耀型態</div>
+      <div class="stages">${[1, 2, 3].map(s => `<div>${stageImg(c, s, 3, s > seen)}<small class="${s > seen ? 'dim' : ''}">${s > seen ? '？？？' : stageName(c, s)}</small></div>`).join('')}</div>
+      <div class="mini">吃到 ${GROW[1]} 顆長成成體、${GROW[2]} 顆變成特殊型態</div>
       <div class="sub" style="text-align:left">擁有 ${P.length}/${MAX_PETS} 隻</div>
       ${P.map((p, i) => `<div class="entry" style="text-align:left">${stageImg(c, stageOf(p.fed), 2)}
-        <span class="sp">${P.length > 1 ? `${i + 1} 號・` : ''}${STAGE_NAME[stageOf(p.fed) - 1]}・吃了 ${p.fed} 顆</span>
+        <span class="sp">${P.length > 1 ? `${i + 1} 號・` : ''}${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</span>
         <label class="row" style="gap:4px;flex:none"><input type="checkbox" data-act="intank" data-v="${p.id}" ${inTank(p.id) ? 'checked' : ''}><small>水族箱</small></label>
         <button class="ghost" data-act="release" data-v="${p.id}">放生</button></div>`).join('') || '<div class="dim" style="text-align:left">都放生了，再抽到會回來。</div>'}`;
     return;
@@ -923,8 +978,7 @@ function ask(msg, yes = '確定', no = '取消', input = false) {
 /* ========= 生物個體與成長 ========= */
 // 每一隻生物＝一筆抽到牠的紀錄（log.drop）；放生的記在 S.released。每種最多養 MAX_PETS 隻
 const MAX_PETS = 5;
-const GROW = [0, 10, 30];                                  // 吃到幾顆：幼體 → 成體 → 閃耀
-const STAGE_NAME = ['幼體', '成體', '閃耀'];
+const GROW = [0, 10, 30];                                  // 吃到幾顆：幼體 → 成體 → 特殊型態
 const fedOf = key => (S.fed && S.fed[key]) || 0;
 const stageOf = n => GROW.filter(t => n >= t).length;
 const inTank = id => !(S.outTank && S.outTank[id]);
@@ -933,23 +987,16 @@ function pets(sp) {
 }
 // 圖鑑裡解鎖到第幾種外觀：看過的最高型態（放生了也算看過）
 const seenStage = sp => Math.max(1, (S.seen && S.seen[sp]) || 1, ...pets(sp).map(p => stageOf(p.fed)));
-const mixHex = (a, b, t) => '#' + [1, 3, 5].map(i => Math.round(parseInt(a.substr(i, 2), 16) * (1 - t) + parseInt(b.substr(i, 2), 16) * t).toString(16).padStart(2, '0')).join('');
-// 三種外觀：幼體顏色淡一點、成體是原圖、閃耀多一圈金邊
+// 三種外觀：幼體用各自的幼體圖（JUV）、成體是原圖、特殊型態換成各自的稀有配色（MORPH）
 const stageCv = {};
 function stageCanvas(c, s) {
   const key = c.id + s; if (stageCv[key]) return stageCv[key];
-  const rows = c.px, w = Math.max(...rows.map(r => r.length)), h = rows.length, b = s === 3 ? 1 : 0;
-  const cv = document.createElement('canvas'); cv.width = w + 2 * b; cv.height = h + 2 * b;
+  const rows = s === 1 ? JUV[c.id] : c.px, map = s === 3 ? MORPH[c.id].map : {};
+  const cv = document.createElement('canvas'); cv.width = Math.max(...rows.map(r => r.length)); cv.height = rows.length;
   const x = cv.getContext('2d');
-  const on = (i, j) => j >= 0 && j < h && i >= 0 && i < rows[j].length && rows[j][i] !== '.' && !!PAL[rows[j][i]];
-  if (s === 3) {
-    x.fillStyle = '#ffcd75';
-    for (let j = -1; j <= h; j++) for (let i = -1; i <= w; i++)
-      if (!on(i, j) && (on(i - 1, j) || on(i + 1, j) || on(i, j - 1) || on(i, j + 1))) x.fillRect(i + b, j + b, 1, 1);
-  }
   rows.forEach((r, j) => [...r].forEach((ch, i) => {
-    if (!on(i, j)) return;
-    x.fillStyle = s === 1 ? mixHex(PAL[ch], '#ffffff', .35) : PAL[ch]; x.fillRect(i + b, j + b, 1, 1);
+    if (ch === '.' || !PAL[ch]) return;
+    x.fillStyle = map[ch] || PAL[ch]; x.fillRect(i, j, 1, 1);
   }));
   return stageCv[key] = cv;
 }
@@ -986,7 +1033,7 @@ const TANK_SPECIES = {
   seahorse: [1, .1], shark: [2.3, .7], moray: [1.8, .3], jelly: [1.3, .08], manta: [2.6, .35], mola: [2.3, .15],
   dolphin: [2.2, .9], whaleshark: [3.3, .2],
 };
-const STAGE_SCALE = [.75, 1, 1.1];
+const STAGE_SCALE = [1, 1, 1.1];   // 幼體圖本身就比較小
 const FEED = { free: 3, pack: 10, price: 30 };            // 每天免費 3 顆；商店 30 金幣買 10 顆
 // 水族箱設定：S.tankCfg[物種] = { size: 0.6／1／1.3 }；哪幾隻放進去記在 S.outTank
 const SIZES = [[.6, '小'], [1, '標準'], [1.3, '大']];
@@ -1013,7 +1060,7 @@ function tankEditor(D) {
       return `<div class="erow">${stageImg(c, seenStage(c.id), 2)}<span class="sp">${c.name}</span>
         <select data-tf="size" data-tv="${c.id}">${SIZES.map(([v, l]) => `<option value="${v}" ${tankSize(c.id) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
         <div class="row" style="flex-basis:100%;gap:10px;padding-left:4px">${P.map((p, i) => `<label class="row" style="gap:4px"><input type="checkbox" data-act="intank" data-v="${p.id}" ${inTank(p.id) ? 'checked' : ''}>
-          <small>${P.length > 1 ? `${i + 1} 號 ` : ''}${STAGE_NAME[stageOf(p.fed) - 1]}</small></label>`).join('')}</div></div>`;
+          <small>${P.length > 1 ? `${i + 1} 號 ` : ''}${stageName(c, stageOf(p.fed))}</small></label>`).join('')}</div></div>`;
     }).join('') || '<div class="dim">還沒有生物。</div>'}</section>`;
 }
 function tank(D) {
@@ -1023,7 +1070,7 @@ function tank(D) {
     <canvas id="tank" class="tank"></canvas>
     <div class="row" style="margin-top:8px"><span class="dim" id="feedInfo">${tankFeedText()}</span><span class="sp"></span>
       <button data-act="buyfeed">買飼料 ${FEED.pack} 顆・${FEED.price}${COIN}</button></div>
-    <div class="mini">點水面撒飼料，吃到的那一隻會長大（幼體 → 成體 → 閃耀）。點生物可以看名字和型態。</div></section>`;
+    <div class="mini">點水面撒飼料，吃到的那一隻會長大（幼體 → 成體 → 特殊型態）。點生物可以看名字和型態。</div></section>`;
 }
 function tankStart() {
   cancelAnimationFrame(TANK.raf);
@@ -1057,7 +1104,7 @@ function tankStart() {
   }
   TANK.fish.sort((a, b) => b.w * b.h - a.w * a.h);   // 大的畫在後面，小的在前面
   const weeds = Array.from({ length: Math.max(3, Math.floor(W / 60)) }, (_, i) => ({ x: 12 + i * (W - 24) / Math.max(1, Math.floor(W / 60) - 1), h: 18 + (i * 7) % 20 }));
-  const tipFor = f => `${f.c.name}${f.many ? ` ${f.no} 號` : ''}・${STAGE_NAME[f.st - 1]}・吃了 ${fedOf(f.key)} 顆`;
+  const tipFor = f => `${f.c.name}${f.many ? ` ${f.no} 號` : ''}・${stageName(f.c, f.st)}・吃了 ${fedOf(f.key)} 顆`;
   cv.onclick = e => {
     const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width, py = (e.clientY - r.top) * H / r.height;
     const hit = [...TANK.fish].reverse().find(f => px >= f.x && px <= f.x + f.w && py >= f.y && py <= f.y + f.h);
@@ -1105,7 +1152,7 @@ function tankStart() {
           if (after > before) {
             S.seen = S.seen || {}; S.seen[f.c.id] = Math.max(S.seen[f.c.id] || 1, after);
             const cx = f.x + f.w / 2, by = f.y + f.h; look(f); f.x = cx - f.w / 2; if (f.ground) f.y = floorY - f.h + 2; else f.baseY = by - f.h;
-            SFX.rank(); toast(`${f.c.name}${f.many ? ` ${f.no} 號` : ''}長成${STAGE_NAME[after - 1]}了！`);
+            SFX.rank(); toast(`${f.c.name}${f.many ? ` ${f.no} 號` : ''}長成${stageName(f.c, after)}了！`);
           }
           save();
         }
