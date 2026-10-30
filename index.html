@@ -124,6 +124,7 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 #sheetov{z-index:9}
 .modal{width:min(380px,100%);text-align:center;max-height:90vh;overflow:auto}
 .sheet{text-align:left;width:min(440px,100%)}
+.sheet h2{font-size:18px}
 .modal h2{margin:4px 0 10px;font-size:19px}
 .msg{white-space:pre-line;margin:6px 0 14px}
 .sprite{image-rendering:pixelated;image-rendering:crisp-edges;display:block;margin:10px auto}
@@ -169,10 +170,12 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .erow input.sp{flex:1 1 100px;min-width:0}
 
 /* 紀錄 */
-.heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,13px);gap:3px;overflow-x:auto;padding-bottom:4px;justify-content:start}
-.heat i{width:13px;height:13px;background:#0f2a4d}
+.heat{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;max-width:420px}
+.heat .wd{text-align:center;font-size:12px;color:var(--faint)}
+.heat i{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:12px;color:var(--dim);background:#0f2a4d}
+.heat i.l3,.heat i.l4{color:#0b2546;font-weight:bold}
 .heat i.l1{background:#1f5a8a}.heat i.l2{background:#2f8fc0}.heat i.l3{background:#73eff7}.heat i.l4{background:#e8ffff}
-.heat i.today{outline:2px solid var(--coin)}
+.heat i.today{outline:2px solid var(--coin);outline-offset:-2px}
 .heat i.blank{background:transparent}
 .legend{display:flex;align-items:center;gap:4px;margin-top:8px}
 .legend i{display:inline-block;width:11px;height:11px}
@@ -266,9 +269,8 @@ const CONFIG = {
 };
 
 // 內建習慣（可改名、刪除、加回）。weeks: 0 = 每天；1、2 = 每 1／2 週至少 target 天（Vocus 是篇）
-// kind: plan = 寫好六件事、vocus = 記錄發布的文章、exercise = 可記距離時間、custom = 自訂
+// kind: vocus = 記錄發布的文章、exercise = 可記距離時間、custom = 自訂。六件事只是清單，不算連勝
 const DEFAULT_HABITS = [
-  { id: 'plan',     e: '📝', n: '六件事', kind: 'plan',     weeks: 0, target: 1 },
   { id: 'vocus',    e: '✍️', n: 'Vocus',  kind: 'vocus',    weeks: 1, target: 1 },
   { id: 'exercise', e: '🏃', n: '運動',   kind: 'exercise', weeks: 1, target: 3 },
 ];
@@ -365,7 +367,7 @@ const rid = () => Math.random().toString(36).slice(2);
 
 /* ========= 存檔 ========= */
 const KEY = 'habitdive.v1';
-const blank = () => ({ v: 4, logs: [], plans: {}, checks: {}, mute: false });
+const blank = () => ({ v: 5, logs: [], plans: {}, checks: {}, mute: false });
 const OLD_CAT = { '☀️': 'wake', '💻': 'research', '✍️': 'vocus', '🏃': 'exercise', '📘': 'digital', '📌': 'other' };
 // v1：六件事有 line/time/dur；v2：分類用 emoji、習慣寫死；v3：習慣可自訂；v4：習慣改在卡片上打卡（S.checks）
 function migrate(s) {
@@ -384,11 +386,29 @@ function migrate(s) {
   s.checks = s.checks && typeof s.checks === 'object' ? s.checks : {};
   if (!s.habits) {
     s.habits = DEFAULT_HABITS.map(h => ({ ...h }));
-    if (s.vcfg) { Object.assign(s.habits[1], { weeks: s.vcfg.weeks, target: s.vcfg.target }); s.vocusSet = true; }
+    if (s.vcfg) { Object.assign(s.habits.find(h => h.id === 'vocus'), { weeks: s.vcfg.weeks, target: s.vcfg.target }); s.vocusSet = true; }
     if (old && (s.logs.length > 1 || Object.keys(s.plans).length))
       s.habits.push({ id: 'wake', e: '☀️', n: '早起', kind: 'custom', weeks: 0, target: 1 },
                     { id: 'research', e: '💻', n: '研究', kind: 'custom', weeks: 0, target: 1 });
     delete s.vcfg;
+  }
+  // v5：六件事不再算連勝。「六件事」習慣拿掉；用習慣當分類打過勾的項目，搬成習慣打卡紀錄（不重複計算）
+  s.habits = s.habits.filter(h => h.kind !== 'plan');
+  const today = dayKey();
+  for (const [d, P] of Object.entries(s.plans)) for (const it of P) {
+    if (!s.habits.some(h => h.id === it.cat)) continue;   // 只處理用習慣當分類的項目
+    if (it.done && (it.cat !== 'vocus' || (it.pub && it.pub.on))) {
+      const entry = it.cat === 'exercise' ? { ...(it.ex || {}), note: (it.ex && it.ex.note) || it.text || undefined }
+        : it.cat === 'vocus' ? { title: (it.pub && it.pub.title) || it.text || undefined } : {};
+      const c = s.checks[d] || (s.checks[d] = {});
+      (c[it.cat] || (c[it.cat] = [])).push({ t: 0, ...entry });
+      // 今天搬過來的不要再發一次打卡寶箱（當時打勾已經給過了）
+      if (d === today) {
+        const key = it.cat === 'vocus' ? 'art:' + d : `hab:${it.cat}:${d}`;
+        if (!s.logs.some(l => l.key === key)) s.logs.push({ id: rid(), t: 0, d, k: 'habit', key, xp: 0, c: 0 });
+      }
+    }
+    it.cat = 'other'; delete it.ex; delete it.pub;
   }
   if (!s.gcats) {
     s.gcats = CONFIG.generalCats.map(c => ({ ...c }));
@@ -397,7 +417,7 @@ function migrate(s) {
   }
   if (!s.gcats.some(c => c.id === 'other')) s.gcats.push({ ...CONFIG.generalCats[CONFIG.generalCats.length - 1] });
   if (s.timer && (s.timer.k || !(s.timer.start > 0) || (s.timer.segs && !(s.timer.segs[s.timer.si] && s.timer.segs[s.timer.si].min > 0)))) delete s.timer;
-  s.v = 4;
+  s.v = 5;
   return s;
 }
 function load() {
@@ -413,10 +433,9 @@ const habit = id => S.habits.find(h => h.id === id && !h.off);
 const customCount = () => activeHabits().filter(h => h.kind === 'custom').length;
 const gcats = () => S.gcats.filter(c => !c.off);
 function catOf(id) {
-  return gcats().find(c => c.id === id) || habit(id) || S.gcats.find(c => c.id === 'other');
+  return gcats().find(c => c.id === id) || S.gcats.find(c => c.id === 'other');
 }
-// 六件事的分類只有一般分類；舊資料若用了習慣當分類，保留顯示
-const catList = cur => { const g = gcats(); return g.some(c => c.id === cur) || !habit(cur) ? g : [habit(cur), ...g]; };
+const catList = () => gcats();
 const placeholder = c => c.ph || `${c.n}：今天要做什麼？`;
 const periodWord = h => h.weeks === 1 ? '本週' : '這兩週';
 const countWord = h => h.kind === 'vocus' ? '篇' : '天';
@@ -442,13 +461,8 @@ function derive() {
     D.xp += l.xp || 0; D.coins += l.c || 0;
     if (l.drop) D.col[l.drop] = (D.col[l.drop] || 0) + 1;
     if (l.key) D.claimed.add(l.key);
-    if (['wake', 'plan', 'research', 'exercise'].includes(l.k) && !l.late) inc(l.d, l.k);
+    if (['wake', 'research', 'exercise'].includes(l.k) && !l.late) inc(l.d, l.k);
     if (l.k === 'article') inc(l.d, 'vocus');
-  }
-  for (const [d, P] of Object.entries(S.plans)) for (const it of P) {
-    if (!it.done) continue;
-    if (it.cat === 'vocus') { if (it.pub && it.pub.on) inc(d, 'vocus'); }
-    else if (habit(it.cat)) inc(d, it.cat);
   }
   for (const [d, C] of Object.entries(S.checks)) for (const [id, arr] of Object.entries(C))
     if (arr.length) inc(d, id, id === 'vocus' ? arr.length : 1);
@@ -554,9 +568,8 @@ function reconcile(allowGrant) {
   // 前三格都要有寫內容、而且都打勾才算
   const conds = [['top3:' + d, 'top3', P.length >= R && P.slice(0, R).every(x => x.text.trim() && x.done)]];
   for (const h of activeHabits()) {
-    if (h.kind === 'plan') continue;
     const has = dayChecks(d, h.id).length > 0;
-    if (h.kind === 'vocus') conds.push(['art:' + d, 'pubchest', has || P.some(x => x.done && x.cat === 'vocus' && x.pub && x.pub.on)]);
+    if (h.kind === 'vocus') conds.push(['art:' + d, 'pubchest', has]);
     else conds.push([`hab:${h.id}:${d}`, 'habit', has, `${h.e} ${h.n} 打卡完成！`, h.kind === 'exercise' ? CONFIG.xp.exercise : CONFIG.xp.habit]);
     if (h.weeks && h.kind !== 'vocus') {
       const p = periodKey(d, h.weeks);
@@ -691,9 +704,8 @@ function habitEditor() {
     ${S.habits.map((h, i) => h.off ? '' : `<div class="erow">
       <input data-hf="e" data-hi="${i}" value="${esc(h.e)}" style="width:52px;text-align:center" title="圖示">
       <input class="sp" data-hf="n" data-hi="${i}" value="${esc(h.n)}" placeholder="${h.kind === 'custom' ? '習慣名稱，例如：冥想' : '習慣名稱'}">
-      ${h.kind === 'plan' ? '<span class="dim">每天寫好清單</span>'
-        : `<select data-hf="weeks" data-hi="${i}">${freqOpts(h, h.weeks)}</select>
-           ${h.weeks ? `<span class="dim">至少</span><select data-hf="target" data-hi="${i}">${targetOpts(h.target)}</select><span class="dim">${countWord(h)}</span>` : ''}`}
+      <select data-hf="weeks" data-hi="${i}">${freqOpts(h, h.weeks)}</select>
+      ${h.weeks ? `<span class="dim">至少</span><select data-hf="target" data-hi="${i}">${targetOpts(h.target)}</select><span class="dim">${countWord(h)}</span>` : ''}
       <button class="ghost" data-act="habdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
     <div class="row" style="margin-top:8px"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣 ${customCount()}/${CONFIG.maxCustom}</button>
       ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${h.id}">加回 ${esc(h.e)} ${esc(h.n)}</button>`).join('')}</div>
@@ -716,7 +728,7 @@ function today(D) {
       const p = periodKey(td, h.weeks), cnt = perCount(D, h, p);
       on = periodDone(D, h, p); sub = `${periodWord(h)} ${cnt}/${h.target} ${countWord(h)}`;
     } else {
-      on = dayDone(D, td, h.id); sub = h.kind === 'plan' ? (on ? '清單已寫好' : '還沒寫清單') : on ? '今天 ✓' : '今天還沒';
+      on = dayDone(D, td, h.id); sub = on ? '今天 ✓' : '今天還沒';
     }
     return `<button class="hab ${on ? 'on' : ''}" data-act="habtap" data-v="${h.id}">
       <div class="row"><span class="hn">${esc(h.e)} ${esc(h.n)}</span><span class="sp"></span>${badge}</div>
@@ -739,7 +751,7 @@ function today(D) {
       <input type="checkbox" data-act="pdone" data-v="${i}" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
       <span class="no">${i + 1}</span>
       <input class="ptext" data-pf="text" data-i="${i}" value="${esc(it.text)}" placeholder="${esc(placeholder(c))}">
-      <select data-pf="cat" data-i="${i}" title="分類">${catList(it.cat).map(x => `<option value="${x.id}" ${c.id === x.id ? 'selected' : ''}>${esc(x.e)} ${esc(x.n)}</option>`).join('')}</select></div>`;
+      <select data-pf="cat" data-i="${i}" title="分類">${catList().map(x => `<option value="${x.id}" ${c.id === x.id ? 'selected' : ''}>${esc(x.e)} ${esc(x.n)}</option>`).join('')}</select></div>`;
   }).join('');
   const T = S.timer && S.timer.segs ? S.timer : null, seg = T && T.segs[T.si], pm = pomoMin();
   const todayPomo = S.logs.filter(l => l.k === 'pomo' && l.d === td).length;
@@ -783,7 +795,7 @@ function renderSheet() {
     const c = CR[UI.sheet.creature], R = RARITY[c.r], n = derive().col[c.id] || 0;
     el.style.textAlign = 'center';
     el.innerHTML = `<div class="row"><span class="rar" style="background:${R.color}">${R.name}</span><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
-      ${img(c.px, Math.max(6, Math.floor(260 / Math.max(...c.px.map(r => r.length)))), false, 'pop')}
+      ${img(c.px, Math.max(4, Math.min(10, Math.floor(150 / Math.max(...c.px.map(r => r.length))))), false, 'pop')}
       <h2>${c.name} <small>×${n}</small></h2><p class="dim">${c.fact}</p>`;
     return;
   }
@@ -857,8 +869,7 @@ function tank(D) {
   const n = Object.keys(D.col).length;
   return `<section class="px">${sh('水族箱', 'AQUARIUM', `<span class="dim">${n} 種生物</span>`)}
     <canvas id="tank" class="tank"></canvas>
-    <div class="mini">點水面撒飼料，看誰先游過去吃。點生物可以看名字。收集越多，水族箱越熱鬧。</div>
-    <div class="mini" id="tankScore"></div></section>`;
+    <div class="mini">點水面撒飼料，看誰先游過去吃。點生物可以看名字。收集越多，水族箱越熱鬧。</div></section>`;
 }
 function tankStart() {
   cancelAnimationFrame(TANK.raf);
@@ -868,18 +879,16 @@ function tankStart() {
   const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
   const owned = CREATURES.filter(c => derive().col[c.id]);
   const floorY = H - 16, bottomDwellers = ['star', 'hermit', 'urchin'];
-  TANK.fed = TANK.fed || 0;
   TANK.food = []; TANK.tip = null; TANK.bub = [];
   TANK.fish = owned.map(c => {
     const s = spriteCanvas(c), sc = c.r >= 3 ? 2 : 1, ground = bottomDwellers.includes(c.id);
     const w = s.width * sc, h = s.height * sc;
+    // 海底生物慢慢爬：寄居蟹最快，海星、海膽很慢，偶爾停下來
     return { c, s, sc, w, h, ground, x: Math.random() * (W - w), y: ground ? floorY - h + 2 : 10 + Math.random() * (floorY - h - 30),
-      vx: (ground ? (c.id === 'hermit' ? .15 : 0) : .25 + Math.random() * .35) * (Math.random() < .5 ? -1 : 1), ph: Math.random() * 6, target: null };
+      vx: (ground ? (c.id === 'hermit' ? .18 : .06) : .25 + Math.random() * .35) * (Math.random() < .5 ? -1 : 1), ph: Math.random() * 6, rest: 0 };
   });
   TANK.fish.forEach(f => f.baseY = f.y);
   const weeds = Array.from({ length: Math.max(3, Math.floor(W / 60)) }, (_, i) => ({ x: 12 + i * (W - 24) / Math.max(1, Math.floor(W / 60) - 1), h: 18 + (i * 7) % 20 }));
-  const score = () => { const el = document.getElementById('tankScore'); if (el) el.textContent = TANK.fed ? `已經餵了 ${TANK.fed} 顆飼料` : ''; };
-  score();
   cv.onclick = e => {
     const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width, py = (e.clientY - r.top) * H / r.height;
     const hit = TANK.fish.find(f => px >= f.x && px <= f.x + f.w && py >= f.y && py <= f.y + f.h);
@@ -905,19 +914,28 @@ function tankStart() {
     TANK.food = TANK.food.filter(f => f.age < 900);
     x.fillStyle = '#ef7d57'; TANK.food.forEach(f => x.fillRect(Math.round(f.x), Math.round(f.y), 2, 2));
     // 生物
+    // 飼料碰到生物的身體就算吃到
+    const eats = (f, p) => p.x >= f.x - 2 && p.x <= f.x + f.w + 2 && p.y >= f.y - 2 && p.y <= f.y + f.h + 2;
     for (const f of TANK.fish) {
-      if (!f.ground) {
-        let food = null, best = 1e9;
-        for (const p of TANK.food) { const dd = Math.hypot(p.x - (f.x + f.w / 2), p.y - (f.y + f.h / 2)); if (dd < best) { best = dd; food = p; } }
-        if (food && best < W) {
-          const dx = food.x - (f.x + f.w / 2), dy = food.y - (f.y + f.h / 2), sp = .9 * dt;
-          f.x += Math.sign(dx) * Math.min(Math.abs(dx), sp); f.baseY += Math.sign(dy) * Math.min(Math.abs(dy), sp * .8);
-          if (Math.abs(dx) > .5) f.vx = Math.sign(dx) * Math.abs(f.vx || .3);
-          if (best < Math.max(4, f.w / 3)) { TANK.food.splice(TANK.food.indexOf(food), 1); TANK.fed++; SFX.eat(); score(); }
-        } else f.x += f.vx * dt;
-        f.baseY = Math.max(4, Math.min(floorY - f.h - 4, f.baseY));
-        f.y = f.baseY + Math.sin(now / 900 + f.ph) * 3;
+      let food = null, best = 1e9;
+      // 海底生物只追掉到地上的飼料；會游的生物什麼都追
+      for (const p of TANK.food) {
+        if (f.ground && p.y < floorY - 3) continue;
+        const dd = Math.hypot(p.x - (f.x + f.w / 2), p.y - (f.y + f.h / 2)); if (dd < best) { best = dd; food = p; }
+      }
+      if (food) {
+        const dx = food.x - (f.x + f.w / 2), sp = (f.ground ? .35 : .9) * dt;
+        f.x += Math.sign(dx) * Math.min(Math.abs(dx), sp);
+        if (Math.abs(dx) > .5) f.vx = Math.sign(dx) * (Math.abs(f.vx) || .06);
+        if (!f.ground) { const dy = food.y - (f.y + f.h / 2); f.baseY += Math.sign(dy) * Math.min(Math.abs(dy), sp * .8); }
+        if (eats(f, food)) { TANK.food.splice(TANK.food.indexOf(food), 1); SFX.eat(); }
+      } else if (f.ground) {
+        if (f.rest > 0) f.rest -= dt; else { f.x += f.vx * dt; if (Math.random() < .004 * dt) f.rest = 60 + Math.random() * 180; }
       } else f.x += f.vx * dt;
+      if (!f.ground) {
+        f.baseY = Math.max(4, Math.min(floorY - f.h + 2, f.baseY));
+        f.y = f.baseY + Math.sin(now / 900 + f.ph) * 3;
+      }
       if (f.x < 0) { f.x = 0; f.vx = Math.abs(f.vx); } else if (f.x > W - f.w) { f.x = W - f.w; f.vx = -Math.abs(f.vx); }
       x.save();
       if (f.vx < 0) { x.translate(Math.round(f.x) + f.w, Math.round(f.y)); x.scale(-1, 1); x.drawImage(f.s, 0, 0, f.w, f.h); }
@@ -982,14 +1000,10 @@ function shop(D) {
   <section class="px">${sh('兌換紀錄', 'HISTORY')}${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(l.name)}</span><span class="sp"></span><span class="price">${l.c}${COIN}</span></div>`).join('') : '<div class="dim">還沒有兌換過。</div>'}</section>`;
 }
 
-// 最近的打卡紀錄（含運動細節、文章標題），也包含舊版在六件事裡記的
+// 最近的打卡紀錄（含運動細節、文章標題）
 function recentEntries() {
   const out = [];
   for (const [d, C] of Object.entries(S.checks)) for (const [id, arr] of Object.entries(C)) for (const e of arr) out.push({ d, id, t: e.t || 0, e });
-  for (const [d, P] of Object.entries(S.plans)) for (const it of P) if (it.done) {
-    if (it.cat === 'exercise') out.push({ d, id: 'exercise', t: 0, e: { ...(it.ex || {}), note: (it.ex && it.ex.note) || it.text } });
-    if (it.cat === 'vocus' && it.pub && it.pub.on) out.push({ d, id: 'vocus', t: 0, e: { title: it.pub.title || it.text } });
-  }
   return out.sort((a, b) => b.d.localeCompare(a.d) || b.t - a.t);
 }
 function entryText(r) {
@@ -1001,15 +1015,15 @@ function entryText(r) {
 function log(D) {
   const lv = levelOf(D.xp), ri = rankIdx(lv), nxt = RANKS[ri + 1], lo = xpFor(lv), hi = xpFor(lv + 1);
   const td = dayKey(), H = activeHabits();
-  // 熱力圖從第一次使用的那週開始（最多顯示 26 週）
+  // 打卡月曆：一列一週（一到日），從第一次使用那週開始，最多顯示最近 6 週；顏色越亮代表當天完成越多習慣
   const firstDay = Object.keys(D.days).filter(k => k <= td).sort()[0] || td;
-  let start = weekKey(firstDay); const limit = addDays(weekKey(td), -7 * 25); if (start < limit) start = limit;
-  let cells = '';
+  let start = weekKey(firstDay); const limit = addDays(weekKey(td), -7 * 5); if (start < limit) start = limit;
+  let cells = ['一', '二', '三', '四', '五', '六', '日'].map(w => `<span class="wd">${w}</span>`).join('');
   for (let k = start; k <= addDays(weekKey(td), 6); k = addDays(k, 1)) {
     if (k > td) { cells += '<i class="blank"></i>'; continue; }
     const x = D.days[k] || {}, done = H.filter(h => x[h.id]), n = done.length;
     const l = n === 0 ? 0 : n >= H.length ? 4 : Math.min(3, Math.ceil(n / H.length * 3));
-    cells += `<i class="l${l}${k === td ? ' today' : ''}" title="${k}　${esc(done.map(h => h.e + ' ' + h.n).join(' ')) || '—'}"></i>`;
+    cells += `<i class="l${l}${k === td ? ' today' : ''}" title="${k}　${esc(done.map(h => h.e + ' ' + h.n).join(' ')) || '—'}">${+k.slice(8)}</i>`;
   }
   const daysOf = k => Object.values(D.days).filter(x => x[k]).length;
   const rec = recentEntries();
@@ -1098,7 +1112,6 @@ document.addEventListener('click', async e => {
     case 'askyes': ask.res && ask.res(true); break;
     case 'askno': ask.res && ask.res(false); break;
     case 'habtap':
-      if (v === 'plan') { document.getElementById('six').scrollIntoView({ behavior: 'smooth' }); break; }
       UI.sheet = { id: v, day: 0 }; renderSheet(); break;
     case 'shday': UI.sheet.day = +v; renderSheet(); break;
     case 'sheetclose': UI.sheet = null; renderSheet(); break;
