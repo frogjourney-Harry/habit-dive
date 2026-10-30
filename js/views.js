@@ -487,9 +487,10 @@ function log(D) {
     <div><small>跑步總距離</small><b>${runKm.toFixed(1)}</b><small>km・${runs.length} 次</small></div>
     <div><small>潛水</small><b>${rec.filter(r => r.id === 'exercise' && r.e.type === '潛水').length}</b><small>支</small></div>
   </div></section>
+  ${cloudSection()}
   <section class="px">${sh('設定與備份', 'SETTINGS')}
     <label class="switch"><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button><span>音效</span></label>
-    <div class="mini" style="margin-top:12px">紀錄只存在這個瀏覽器。換手機、換瀏覽器或清除瀏覽資料就會消失，請定期備份。</div>
+    <div class="mini" style="margin-top:12px">${CLOUD.user ? '紀錄已同步到雲端。也可以另外下載一份備份檔。' : '紀錄只存在這個瀏覽器。換手機、換瀏覽器或清除瀏覽資料就會消失，請定期備份。'}</div>
     <div class="row" style="margin-top:6px"><button data-act="export">備份</button><button data-act="import">還原</button></div></section>`;
 }
 
@@ -512,7 +513,8 @@ function about() {
     ${ABOUT_LINKS.map(l => `<a class="link" href="${l.url}" target="_blank" rel="noopener">
       <span class="sp"><b>${esc(l.title)}</b><br><small>${esc(l.sub)}</small></span><span class="dim">↗</span></a>`).join('')}</section>
   <section class="px">${sh('資料與隱私', 'PRIVACY')}
-    <div class="mini">你的紀錄只存在你自己的瀏覽器裡，不會上傳到任何伺服器，我也看不到。記得定期到「紀錄」備份。</div>
+    <div class="mini">沒登入時，紀錄只存在你自己的瀏覽器裡，不會上傳到任何地方。</div>
+    ${FIREBASE_CONFIG ? `<div class="mini">如果你選擇用 Google 登入，紀錄（六件事、打卡、遊戲進度）會存到 Google 的 Firebase 雲端，用來在不同裝置間同步。只會取得你的 Google 名稱和 email 來辨識帳號，不會發信、不會發文，也看不到你的其他 Google 資料。資料庫規則讓每個人只能讀寫自己的資料；身為網站管理者，我在技術上看得到資料庫，但不會查看或使用你的紀錄。你隨時可以在「紀錄 → 雲端同步」刪除雲端資料和帳號。</div>` : ''}
     <div class="mini">本工具為個人作品，與方格子 vocus 官方無關。</div></section>`;
 }
 

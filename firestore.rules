@@ -1,0 +1,10 @@
+rules_version = '2';
+// 習慣深潛的資料庫規則：每個人只能讀寫自己的那一份資料（users/{自己的 uid}），其他一律拒絕。
+// 在 Firebase 控制台「Firestore Database → 規則」貼上這段後按「發布」。
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

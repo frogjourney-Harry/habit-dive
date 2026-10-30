@@ -90,7 +90,12 @@ function load() {
   return migrate(blank());
 }
 let S = load();
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+// push=true：使用者真的改了東西，記下修改時間並排入雲端同步；false：只寫回本機（例如剛從雲端載入）
+function save(push = true) {
+  if (push) S.mtime = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  if (push && typeof cloudSchedule === 'function') cloudSchedule();
+}
 
 /* ========= 習慣與分類 ========= */
 const activeHabits = () => S.habits.filter(h => !h.off);
