@@ -19,26 +19,26 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{color:var(--ink);background:var(--bg);min-height:100vh;
-  font:17px/1.65 "Cascadia Mono",Consolas,"Microsoft JhengHei UI","Microsoft JhengHei",monospace}
+  font:16px/1.6 "Cascadia Mono",Consolas,"Microsoft JhengHei UI","Microsoft JhengHei",monospace}
 body::before{content:"";position:fixed;inset:0;z-index:-2;background:linear-gradient(180deg,
   #174673 0 12%,#133c66 12% 28%,#0f3157 28% 46%,#0b2646 46% 66%,#081b36 66% 84%,#06152b 84%)}
-.bubbles i{position:fixed;bottom:-12px;width:6px;height:6px;background:rgba(115,239,247,.22);z-index:-1;animation:rise linear infinite}
+.bubbles i{position:fixed;bottom:-12px;width:6px;height:6px;background:rgba(115,239,247,.2);z-index:-1;animation:rise linear infinite}
 @keyframes rise{to{transform:translateY(-110vh)}}
 @media (prefers-reduced-motion:reduce){.bubbles{display:none}}
-.wrap{max-width:720px;margin:0 auto;padding:20px 16px 40px}
+.wrap{max-width:720px;margin:0 auto;padding:16px 16px 40px}
 a{color:var(--xp)}
-.px{background:var(--panel);margin:0 3px 20px;padding:16px 18px;
+.px{background:var(--panel);margin:0 3px 16px;padding:14px 16px;
   box-shadow:0 -3px 0 var(--edge),0 3px 0 var(--edge),-3px 0 0 var(--edge),3px 0 0 var(--edge)}
-/* 區塊標題：中文標題＋小小的英文標籤 */
-.sh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}
-.sh b{font-size:18px;letter-spacing:.04em}
+.sh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+.sh b{font-size:17px;letter-spacing:.04em}
 .sh em{font-style:normal;font-size:11px;letter-spacing:.24em;color:var(--faint)}
-.sub{margin:18px 0 6px;font-size:15px;color:var(--dim);letter-spacing:.04em}
+.sub{margin:16px 0 6px;font-size:14px;color:var(--dim);letter-spacing:.04em}
 button{font:inherit;font-size:15px;color:var(--ink);background:transparent;border:0;padding:5px 12px;margin:4px 3px;cursor:pointer;
   box-shadow:0 -2px 0 var(--edge-hi),0 2px 0 var(--edge-hi),-2px 0 0 var(--edge-hi),2px 0 0 var(--edge-hi)}
 button:hover{background:rgba(115,239,247,.08)}
 button:active{transform:translateY(1px)}
 button:disabled{opacity:.35;cursor:not-allowed;transform:none}
+button:focus{outline:none}
 button.pri{background:var(--coin);color:#1a1c2c;font-weight:bold;
   box-shadow:0 -2px 0 #fff0c0,0 2px 0 var(--coin-d),-2px 0 0 var(--coin-d),2px 0 0 var(--coin-d)}
 button.pri:hover{background:#ffd98f}
@@ -46,6 +46,7 @@ button.sel{color:var(--xp);background:rgba(115,239,247,.08);
   box-shadow:0 -2px 0 var(--xp),0 2px 0 var(--xp),-2px 0 0 var(--xp),2px 0 0 var(--xp)}
 button.ghost{box-shadow:none;color:var(--dim);padding:3px 6px}
 button.ghost:hover{color:var(--ink);background:none}
+button.wide{display:block;width:100%;margin:8px 0;padding:10px}
 small,.dim{color:var(--dim)}
 b{color:#fff}
 .hidden{display:none!important}
@@ -55,100 +56,74 @@ input,select{font:inherit;font-size:16px;color:var(--ink);background:#071a33;bor
 input:focus,select:focus{outline:none;box-shadow:inset 0 0 0 2px var(--xp)}
 input::placeholder{color:var(--faint)}
 input[type=checkbox]{width:22px;height:22px;accent-color:var(--ok);box-shadow:none;cursor:pointer;flex:none}
-/* 像素金幣 */
 .cn{display:inline-block;width:12px;height:12px;margin-left:4px;vertical-align:-1px;background:var(--coin);
   box-shadow:inset -2px -2px 0 var(--coin-d),inset 2px 2px 0 #fff0c0}
-
-/* HUD */
-.hud{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-.depth{font-size:34px;line-height:1;color:var(--xp);font-weight:bold}
-.depth span{font-size:16px;margin-right:3px}
-.rank{color:var(--dim);font-size:14px;margin-top:4px}
-.hud-m{flex:1;min-width:180px}
-.hud-m small{font-size:14px}
-.bar{height:10px;background:#071a33;box-shadow:inset 0 0 0 2px var(--edge);margin:4px 0}
+.label{font-size:12px;letter-spacing:.2em;color:var(--faint)}
+.mini{font-size:14px;color:var(--dim);margin-top:4px}
+.warn{color:var(--warn);font-size:14px;margin-top:8px}
+.done-tag{color:var(--ok)}
+.coin{color:var(--coin);font-weight:bold}
+.bar{height:10px;background:#071a33;box-shadow:inset 0 0 0 2px var(--edge);margin:6px 0}
 .bar i{display:block;height:100%;background:var(--xp)}
 .bar.c i{background:var(--coin)}
-.coin{color:var(--coin);font-size:20px;font-weight:bold}
-.hud-r{text-align:right}
-.hud .label{font-size:13px;letter-spacing:.12em;color:var(--dim);margin-bottom:2px}
-.coin.big{font-size:26px;line-height:1.1}
-.coin.big .cn{width:16px;height:16px;margin-left:6px;vertical-align:0;box-shadow:inset -3px -3px 0 var(--coin-d),inset 3px 3px 0 #fff0c0}
-/* 像素開關 */
-.switch{display:inline-flex;align-items:center;gap:8px;margin-top:6px;font-size:14px;color:var(--dim);cursor:pointer}
-.toggle{width:44px;height:22px;padding:0;margin:0;position:relative;background:#071a33;
-  box-shadow:0 -2px 0 var(--edge-hi),0 2px 0 var(--edge-hi),-2px 0 0 var(--edge-hi),2px 0 0 var(--edge-hi)}
-.toggle i{position:absolute;top:4px;left:4px;width:14px;height:14px;background:var(--faint);transition:left .12s steps(3)}
-.toggle.on{background:#1e5a3a;box-shadow:0 -2px 0 var(--ok),0 2px 0 var(--ok),-2px 0 0 var(--ok),2px 0 0 var(--ok)}
-.toggle.on i{left:26px;background:var(--ok)}
-.toggle:hover{background:#0b2546}.toggle.on:hover{background:#246b45}
-nav{display:flex;flex-wrap:wrap;margin:0 3px 20px;box-shadow:inset 0 -2px 0 var(--edge)}
-nav button{box-shadow:none;margin:0;padding:8px 14px;color:var(--dim);font-size:16px}
-nav button small{font-size:13px;color:var(--faint);margin-left:4px}
+
+/* 頂端：名稱＋等級＋金幣（只出現這一次） */
+.brand{display:flex;align-items:center;gap:10px;margin:2px 3px 14px}
+.brand #logo .sprite{margin:0}
+.brand b{font-size:20px;letter-spacing:.12em}
+.brand em{font-style:normal;font-size:11px;letter-spacing:.3em;color:var(--faint)}
+.top-stat{display:flex;align-items:center;gap:10px}
+.lvchip{margin:0;padding:3px 10px;font-size:14px;color:var(--xp);box-shadow:0 -2px 0 var(--edge-hi),0 2px 0 var(--edge-hi),-2px 0 0 var(--edge-hi),2px 0 0 var(--edge-hi)}
+.lvchip small{margin-left:6px;color:var(--dim)}
+.top-stat .coin{font-size:18px}
+nav{display:flex;flex-wrap:wrap;margin:0 3px 16px;box-shadow:inset 0 -2px 0 var(--edge)}
+nav button{box-shadow:none;margin:0;padding:8px 14px;color:var(--dim);font-size:15px}
 nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--coin)}
-.banner{background:#4a2414;margin:0 3px 20px;padding:10px 14px;box-shadow:0 0 0 2px var(--warn)}
+.banner{background:#4a2414;margin:0 3px 16px;padding:10px 14px;box-shadow:0 0 0 2px var(--warn);font-size:14px}
 .foot{text-align:center;color:var(--faint);font-size:13px;margin-top:8px;letter-spacing:.04em}
 .foot a{color:var(--dim);text-decoration:none}
-.foot a:hover{color:var(--ink)}
 
-/* 今日 */
-.habits{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.hab{background:var(--panel2);padding:10px 12px;font-size:15px;box-shadow:inset 3px 0 0 var(--edge-hi)}
+/* 習慣：小卡片，點一下打卡 */
+.habits{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.hab{display:block;width:100%;margin:0;padding:8px 10px;text-align:left;background:var(--panel2);font-size:13px;
+  box-shadow:inset 3px 0 0 var(--edge-hi)}
+.hab:hover{background:#163a6b}
 .hab.on{box-shadow:inset 3px 0 0 var(--ok)}
-.hab .hn{font-weight:bold;color:#fff;font-size:16px}
-.hab .meter{height:4px;background:#071a33;margin-top:8px}
-.hab .meter i{display:block;height:100%;background:var(--ok)}
-.streak{color:var(--warn);font-weight:bold}
+.hab .row{gap:6px;flex-wrap:nowrap}
+.hab .hn{font-weight:bold;color:#fff;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hab .hs{color:var(--dim)}
+.hab.on .hs{color:var(--ok)}
+.streak{color:var(--warn);font-weight:bold;white-space:nowrap}
 .streak small{color:var(--warn);font-weight:normal;margin-left:2px}
-.warn{color:var(--warn);font-size:15px;margin-top:10px}
-.done-tag{color:var(--ok)}
-.mini{font-size:14px;color:var(--dim);margin-top:4px}
-.goal{background:var(--panel2);padding:12px 14px;margin:14px 0}
-.label{font-size:12px;letter-spacing:.2em;color:var(--faint)}
-.need{text-align:right;font-size:15px;white-space:nowrap}
-.erow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
-.erow input.sp{flex:1 1 100px;min-width:0}
-.prow{display:flex;align-items:center;gap:10px;padding:6px 0;flex-wrap:wrap}
-.prow .ptext{flex:1 1 220px;min-width:0}
+
+/* 六件事 */
+.prow{display:flex;align-items:center;gap:10px;padding:5px 0}
+.prow .ptext{flex:1;min-width:0}
 .prow.done .ptext{text-decoration:line-through;color:var(--dim)}
-.prow .no{width:16px;text-align:center;color:var(--faint);font-size:15px}
-.divider{margin:12px 0 4px;padding-top:10px;border-top:1px solid var(--line);font-size:12px;letter-spacing:.2em;color:var(--faint)}
-.seg-switch button{margin:0 0 0 -2px;padding:4px 12px;font-size:14px}
-.timer{text-align:center;box-shadow:0 -3px 0 var(--coin),0 3px 0 var(--coin),-3px 0 0 var(--coin),3px 0 0 var(--coin)}
-.clock{font-size:64px;line-height:1.1;color:var(--coin);letter-spacing:4px;font-weight:bold}
-.segs{margin:10px 0;font-size:14px;color:var(--dim)}
-.segs span{margin:0 4px}
-.segs .past{opacity:.4}
-.segs .now{color:var(--coin);font-weight:bold}
-.link{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}
-.link:last-child{border-bottom:0}
-.link:hover b{color:var(--xp)}
-.link .sp{min-width:0}
-/* 品牌列 */
-.brand{display:flex;align-items:center;gap:10px;margin:4px 3px 16px}
-.brand #logo .sprite{margin:0}
-.brand b{font-size:22px;letter-spacing:.12em}
-.brand em{font-style:normal;font-size:11px;letter-spacing:.3em;color:var(--faint);margin-top:4px}
-/* 六件事一列：打勾｜（編號＋分類）內容 */
-.prow{align-items:flex-start}
-.prow input[type=checkbox]{margin-top:7px}
-.pbody{flex:1;min-width:0;display:flex;flex-direction:row-reverse;align-items:center;gap:8px}
-.pbody .ptext{flex:1;min-width:0}
-.pmeta{display:flex;align-items:center;gap:8px;flex:none}
-/* 番茄鐘設定 */
+.prow .no{width:14px;text-align:center;color:var(--faint);font-size:14px;flex:none}
+.prow select{font-size:14px;padding:4px 4px;flex:none;max-width:42%}
+.divider{margin:10px 0 2px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;letter-spacing:.2em;color:var(--faint)}
+.seg-switch{display:inline-flex}
+.seg-switch button{margin:0 0 0 -2px;padding:3px 12px;font-size:14px}
+
+/* 番茄鐘 */
 .pomo-set{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .presets{display:flex;gap:6px;flex-wrap:wrap}
 .presets button{margin:3px}
 .pomo-go{display:flex;align-items:center;gap:8px;margin-left:auto}
 .pomo-go input{width:72px}
-.exrow{margin:0 0 8px 32px;font-size:15px}
-.exrow input{width:76px}
-.exrow .note{flex:1;min-width:140px;width:auto}
-.exrow input[type=checkbox]{width:22px}
+.timer{text-align:center;box-shadow:0 -3px 0 var(--coin),0 3px 0 var(--coin),-3px 0 0 var(--coin),3px 0 0 var(--coin)}
+.clock{font-size:60px;line-height:1.1;color:var(--coin);letter-spacing:4px;font-weight:bold}
+.segs{margin:8px 0;font-size:14px;color:var(--dim)}
+.segs span{margin:0 4px}
+.segs .past{opacity:.4}
+.segs .now{color:var(--coin);font-weight:bold}
 
-/* 寶箱 */
+/* 彈窗 */
 .ov{position:fixed;inset:0;background:rgba(2,8,20,.82);display:flex;align-items:center;justify-content:center;z-index:10;padding:16px}
-.modal{width:min(380px,100%);text-align:center}
+#sheetov{z-index:9}
+.modal{width:min(380px,100%);text-align:center;max-height:90vh;overflow:auto}
+.sheet{text-align:left;width:min(440px,100%)}
 .modal h2{margin:4px 0 10px;font-size:19px}
 .msg{white-space:pre-line;margin:6px 0 14px}
 .sprite{image-rendering:pixelated;image-rendering:crisp-edges;display:block;margin:10px auto}
@@ -162,89 +137,100 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 @keyframes gold{50%{filter:drop-shadow(0 0 24px #fff3b0)}}
 .new{color:var(--coin);font-size:15px;letter-spacing:.1em}
 .gain{margin:12px 0;font-size:17px}
+.big-lv{font-size:34px;line-height:1;color:var(--xp);font-weight:bold}
+.big-lv span{font-size:16px;margin-right:3px}
+.entry{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:15px}
+.form{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.form input,.form select{min-width:0}
+.form .f-num{width:84px}
+.form .f-wide{flex:1 1 100%}
 
 /* 圖鑑 */
-.dex{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px}
+.dex{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px}
 .dex .cell{background:var(--panel2);padding:10px 4px 8px;text-align:center;cursor:pointer;box-shadow:inset 0 -3px 0 var(--rc)}
+.dex .cell:hover{background:#163a6b}
 .dex .cell.no{background:#0a1d36;cursor:default;box-shadow:none}
-.dex .nm{font-size:15px}
-.grp{margin:18px 0 10px}
+.dex .nm{font-size:14px}
+.grp{margin:16px 0 8px}
+
+/* 水族箱 */
+.tank{display:block;width:100%;height:340px;image-rendering:pixelated;cursor:pointer;touch-action:manipulation;
+  box-shadow:0 0 0 2px var(--edge)}
 
 /* 商店 */
-.shop .it{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.shop .it{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .shop .it:last-child{border-bottom:0}
 .shop .ic{font-size:22px;width:32px;text-align:center}
 .shop .it .sp{flex:1 1 120px;min-width:0}
 .price{color:var(--coin);text-align:right;white-space:nowrap}
-.mini .bar{height:8px;display:inline-block;width:120px;vertical-align:middle;margin:0 6px}
+.need{text-align:right;font-size:14px;white-space:nowrap}
+.goal{background:var(--panel2);padding:12px 14px;margin:12px 0}
+.erow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.erow input.sp{flex:1 1 100px;min-width:0}
 
 /* 紀錄 */
-.heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,13px);gap:3px;overflow-x:auto;padding-bottom:4px}
+.heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,13px);gap:3px;overflow-x:auto;padding-bottom:4px;justify-content:start}
 .heat i{width:13px;height:13px;background:#0f2a4d}
 .heat i.l1{background:#1f5a8a}.heat i.l2{background:#2f8fc0}.heat i.l3{background:#73eff7}.heat i.l4{background:#e8ffff}
 .heat i.today{outline:2px solid var(--coin)}
+.heat i.blank{background:transparent}
 .legend{display:flex;align-items:center;gap:4px;margin-top:8px}
 .legend i{display:inline-block;width:11px;height:11px}
-.stat{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.stat div{background:var(--panel2);padding:10px 12px}
-.stat b{font-size:22px;display:block}
+.stat{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.stat div{background:var(--panel2);padding:8px 12px}
+.stat b{font-size:20px;display:block}
+.switch{display:inline-flex;align-items:center;gap:10px;cursor:pointer}
+.toggle{width:44px;height:22px;padding:0;margin:0;position:relative;background:#071a33;
+  box-shadow:0 -2px 0 var(--edge-hi),0 2px 0 var(--edge-hi),-2px 0 0 var(--edge-hi),2px 0 0 var(--edge-hi)}
+.toggle i{position:absolute;top:4px;left:4px;width:14px;height:14px;background:var(--faint);transition:left .12s steps(3)}
+.toggle.on{background:#1e5a3a;box-shadow:0 -2px 0 var(--ok),0 2px 0 var(--ok),-2px 0 0 var(--ok),2px 0 0 var(--ok)}
+.toggle.on i{left:26px;background:var(--ok)}
+.link{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}
+.link:last-child{border-bottom:0}
+.link:hover b{color:var(--xp)}
+.link .sp{min-width:0}
+.salon{background:var(--panel2);padding:14px;margin-top:4px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel2);padding:10px 18px;z-index:20;
   box-shadow:0 0 0 2px var(--xp);max-width:90vw}
+
 /* ===== 手機版 ===== */
 @media (max-width:600px){
-  body{font-size:16px}
-  .wrap{padding:12px 12px calc(84px + env(safe-area-inset-bottom))}
-  .brand{margin:2px 2px 12px}
-  .brand b{font-size:19px}
-  .px{padding:14px;margin:0 2px 14px}
-  .sh{margin-bottom:10px}
-  .sh b{font-size:17px}
-  /* 等級在左、金幣在右，進度條獨立一行 */
-  .hud{display:grid;grid-template-columns:1fr auto;gap:10px 12px;align-items:start}
-  .hud-m{grid-column:1/-1;grid-row:2;min-width:0}
-  .depth{font-size:30px}
-  .coin.big{font-size:22px}
-  .switch{margin-top:4px}
-  /* 分頁改成固定在底部的工具列 */
+  body{font-size:15px}
+  .wrap{padding:10px 10px calc(78px + env(safe-area-inset-bottom))}
+  .brand{margin:0 2px 10px;gap:8px}
+  .brand b{font-size:17px;letter-spacing:.08em}
+  .brand em,.lvchip small{display:none}
+  .px{padding:12px;margin:0 2px 12px}
   nav{position:fixed;left:0;right:0;bottom:0;z-index:5;margin:0;flex-wrap:nowrap;background:var(--panel);
     box-shadow:0 -2px 0 var(--edge);padding-bottom:env(safe-area-inset-bottom)}
-  nav button{flex:1;padding:14px 0 12px;font-size:15px;text-align:center}
-  nav button small{display:none}
+  nav button{flex:1;padding:13px 0 11px;font-size:14px;text-align:center}
   nav button.sel{box-shadow:inset 0 3px 0 var(--coin)}
-  nav button:focus{outline:none}
-  /* 習慣卡片兩欄 */
-  .habits{grid-template-columns:1fr 1fr;gap:8px}
-  .hab{padding:9px 10px;font-size:13px}
-  .hab .hn{font-size:15px}
-  /* 番茄鐘：四個長度一排，開始按鈕整行 */
+  .habits{grid-template-columns:1fr 1fr;gap:6px}
+  .hab{padding:7px 9px}
+  .hab .hn{font-size:14px}
   .presets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:100%}
-  .presets button{margin:0;padding:8px 0}
+  .presets button{margin:0;padding:7px 0}
   .pomo-go{width:100%;margin:6px 0 0}
-  .pomo-go .pri{flex:1;padding:9px 0;margin:0 0 0 6px}
-  /* 六件事：內容在上、編號＋分類在下 */
-  .pbody{flex-direction:column;align-items:stretch;gap:6px}
-  .pmeta select{font-size:14px;padding:3px 6px}
-  .exrow{margin-left:32px}
-  .exrow input{width:64px}
-  .exrow input[type=checkbox]{width:22px}
-  .clock{font-size:52px}
+  .pomo-go .pri{flex:1;padding:8px 0;margin:0 0 0 6px}
+  .clock{font-size:50px}
   .stat{grid-template-columns:1fr 1fr}
   .dex{grid-template-columns:repeat(3,1fr);gap:8px}
-  .foot{margin-bottom:8px}
+  .tank{height:300px}
+  .toast{bottom:calc(76px + env(safe-area-inset-bottom))}
 }
 </style>
 </head>
 <body>
 <div class="bubbles" id="bubbles"></div>
 <div class="wrap">
-  <div class="brand"><span id="logo"></span><b>習慣深潛</b><em>HABIT DIVE</em></div>
-  <header class="px hud" id="hud"></header>
+  <div class="brand"><span id="logo"></span><b>習慣深潛</b><em>HABIT DIVE</em><span class="sp"></span><div class="top-stat" id="stat"></div></div>
   <div id="banner"></div>
   <nav id="nav"></nav>
   <main id="main"></main>
   <footer class="foot">習慣深潛・made by <a href="https://vocus.cc/salon/frog-journey" target="_blank" rel="noopener">Frog Journey</a></footer>
 </div>
 <div class="ov hidden" id="ov"><div class="px modal" id="modal"></div></div>
+<div class="ov hidden" id="sheetov"><div class="px modal sheet" id="sheet"></div></div>
 <div class="ov hidden" id="askov" style="z-index:15"><div class="px modal"><div class="msg" id="askmsg"></div>
   <input id="askin" class="hidden" style="width:100%;margin-bottom:10px">
   <button data-act="askno" id="askno">取消</button><button class="pri" data-act="askyes" id="askyes">確定</button></div></div>
@@ -255,15 +241,15 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 /* ========= 可自行調整的設定 ========= */
 const CONFIG = {
   pomodoroMin: 25,            // 一段專注的長度；使用者選的是「整段工作階段」的總長度（5–120 分）
-  pomoRewardMin: 20,          // 專注滿這麼多分鐘才開寶箱，避免設 1 分鐘來刷
+  pomoRewardMin: 20,          // 專注滿這麼多分鐘才開寶箱
   breakMin: 5, longBreakMin: 15, longBreakEvery: 4,   // 工作階段中：每段專注後短休息，每 4 段長休息
-  dayStartHour: 4,            // 凌晨 4 點前都算「前一天」，熬夜做的也算數
+  dayStartHour: 4,            // 凌晨 4 點前都算「前一天」
   habitDays: 66,              // Lally et al. 2010：習慣自動化所需天數中位數
-  maxCustom: 5,               // 自訂習慣最多幾個（不含內建的六件事、Vocus、運動）
-  xp:    { check: 10, exercise: 20, plan: 10, pomo: 10, pubchest: 30, period: 30, top3: 15 },
+  maxCustom: 3,               // 自訂習慣最多幾個（不含內建的六件事、Vocus、運動）
+  xp:    { check: 10, habit: 10, exercise: 20, plan: 10, pomo: 10, pubchest: 30, period: 30, top3: 15 },
   coins: { base: 5, rand: 6, critChance: 0.1, period: 40, welcome: 20, top3: 20, pubchest: 25 },
-  rewardRows: 3,
-  coinsPerDay: 60,            // 紀錄不夠時，商店用這個速度估計「要努力幾天」              // 六件事只有前幾項打勾／番茄鐘會開寶箱，其餘只做紀錄
+  rewardRows: 3,              // 六件事只有前幾項打勾會開寶箱，其餘只做紀錄
+  coinsPerDay: 60,            // 紀錄不夠時，商店用這個速度估計「要努力幾天」
   rarityRates: [55, 28, 12, 4.5, 0.5],   // 普通 / 少見 / 稀有 / 史詩 / 傳說（%）
   dupCoins: [2, 5, 15, 40, 100],         // 抽到重複生物時換成的金幣
   shop: [
@@ -273,20 +259,19 @@ const CONFIG = {
     { id: 'meal',    icon: '🍜', name: '吃一頓喜歡的餐廳',   price: 1200 },
     { id: 'buy',     icon: '🛍', name: '買一樣想要很久的東西', price: 3500 },
   ],
-  // 六件事裡不算連勝的一般分類（預設值；使用者可在「✎ 編輯習慣」自訂，存在 S.gcats）
+  // 六件事的分類（不算連勝）。使用者可在「習慣・編輯」自訂，存在 S.gcats
   generalCats: [
-    { id: 'other',   e: '📌', n: '其他',     ph: '其他重要的事' },
+    { id: 'other',   e: '📌', n: '其他',     ph: '今天最重要的事' },
   ],
 };
 
-// 內建習慣（不能刪）。weeks: 0 = 每天；1、2 = 每 1／2 週至少 target 次
-// kind: plan = 寫好六件事、vocus = 勾「發布了文章」才算、exercise = 可記距離時間、custom = 自訂
+// 內建習慣（可改名、刪除、加回）。weeks: 0 = 每天；1、2 = 每 1／2 週至少 target 天（Vocus 是篇）
+// kind: plan = 寫好六件事、vocus = 記錄發布的文章、exercise = 可記距離時間、custom = 自訂
 const DEFAULT_HABITS = [
   { id: 'plan',     e: '📝', n: '六件事', kind: 'plan',     weeks: 0, target: 1 },
   { id: 'vocus',    e: '✍️', n: 'Vocus',  kind: 'vocus',    weeks: 1, target: 1 },
   { id: 'exercise', e: '🏃', n: '運動',   kind: 'exercise', weeks: 1, target: 3 },
 ];
-const PH = { vocus: 'Vocus：今天寫哪一段？', exercise: '運動：跑步、游泳…' };
 const ETAGS = ['跑步', '游泳', '重訓', '潛水', '登山', '其他'];
 const RARITY = [
   { name: '普通', color: 'var(--r0)' }, { name: '少見', color: 'var(--r1)' }, { name: '稀有', color: 'var(--r2)' },
@@ -380,12 +365,13 @@ const rid = () => Math.random().toString(36).slice(2);
 
 /* ========= 存檔 ========= */
 const KEY = 'habitdive.v1';
-const blank = () => ({ v: 3, logs: [], plans: {}, mute: false });
+const blank = () => ({ v: 4, logs: [], plans: {}, checks: {}, mute: false });
 const OLD_CAT = { '☀️': 'wake', '💻': 'research', '✍️': 'vocus', '🏃': 'exercise', '📘': 'digital', '📌': 'other' };
-// v1：六件事有 line/time/dur；v2：分類用 emoji、習慣寫死；v3：習慣可自訂，分類改用習慣 id
+// v1：六件事有 line/time/dur；v2：分類用 emoji、習慣寫死；v3：習慣可自訂；v4：習慣改在卡片上打卡（S.checks）
 function migrate(s) {
   const old = (s.v || 1) < 3;
-  for (const l of s.logs) if (!l.id) l.id = rid();   // 讓舊紀錄也能被收回
+  s.logs = Array.isArray(s.logs) ? s.logs : [];
+  for (const l of s.logs) if (!l.id) l.id = rid();
   s.plans = s.plans && typeof s.plans === 'object' ? s.plans : {};
   for (const [d, P] of Object.entries(s.plans)) if (!Array.isArray(P)) delete s.plans[d];
   for (const P of Object.values(s.plans)) for (const it of P) {
@@ -395,24 +381,23 @@ function migrate(s) {
     if (it.done && it.rw === undefined) it.rw = true;
     delete it.line; delete it.time; delete it.dur; delete it.cal;
   }
+  s.checks = s.checks && typeof s.checks === 'object' ? s.checks : {};
   if (!s.habits) {
     s.habits = DEFAULT_HABITS.map(h => ({ ...h }));
     if (s.vcfg) { Object.assign(s.habits[1], { weeks: s.vcfg.weeks, target: s.vcfg.target }); s.vocusSet = true; }
-    // 舊版使用者原本就有早起、研究，轉成他的自訂習慣
-    if (old && (s.logs.length > 1 || Object.keys(s.plans || {}).length))
+    if (old && (s.logs.length > 1 || Object.keys(s.plans).length))
       s.habits.push({ id: 'wake', e: '☀️', n: '早起', kind: 'custom', weeks: 0, target: 1 },
                     { id: 'research', e: '💻', n: '研究', kind: 'custom', weeks: 0, target: 1 });
     delete s.vcfg;
   }
   if (!s.gcats) {
     s.gcats = CONFIG.generalCats.map(c => ({ ...c }));
-    if (Object.values(s.plans || {}).some(P => P.some(it => it.cat === 'digital')))
+    if (Object.values(s.plans).some(P => P.some(it => it.cat === 'digital')))
       s.gcats.unshift({ id: 'digital', e: '📘', n: '數位商品' });
   }
   if (!s.gcats.some(c => c.id === 'other')) s.gcats.push({ ...CONFIG.generalCats[CONFIG.generalCats.length - 1] });
-  // v1 的番茄鐘格式（有 k 欄位）或壞掉的計時器就丟掉
   if (s.timer && (s.timer.k || !(s.timer.start > 0) || (s.timer.segs && !(s.timer.segs[s.timer.si] && s.timer.segs[s.timer.si].min > 0)))) delete s.timer;
-  s.v = 3;
+  s.v = 4;
   return s;
 }
 function load() {
@@ -420,71 +405,39 @@ function load() {
   return migrate(blank());
 }
 let S = load();
-function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
-  clearTimeout(save.t); save.t = setTimeout(writeFile, 400);
-}
-
-// 檔案存檔（File System Access API，電腦版 Chrome／Edge）：每次變動自動寫進使用者指定的 JSON 檔
-const FS = { handle: null, ok: false, last: '' };
-const idb = (() => {
-  let p;
-  const db = () => p || (p = new Promise((res, rej) => {
-    const r = indexedDB.open('habitdive', 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('kv');
-    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
-  }));
-  return {
-    get: async k => { const d = await db(); return new Promise((res, rej) => { const r = d.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
-    set: async (k, v) => { const d = await db(); return new Promise((res, rej) => { const t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); },
-  };
-})();
-async function writeFile() {
-  if (!FS.ok || !FS.handle) return;
-  try {
-    const w = await FS.handle.createWritable(); await w.write(JSON.stringify(S)); await w.close();
-    FS.last = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-  } catch (e) { FS.ok = false; }
-  if (UI.tab === 'log') render();
-}
-async function attach(h, fresh) {
-  FS.handle = h; FS.ok = true;
-  try { await idb.set('handle', h); } catch (e) {}
-  if (!fresh) {
-    try {
-      const j = JSON.parse(await (await h.getFile()).text());
-      if (j && Array.isArray(j.logs) && j.logs.length && JSON.stringify(j.logs) !== JSON.stringify(S.logs)) {
-        const useFile = j.logs.length > S.logs.length && S.logs.length <= 1
-          || await ask(`檔案有 ${j.logs.length} 筆紀錄，瀏覽器有 ${S.logs.length} 筆。\n要用哪一邊的資料？`, '用檔案的', '用瀏覽器的');
-        if (useFile) S = migrate(Object.assign(blank(), j));
-      }
-    } catch (e) {}
-  }
-  save(); await writeFile(); render();
-}
-const FILE_TYPES = [{ description: '習慣深潛存檔', accept: { 'application/json': ['.json'] } }];
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 
 /* ========= 習慣與分類 ========= */
 const activeHabits = () => S.habits.filter(h => !h.off);
 const habit = id => S.habits.find(h => h.id === id && !h.off);
 const customCount = () => activeHabits().filter(h => h.kind === 'custom').length;
-// 六件事的分類 = 啟用中的習慣（六件事本身除外）＋一般分類
 const gcats = () => S.gcats.filter(c => !c.off);
-const catList = () => [...activeHabits().filter(h => h.kind !== 'plan'), ...gcats()];
-// 刪掉的習慣／分類一律顯示成「其他」
 function catOf(id) {
-  return habit(id) || gcats().find(c => c.id === id) || S.gcats.find(c => c.id === 'other');
+  return gcats().find(c => c.id === id) || habit(id) || S.gcats.find(c => c.id === 'other');
 }
-const placeholder = c => c.ph || PH[c.id] || `${c.n}：今天要做什麼？`;
-// 週期型習慣一律用實際單位顯示：本週／這兩週；連勝換算成「週」
+// 六件事的分類只有一般分類；舊資料若用了習慣當分類，保留顯示
+const catList = cur => { const g = gcats(); return g.some(c => c.id === cur) || !habit(cur) ? g : [habit(cur), ...g]; };
+const placeholder = c => c.ph || `${c.n}：今天要做什麼？`;
 const periodWord = h => h.weeks === 1 ? '本週' : '這兩週';
-const countWord = h => h.kind === 'vocus' ? '篇' : '次';
+const countWord = h => h.kind === 'vocus' ? '篇' : '天';
+
+// 習慣打卡紀錄：S.checks[日期][習慣 id] = [{ t, title?, type?, dist?, min?, note? }]
+const dayChecks = (d, id) => (S.checks[d] && S.checks[d][id]) || [];
+function addCheck(d, id, entry) {
+  const c = S.checks[d] || (S.checks[d] = {});
+  (c[id] || (c[id] = [])).push({ t: Date.now(), ...entry });
+}
+function delCheck(d, id, i) {
+  const a = dayChecks(d, id); a.splice(i, 1);
+  if (!a.length && S.checks[d]) delete S.checks[d][id];
+  if (S.checks[d] && !Object.keys(S.checks[d]).length) delete S.checks[d];
+}
 
 /* ========= 狀態推導 ========= */
-// XP、金幣、圖鑑由 logs 算；每天完成了哪些習慣由六件事的打勾算（加上舊版紀錄）
+// XP、金幣、圖鑑由 logs 算；習慣完成由卡片打卡（S.checks）算，加上舊版的六件事打勾與紀錄
 function derive() {
   const D = { xp: 0, coins: 0, col: {}, days: {}, per: {}, articles: 0, claimed: new Set() };
-  const inc = (d, k) => { const x = D.days[d] || (D.days[d] = {}); x[k] = (x[k] || 0) + 1; };
+  const inc = (d, k, n = 1) => { const x = D.days[d] || (D.days[d] = {}); x[k] = (x[k] || 0) + n; };
   for (const l of S.logs) {
     D.xp += l.xp || 0; D.coins += l.c || 0;
     if (l.drop) D.col[l.drop] = (D.col[l.drop] || 0) + 1;
@@ -497,8 +450,10 @@ function derive() {
     if (it.cat === 'vocus') { if (it.pub && it.pub.on) inc(d, 'vocus'); }
     else if (habit(it.cat)) inc(d, it.cat);
   }
+  for (const [d, C] of Object.entries(S.checks)) for (const [id, arr] of Object.entries(C))
+    if (arr.length) inc(d, id, id === 'vocus' ? arr.length : 1);
   for (const x of Object.values(D.days)) D.articles += x.vocus || 0;
-  // 週期型習慣：Vocus 算篇數，其他算「有做的天數」
+  // 週期型習慣：Vocus 算篇數，其他算「有做的天數」（一天做兩次也只算一天）
   for (const h of activeHabits()) if (h.weeks) for (const [d, x] of Object.entries(D.days)) if (x[h.id]) {
     const k = h.id + '@' + periodKey(d, h.weeks);
     D.per[k] = (D.per[k] || 0) + (h.kind === 'vocus' ? x[h.id] : 1);
@@ -527,7 +482,7 @@ function streaks(D) {
     : chain(d => dayDone(D, d, h.id), today, d => addDays(d, -1), first, 2);
   return out;
 }
-// 等級：升到 Lv.n 需要累積 10×(n−1)² XP，越後面越慢（Lv.5≈160、Lv.20≈3600、Lv.40≈15000）
+// 等級：升到 Lv.n 需要累積 10×(n−1)² XP
 const levelOf = xp => Math.floor(Math.sqrt(Math.max(0, xp) / 10)) + 1;
 const xpFor = lv => 10 * (lv - 1) ** 2;
 const rankIdx = lv => RANKS.reduce((a, r, i) => lv >= r[0] ? i : a, 0);
@@ -553,10 +508,11 @@ const SFX = {
   done: () => [784, 988, 1175, 1568].forEach((f, i) => tone(f, i * .16, .35, 'triangle', .09)),
   buy: () => [880, 1320, 1760].forEach((f, i) => tone(f, i * .07, .12)),
   rank: () => [262, 330, 392, 523, 392, 523].forEach((f, i) => tone(f, i * .12, .25, 'triangle', .08)),
+  eat: () => tone(880, 0, .06, 'triangle', .04),
 };
 
 /* ========= 遊戲動作 ========= */
-const UI = { tab: 'today', pday: 0, opened: false };
+const UI = { tab: 'today', pday: 0, opened: false, sheet: null };
 const Q = [];
 const viewDay = () => addDays(dayKey(), UI.pday);
 const BONUS = {
@@ -566,19 +522,9 @@ const BONUS = {
   period: '習慣達標！額外寶箱',
   weekly: '本週運動達標！',
 };
-
-// 最多六件，空著的格子不算；寫了的都打勾才算全部完成
 const filled = P => P.filter(x => x.text.trim());
-const allDone = P => filled(P).length > 0 && filled(P).every(x => x.done);
-// 新的一天預先排好：每天的自訂習慣（帶入名稱）、Vocus、運動，其餘留給「其他」
 function getPlan(d) {
-  if (S.plans[d]) return S.plans[d];
-  const rows = [
-    ...activeHabits().filter(h => h.kind === 'custom' && h.weeks === 0).map(h => [h.id, h.n]),
-    ...['vocus', 'exercise'].filter(habit).map(id => [id, '']),
-  ].slice(0, 6);
-  while (rows.length < 6) rows.push(['other', '']);
-  return S.plans[d] = rows.map(([cat, text]) => ({ text, cat, done: false, rw: false }));
+  return S.plans[d] || (S.plans[d] = Array.from({ length: 6 }, () => ({ text: '', cat: 'other', done: false, rw: false })));
 }
 function rollCreature() {
   let x = Math.random() * CONFIG.rarityRates.reduce((a, b) => a + b, 0), r = 0;
@@ -600,45 +546,47 @@ function grant(kind, tag, o = {}) {
   Q.push({ title, cr, isNew, xp, c, dup, crit, owned: (D.col[cr.id] || 0) + 1 });
   return log;
 }
-// 額外寶箱（前三件、今天發文、週期型習慣達標）跟著條件走：條件不再成立時把獎勵收進 S.held，
-// 條件恢復時原封不動還回來（不重抽，避免用勾掉再勾回刷稀有生物）
+// 今天的寶箱（前三件、每個習慣的打卡、週期達標）跟著條件走：條件不再成立時把獎勵收進 S.held，
+// 條件恢復時原封不動還回來（不重抽，避免用取消再打卡刷稀有生物）
 function reconcile(allowGrant) {
-  const d = dayKey(), P = S.plans[d] || [];
+  const d = dayKey(), P = S.plans[d] || [], R = CONFIG.rewardRows;
   S.held = S.held || {};
-  const conds = [
-    // 前三格都要有寫內容、而且都打勾才算（只寫一件不會觸發）
-    ['top3:' + d, 'top3', P.slice(0, CONFIG.rewardRows).length === CONFIG.rewardRows
-      && P.slice(0, CONFIG.rewardRows).every(x => x.text.trim() && x.done)],
-    ['art:' + d, 'pubchest', !!habit('vocus') && P.some(x => x.done && x.cat === 'vocus' && x.pub && x.pub.on)],
-  ];
-  for (const h of activeHabits()) if (h.weeks && h.kind !== 'vocus') {
-    const p = periodKey(d, h.weeks);
-    conds.push([h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`, 'period',
-      periodDone(derive(), h, p), `${h.e} ${h.n} ${periodWord(h)}達標！額外寶箱`]);
+  // 前三格都要有寫內容、而且都打勾才算
+  const conds = [['top3:' + d, 'top3', P.length >= R && P.slice(0, R).every(x => x.text.trim() && x.done)]];
+  for (const h of activeHabits()) {
+    if (h.kind === 'plan') continue;
+    const has = dayChecks(d, h.id).length > 0;
+    if (h.kind === 'vocus') conds.push(['art:' + d, 'pubchest', has || P.some(x => x.done && x.cat === 'vocus' && x.pub && x.pub.on)]);
+    else conds.push([`hab:${h.id}:${d}`, 'habit', has, `${h.e} ${h.n} 打卡完成！`, h.kind === 'exercise' ? CONFIG.xp.exercise : CONFIG.xp.habit]);
+    if (h.weeks && h.kind !== 'vocus') {
+      const p = periodKey(d, h.weeks);
+      conds.push([h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`, 'period',
+        periodDone(derive(), h, p), `${h.e} ${h.n} ${periodWord(h)}達標！額外寶箱`]);
+    }
   }
-  for (const [key, kind, ok, title] of conds) {
+  for (const [key, kind, ok, title, xp] of conds) {
     const has = derive().claimed.has(key);
     if (ok && !has) {
       if (S.held[key]) { S.logs.push(S.held[key]); delete S.held[key]; }
-      else if (allowGrant) grant(kind, null, { key, title });
+      else if (allowGrant) grant(kind, null, { key, title, xp });
     } else if (!ok && has) {
       const i = S.logs.findIndex(l => l.key === key);
       if (i >= 0) S.held[key] = S.logs.splice(i, 1)[0];
     }
   }
 }
-// 做完 fn 之後檢查額外寶箱與升級，再存檔、播寶箱。補登昨天時 allowGrant=false：只還原、不發新獎勵
+// 做完 fn 之後檢查寶箱與升級，再存檔、播寶箱。補登昨天時 allowGrant=false：只還原、不發新獎勵
 function reward(fn, allowGrant = true) {
   const before = levelOf(derive().xp);
   fn();
   reconcile(allowGrant);
   const after = levelOf(derive().xp);
   if (after > before) Q.push({ level: after, title: rankIdx(after) > rankIdx(before) ? RANKS[rankIdx(after)][1] : '' });
-  save(); render(); nextChest();
+  save(); render(); renderSheet(); nextChest();
 }
 
-// 番茄鐘是一段「專注工作階段」：選整段總長度，自動切成「專注 25 分＋休息」的段落。
-// 不綁任何任務；每段專注滿 pomoRewardMin 分鐘開一個寶箱
+/* ========= 番茄鐘 ========= */
+// 一段「專注工作階段」：選整段總長度，自動切成「專注 25 分＋休息」的段落；每段專注滿 pomoRewardMin 分鐘開一個寶箱
 const pomoMin = () => S.pomoMin || CONFIG.pomodoroMin;
 function sessionPlan(total) {
   const segs = [];
@@ -659,7 +607,6 @@ function startTimer() {
   S.timer = { segs: sessionPlan(pomoMin()), si: 0, start: Date.now() };
   SFX.tap(); save(); render(); tick();
 }
-// 一段結束：結算專注、自動進入下一段
 function finishSeg() {
   const T = S.timer, seg = T.segs[T.si], end = T.start + seg.min * 60e3, last = T.si === T.segs.length - 1;
   if (last) S.timer = null; else { T.si++; T.start = end; }
@@ -675,17 +622,14 @@ function finishSeg() {
 function tick() {
   if (!S.timer) { document.title = '習慣深潛'; return; }
   let T = S.timer;
-  if (!T.segs) {   // 舊版單段計時器
-    S.timer = T = { segs: [{ m: T.mode === 'break' ? 'break' : 'focus', min: Math.round(T.dur / 60e3) }], si: 0, start: T.start };
-  }
-  // 關掉頁面再回來時可能已經跑完好幾段，一段一段結算
+  if (!T.segs) S.timer = T = { segs: [{ m: T.mode === 'break' ? 'break' : 'focus', min: Math.round(T.dur / 60e3) }], si: 0, start: T.start };
   if (Date.now() >= T.start + T.segs[T.si].min * 60e3) {
     while (S.timer && Date.now() >= S.timer.start + S.timer.segs[S.timer.si].min * 60e3) finishSeg();
     return;
   }
   const seg = T.segs[T.si], dur = seg.min * 60e3, left = T.start + dur - Date.now();
   const txt = `${pad(Math.floor(left / 60000))}:${pad(Math.floor(left / 1000) % 60)}`;
-  document.title = `${seg.m === 'break' ? '☕' : '⏳'} ${txt} 習慣深潛`;
+  document.title = `${seg.m === 'break' ? '休息' : '專注'} ${txt}・習慣深潛`;
   const el = document.getElementById('tclock'); if (el) el.textContent = txt;
   const bar = document.getElementById('tbar'); if (bar) bar.style.width = (100 - left / dur * 100) + '%';
 }
@@ -693,14 +637,13 @@ function tick() {
 /* ========= 寶箱彈窗 ========= */
 const COIN = '<i class="cn" aria-label="金幣"></i>';
 const sh = (title, tag, right = '') => `<div class="sh"><b>${title}</b><em>${tag}</em><span class="sp"></span>${right}</div>`;
-
 function nextChest() {
   if (UI.opened) return;
   const it = Q.shift(), ov = document.getElementById('ov'), m = document.getElementById('modal');
   if (!it) { ov.classList.add('hidden'); return; }
   UI.opened = true; UI.cur = it; ov.classList.remove('hidden');
   if (it.level !== undefined) {
-    m.innerHTML = `<div class="label">LEVEL UP</div><div class="depth pop" style="margin:10px 0">Lv.${it.level}</div>
+    m.innerHTML = `<div class="label">LEVEL UP</div><div class="big-lv pop" style="margin:10px 0"><span>Lv.</span>${it.level}</div>
       ${it.title ? `<h2>取得稱號：${it.title}</h2>` : `<p class="dim">${RANKS[rankIdx(it.level)][1]}</p>`}
       <button class="pri" data-act="close">繼續</button>`;
     SFX.rank(); return;
@@ -716,7 +659,7 @@ function openChest() {
     ${img(cr.px, 9, false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
     <h2>${cr.name} ${it.isNew ? '<span class="new">NEW</span>' : `<small>×${it.owned}</small>`}</h2>
     <div class="dim" style="font-size:15px">${cr.fact}</div>
-    <div class="gain"><span style="color:var(--xp)">+${it.xp} XP</span>　<span class="coin" style="font-size:17px">+${it.c + it.dup}${COIN}</span></div>
+    <div class="gain"><span style="color:var(--xp)">+${it.xp} XP</span>　<span class="coin">+${it.c + it.dup}${COIN}</span></div>
     ${it.crit ? '<div class="new">爆擊！金幣 ×2</div>' : ''}
     ${it.dup ? `<div class="dim" style="font-size:14px">重複的生物換成 ${it.dup} 金幣</div>` : ''}
     <button class="pri" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
@@ -724,20 +667,18 @@ function openChest() {
 }
 
 /* ========= 畫面 ========= */
+const IN_APP = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger/i.test(navigator.userAgent);
 function render() {
-  const D = derive(), lv = levelOf(D.xp), ri = rankIdx(lv), nxt = RANKS[ri + 1];
-  const lo = xpFor(lv), hi = xpFor(lv + 1);
-  document.getElementById('hud').innerHTML = `
-    <div class="hud-l"><div class="label">等級</div><div class="depth"><span>Lv.</span>${lv}</div><div class="rank">${RANKS[ri][1]}</div></div>
-    <div class="hud-m"><div class="bar"><i style="width:${Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100))}%"></i></div>
-      <small>升到 Lv.${lv + 1} 還差 ${hi - D.xp} XP${nxt ? `・Lv.${nxt[0]} 成為「${nxt[1]}」` : ''}</small></div>
-    <div class="hud-r"><div class="label">金幣</div><div class="coin big">${D.coins.toLocaleString()}${COIN}</div>
-      <label class="switch" title="音效開關"><span>音效</span><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button></label></div>`;
-  document.getElementById('banner').innerHTML = FS.handle && !FS.ok
-    ? `<div class="banner row">存檔檔案需要重新授權才能自動備份。<span class="sp"></span><button data-act="relink">重新連結</button></div>` : '';
-  const tabs = [['today', '今日'], ['dex', `圖鑑<small>${Object.keys(D.col).length}/${CREATURES.length}</small>`], ['shop', '商店'], ['log', '紀錄'], ['about', '關於']];
+  const D = derive(), lv = levelOf(D.xp);
+  document.getElementById('stat').innerHTML = `
+    <button class="lvchip" data-act="tab" data-v="log" title="查看等級">Lv.${lv}<small>${RANKS[rankIdx(lv)][1]}</small></button>
+    <span class="coin">${D.coins.toLocaleString()}${COIN}</span>`;
+  document.getElementById('banner').innerHTML = IN_APP && !UI.iabOk
+    ? `<div class="banner row"><span class="sp">你正在 App 內建的瀏覽器裡開啟，這裡的紀錄跟 Chrome、Safari 是分開的。建議用右上角選單「用瀏覽器開啟」。</span><button class="ghost" data-act="iabok">知道了</button></div>` : '';
+  const tabs = [['today', '今日'], ['dex', '圖鑑'], ['tank', '水族箱'], ['shop', '商店'], ['log', '紀錄'], ['about', '關於']];
   document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}</button>`).join('');
-  document.getElementById('main').innerHTML = ({ today, dex, shop, log, about })[UI.tab](D);
+  document.getElementById('main').innerHTML = ({ today, dex, tank, shop, log, about })[UI.tab](D);
+  if (UI.tab === 'tank') tankStart();
 }
 
 const freqOpts = (h, sel) => (h.kind === 'custom' ? [[0, '每天']] : []).concat([[1, '每週'], [2, '每兩週']])
@@ -749,7 +690,7 @@ function habitEditor() {
     <div class="mini">圖示可以貼任何 emoji（Windows：Win ＋ .）。自訂習慣最多 ${CONFIG.maxCustom} 個。</div>
     ${S.habits.map((h, i) => h.off ? '' : `<div class="erow">
       <input data-hf="e" data-hi="${i}" value="${esc(h.e)}" style="width:52px;text-align:center" title="圖示">
-      <input class="sp" data-hf="n" data-hi="${i}" value="${esc(h.n)}" placeholder="${h.kind === 'custom' ? '習慣名稱，例如：冥想 10 分鐘' : '習慣名稱'}">
+      <input class="sp" data-hf="n" data-hi="${i}" value="${esc(h.n)}" placeholder="${h.kind === 'custom' ? '習慣名稱，例如：冥想' : '習慣名稱'}">
       ${h.kind === 'plan' ? '<span class="dim">每天寫好清單</span>'
         : `<select data-hf="weeks" data-hi="${i}">${freqOpts(h, h.weeks)}</select>
            ${h.weeks ? `<span class="dim">至少</span><select data-hf="target" data-hi="${i}">${targetOpts(h.target)}</select><span class="dim">${countWord(h)}</span>` : ''}`}
@@ -757,7 +698,7 @@ function habitEditor() {
     <div class="row" style="margin-top:8px"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣 ${customCount()}/${CONFIG.maxCustom}</button>
       ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${h.id}">加回 ${esc(h.e)} ${esc(h.n)}</button>`).join('')}</div>
     <div class="mini">每天的習慣漏兩天才斷；每週／每兩週的習慣沒達標就斷。</div>
-    <div class="sub">一般分類・不算連勝</div>
+    <div class="sub">六件事的分類</div>
     ${S.gcats.map((c, i) => c.off ? '' : `<div class="erow">
       <input data-gf="e" data-gi="${i}" value="${esc(c.e)}" style="width:52px;text-align:center" title="圖示">
       <input class="sp" data-gf="n" data-gi="${i}" value="${esc(c.n)}" placeholder="分類名稱，例如：工作">
@@ -768,25 +709,20 @@ function habitEditor() {
 function today(D) {
   const st = streaks(D), td = dayKey(), d = viewDay(), P = getPlan(d);
   const claimed = D.claimed.has('plan:' + d), doneN = filled(P).filter(x => x.done).length;
-  // 每張卡：名稱＋連勝數／目標與進度／進度條
   const chips = activeHabits().map(h => {
-    const s = st[h.id];
-    const badge = unit => s.n ? `<span class="streak">${s.n}<small>${unit}</small></span>` : '';
+    const s = st[h.id], badge = s.n ? `<span class="streak">${s.n}<small>${h.weeks ? (h.weeks === 1 ? '週' : '次') : '天'}</small></span>` : '';
+    let on, sub;
     if (h.weeks) {
       const p = periodKey(td, h.weeks), cnt = perCount(D, h, p);
-      return `<div class="hab ${periodDone(D, h, p) ? 'on' : ''}"><div class="row"><span class="hn">${esc(h.e)} ${esc(h.n)}</span><span class="sp"></span>${badge(h.weeks === 1 ? '週' : '次')}</div>
-        <div class="dim">${h.weeks === 1 ? '每週' : '每兩週'} ${h.target} ${countWord(h)}・${periodWord(h)} ${cnt}/${h.target}${h.kind === 'vocus' ? `<br>累計 ${D.articles} 篇` : ''}</div>
-        <div class="meter"><i style="width:${Math.min(100, cnt / h.target * 100)}%"></i></div></div>`;
+      on = periodDone(D, h, p); sub = `${periodWord(h)} ${cnt}/${h.target} ${countWord(h)}`;
+    } else {
+      on = dayDone(D, td, h.id); sub = h.kind === 'plan' ? (on ? '清單已寫好' : '還沒寫清單') : on ? '今天 ✓' : '今天還沒';
     }
-    return `<div class="hab ${dayDone(D, td, h.id) ? 'on' : ''}"><div class="row"><span class="hn">${esc(h.e)} ${esc(h.n)}</span><span class="sp"></span>${badge('天')}</div>
-      <div class="dim">${s.n ? `連續 ${s.n} 天・習慣化 ${Math.min(s.n, CONFIG.habitDays)}/${CONFIG.habitDays}` : '還沒開始連勝'}</div>
-      <div class="meter"><i style="width:${Math.min(100, s.n / CONFIG.habitDays * 100)}%"></i></div></div>`;
+    return `<button class="hab ${on ? 'on' : ''}" data-act="habtap" data-v="${h.id}">
+      <div class="row"><span class="hn">${esc(h.e)} ${esc(h.n)}</span><span class="sp"></span>${badge}</div>
+      <div class="hs">${sub}</div></button>`;
   }).join('');
   const risky = activeHabits().filter(h => st[h.id].risk).map(h => h.n);
-  const pWarn = activeHabits().filter(h => h.weeks && st[h.id].n > 0 && !periodDone(D, h, periodKey(td, h.weeks))).map(h => {
-    const p = periodKey(td, h.weeks), left = Math.round((parseKey(addDays(p, 7 * h.weeks)) - parseKey(td)) / 864e5);
-    return `<div class="warn">${esc(h.n)}：${periodWord(h)}還剩 ${left} 天，還差 ${h.target - perCount(D, h, p)} ${countWord(h)}。</div>`;
-  }).join('');
   const V = habit('vocus');
   const setup = S.vocusSet || !V ? '' : `<section class="px">${sh('Vocus 發文節奏', 'SETUP')}
       <div class="mini">不用每天發。選一個做得到的節奏，之後可以在「習慣・編輯」修改。</div>
@@ -795,34 +731,15 @@ function today(D) {
         <button class="pri" data-act="vcfg">確定</button></div></section>`;
   const hint = UI.pday < 0 ? '補登昨天：只算連勝，不開寶箱。'
     : UI.pday > 0 ? '先寫好明天的清單，寫好就能開寶箱。'
-    : `照重要性排序，前 ${CONFIG.rewardRows} 件完成會開寶箱。`;
-  const cats = catList();
+    : `前 ${CONFIG.rewardRows} 件完成會開寶箱。`;
   const rows = P.map((it, i) => {
     const c = catOf(it.cat);
-    let ex = '';
-    if (it.cat === 'exercise' && it.done && habit('exercise')) {
-      const e = it.ex || {};
-      ex = `<div class="row exrow">
-        <select data-ex="type" data-i="${i}">${ETAGS.map(t => `<option ${e.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
-        <input type="number" min="0" step="0.1" data-ex="dist" data-i="${i}" value="${esc(e.dist)}" placeholder="km">
-        <input type="number" min="0" step="1" data-ex="min" data-i="${i}" value="${esc(e.min)}" placeholder="分鐘">
-        <span class="dim" id="pace${i}">${paceText(e)}</span>
-        <input class="note" data-ex="note" data-i="${i}" value="${esc(e.note)}" placeholder="備註，例如：河堤間歇 4×800"></div>`;
-    }
-    if (it.cat === 'vocus' && it.done && habit('vocus')) {
-      const p = it.pub || {};
-      ex = `<div class="row exrow"><label class="row" style="gap:6px;cursor:pointer">
-          <input type="checkbox" data-act="pub" data-v="${i}" ${p.on ? 'checked' : ''}>這次發布了文章</label>
-        ${p.on ? `<input class="note" data-pub="title" data-i="${i}" value="${esc(p.title)}" placeholder="文章標題（可留空）">` : ''}</div>`;
-    }
-    const divider = i === CONFIG.rewardRows ? '<div class="divider">以下只做紀錄，不開寶箱</div>' : '';
+    const divider = i === CONFIG.rewardRows ? '<div class="divider">以下只做紀錄</div>' : '';
     return `${divider}<div class="prow ${it.done ? 'done' : ''}">
       <input type="checkbox" data-act="pdone" data-v="${i}" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
-      <div class="pbody">
-        <input class="ptext" data-pf="text" data-i="${i}" value="${esc(it.text)}" placeholder="${esc(placeholder(c))}">
-        <div class="pmeta"><span class="no">${i + 1}</span>
-          <select data-pf="cat" data-i="${i}">${cats.map(x => `<option value="${x.id}" ${c.id === x.id ? 'selected' : ''}>${esc(x.e)} ${esc(x.n)}</option>`).join('')}</select></div>
-      </div></div>${ex}`;
+      <span class="no">${i + 1}</span>
+      <input class="ptext" data-pf="text" data-i="${i}" value="${esc(it.text)}" placeholder="${esc(placeholder(c))}">
+      <select data-pf="cat" data-i="${i}" title="分類">${catList(it.cat).map(x => `<option value="${x.id}" ${c.id === x.id ? 'selected' : ''}>${esc(x.e)} ${esc(x.n)}</option>`).join('')}</select></div>`;
   }).join('');
   const T = S.timer && S.timer.segs ? S.timer : null, seg = T && T.segs[T.si], pm = pomoMin();
   const todayPomo = S.logs.filter(l => l.k === 'pomo' && l.d === td).length;
@@ -832,38 +749,73 @@ function today(D) {
       <div>${seg.m === 'break' ? '休息中' : '專注中'}</div>
       <div class="clock" id="tclock">--:--</div><div class="bar c"><i id="tbar" style="width:0"></i></div>
       <div class="segs">${segLine(T.segs)}</div>
-      <small>${seg.m === 'break' ? '起來走走、喝口水，休息完會自動開始下一段。' : '關掉頁面也沒關係，回來時會自動結算。'}</small><br>
       ${seg.m === 'break' ? '<button class="ghost" data-act="skipbreak">跳過休息</button>' : ''}<button class="ghost" data-act="cancel">結束</button></section>`
     : `<section class="px">${sh('番茄鐘', 'FOCUS', `<small class="dim">今天 ${todayPomo} 段</small>`)}
       <div class="pomo-set"><div class="presets">${[25, 45, 60, 90].map(m => `<button class="${pm === m ? 'sel' : ''}" data-act="pomoset" data-v="${m}">${m} 分</button>`).join('')}</div>
         <div class="pomo-go"><input type="number" id="pomoMin" min="5" max="120" step="5" value="${pm}" title="自訂總長度（分鐘）"><span class="dim">分</span>
         <button class="pri" data-act="start">開始專注</button></div></div>
       <div class="segs" id="pomoPlan">${segLine(sessionPlan(pm))}</div>
-      <div class="mini">選整段總長度，中間自動安排休息。每段專注滿 ${CONFIG.pomoRewardMin} 分鐘開一個寶箱。</div></section>`;
+      <div class="mini">專注滿 ${CONFIG.pomoRewardMin} 分鐘開一個寶箱。</div></section>`;
   const habits = UI.habEdit ? habitEditor() : `<section class="px">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
       <div class="habits">${chips}</div>
-      ${risky.length ? `<div class="warn">昨天漏了 ${esc(risky.join('、'))}，今天做到就不會斷。</div>` : ''}${pWarn}</section>`;
-  return `${setup}${habits}${timer}
-    <section class="px">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
-      <div class="mini" style="margin-bottom:6px">${d}・${hint}</div>
+      ${risky.length ? `<div class="warn">昨天漏了 ${esc(risky.join('、'))}，今天做到就不會斷。</div>` : ''}</section>`;
+  return `${setup}${habits}
+    <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
+      <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}・${hint}</div>
       ${rows}
-      <div class="row" style="margin-top:10px">${UI.pday < 0 ? '' : claimed ? '<span class="done-tag">✓ 清單已寫好</span>' : '<button class="pri" data-act="plansave">寫好了</button>'}
-        <span class="sp"></span><small>完成 ${doneN}/${filled(P).length}</small></div></section>`;
+      <div class="row" style="margin-top:8px">${UI.pday < 0 ? '' : claimed ? '<span class="done-tag">✓ 清單已寫好</span>' : '<button class="pri" data-act="plansave">寫好了</button>'}
+        <span class="sp"></span><small>完成 ${doneN}/${filled(P).length}</small></div></section>
+    ${timer}`;
 }
 
-// 跑步算每公里配速，游泳算每 100 公尺
+/* ========= 習慣打卡面板 ========= */
 function paceText(e) {
   if (!(e.dist > 0) || !(e.min > 0)) return '';
   const swim = e.type === '游泳', sec = Math.round(e.min * 60 / (swim ? e.dist * 10 : e.dist));
   return `配速 ${Math.floor(sec / 60)}'${pad(sec % 60)}"${swim ? '/100m' : '/km'}`;
 }
-function allExercise() {
-  const out = [];
-  for (const [d, P] of Object.entries(S.plans)) for (const it of P)
-    if (it.done && it.cat === 'exercise') out.push({ d, text: it.text, ...(it.ex || {}) });
-  for (const l of S.logs) if (l.k === 'exercise') out.push({ d: l.d, type: l.tag, dist: l.dist, min: l.min, note: l.note });
-  return out;
+const exText = e => [e.type, e.dist ? `${e.dist} km` : '', e.min ? `${e.min} 分` : '', paceText(e), e.note].filter(Boolean).join('・');
+function renderSheet() {
+  const ov = document.getElementById('sheetov'), el = document.getElementById('sheet');
+  if (!UI.sheet) { ov.classList.add('hidden'); return; }
+  ov.classList.remove('hidden');
+  if (UI.sheet.creature) {   // 圖鑑放大
+    const c = CR[UI.sheet.creature], R = RARITY[c.r], n = derive().col[c.id] || 0;
+    el.style.textAlign = 'center';
+    el.innerHTML = `<div class="row"><span class="rar" style="background:${R.color}">${R.name}</span><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
+      ${img(c.px, Math.max(6, Math.floor(260 / Math.max(...c.px.map(r => r.length)))), false, 'pop')}
+      <h2>${c.name} <small>×${n}</small></h2><p class="dim">${c.fact}</p>`;
+    return;
+  }
+  el.style.textAlign = '';
+  const h = habit(UI.sheet.id); if (!h) { UI.sheet = null; renderSheet(); return; }
+  const D = derive(), s = streaks(D)[h.id], day = UI.sheet.day, d = addDays(dayKey(), day), list = dayChecks(d, h.id);
+  const goal = h.weeks ? `${h.weeks === 1 ? '每週' : '每兩週'} ${h.target} ${countWord(h)}・${periodWord(h)} ${perCount(D, h, periodKey(dayKey(), h.weeks))}/${h.target}` : '每天';
+  let body;
+  if (h.kind === 'exercise') body = `
+      ${list.map((e, i) => `<div class="entry"><span class="sp">${esc(exText(e) || '運動')}</span><button class="ghost" data-act="chkdel" data-v="${i}">✕</button></div>`).join('')}
+      <div class="form">
+        <select id="exType">${ETAGS.map(t => `<option>${t}</option>`).join('')}</select>
+        <input id="exDist" class="f-num" type="number" min="0" step="0.1" placeholder="km">
+        <input id="exMin" class="f-num" type="number" min="0" step="1" placeholder="分鐘">
+        <span class="dim" id="exPace" style="align-self:center"></span>
+        <input id="exNote" class="f-wide" placeholder="備註，例如：河堤間歇 4×800">
+      </div><button class="pri wide" data-act="exadd">記錄這次運動</button>`;
+  else if (h.kind === 'vocus') body = `
+      ${list.map((e, i) => `<div class="entry"><span class="sp">${esc(e.title || '（無標題）')}</span><button class="ghost" data-act="chkdel" data-v="${i}">✕</button></div>`).join('')}
+      <div class="form"><input id="artTitle" class="f-wide" placeholder="發布的文章標題（可留空）"></div>
+      <button class="pri wide" data-act="artadd">記錄發布的文章</button>`;
+  else body = list.length
+      ? `<button class="wide" data-act="chk">✓ 已完成，點一下取消</button>`
+      : `<button class="pri wide" data-act="chk">完成打卡</button>`;
+  el.innerHTML = `<div class="row"><b style="font-size:18px">${esc(h.e)} ${esc(h.n)}</b><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
+    <div class="mini">${goal}${s.n ? `・連續 ${s.n} ${h.weeks ? (h.weeks === 1 ? '週' : '次') : '天'}` : ''}</div>
+    <div class="row" style="margin-top:10px"><span class="seg-switch">${[[0, '今天'], [-1, '昨天']].map(([o, n]) => `<button class="${day === o ? 'sel' : ''}" data-act="shday" data-v="${o}">${n}</button>`).join('')}</span>
+      <small class="dim">${day < 0 ? '補登只算連勝，不開寶箱' : ''}</small></div>
+    ${body}`;
 }
+
+/* ========= 其他頁面 ========= */
 // input=true 時多一個輸入框，按確定回傳輸入的文字，按取消回傳 false
 function ask(msg, yes = '確定', no = '取消', input = false) {
   const inp = document.getElementById('askin');
@@ -873,13 +825,13 @@ function ask(msg, yes = '確定', no = '取消', input = false) {
   inp.classList.toggle('hidden', !input); inp.value = '';
   document.getElementById('askov').classList.remove('hidden');
   if (input) inp.focus();
-  return new Promise(res => { ask.res = v => { document.getElementById('askov').classList.add('hidden'); res(v && input ? inp.value.trim() : v); }; });
+  return new Promise(res => { ask.res = v => { document.getElementById('askov').classList.add('hidden'); ask.res = null; res(v && input ? inp.value.trim() : v); }; });
 }
 
 function dex(D) {
   const total = CONFIG.rarityRates.reduce((a, b) => a + b, 0);
   return `<section class="px">${sh('水下生物圖鑑', 'COLLECTION', `<span class="dim">${Object.keys(D.col).length} / ${CREATURES.length}</span>`)}
-    <div class="mini">完成事情就會開寶箱。點已收集的生物看介紹。</div>
+    <div class="mini">完成事情就會開寶箱。點已收集的生物可以放大看介紹。</div>
     ${RARITY.map((R, r) => `<div class="grp row"><span class="rar" style="background:${R.color}">${R.name}</span>
       <small>掉落率 ${(CONFIG.rarityRates[r] / total * 100).toFixed(1).replace('.0', '')}%</small></div>
       <div class="dex">${CREATURES.filter(c => c.r === r).map(c => {
@@ -887,6 +839,100 @@ function dex(D) {
         return n ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${img(c.px, 5)}<div class="nm">${c.name}</div><small>×${n}</small></div>`
           : `<div class="cell no">${img(c.px, 5, true)}<div class="nm dim">？？？</div><small>&nbsp;</small></div>`;
       }).join('')}</div>`).join('')}</section>`;
+}
+
+/* ========= 水族箱小遊戲 ========= */
+// 收集到的生物會在這裡游；點水面撒飼料，生物會游過去吃；點生物看名字
+const spriteCv = {};
+function spriteCanvas(c) {
+  if (spriteCv[c.id]) return spriteCv[c.id];
+  const w = Math.max(...c.px.map(r => r.length)), h = c.px.length, cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const x = cv.getContext('2d');
+  c.px.forEach((r, j) => [...r].forEach((ch, i) => { if (ch !== '.' && PAL[ch]) { x.fillStyle = PAL[ch]; x.fillRect(i, j, 1, 1); } }));
+  return spriteCv[c.id] = cv;
+}
+const TANK = { raf: 0 };
+function tank(D) {
+  const n = Object.keys(D.col).length;
+  return `<section class="px">${sh('水族箱', 'AQUARIUM', `<span class="dim">${n} 種生物</span>`)}
+    <canvas id="tank" class="tank"></canvas>
+    <div class="mini">點水面撒飼料，看誰先游過去吃。點生物可以看名字。收集越多，水族箱越熱鬧。</div>
+    <div class="mini" id="tankScore"></div></section>`;
+}
+function tankStart() {
+  cancelAnimationFrame(TANK.raf);
+  const cv = document.getElementById('tank'); if (!cv) return;
+  const W = Math.max(240, Math.floor(cv.clientWidth / 2)), H = Math.floor(cv.clientHeight / 2);   // 以 2 倍像素畫，維持像素感
+  cv.width = W; cv.height = H;
+  const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
+  const owned = CREATURES.filter(c => derive().col[c.id]);
+  const floorY = H - 16, bottomDwellers = ['star', 'hermit', 'urchin'];
+  TANK.fed = TANK.fed || 0;
+  TANK.food = []; TANK.tip = null; TANK.bub = [];
+  TANK.fish = owned.map(c => {
+    const s = spriteCanvas(c), sc = c.r >= 3 ? 2 : 1, ground = bottomDwellers.includes(c.id);
+    const w = s.width * sc, h = s.height * sc;
+    return { c, s, sc, w, h, ground, x: Math.random() * (W - w), y: ground ? floorY - h + 2 : 10 + Math.random() * (floorY - h - 30),
+      vx: (ground ? (c.id === 'hermit' ? .15 : 0) : .25 + Math.random() * .35) * (Math.random() < .5 ? -1 : 1), ph: Math.random() * 6, target: null };
+  });
+  TANK.fish.forEach(f => f.baseY = f.y);
+  const weeds = Array.from({ length: Math.max(3, Math.floor(W / 60)) }, (_, i) => ({ x: 12 + i * (W - 24) / Math.max(1, Math.floor(W / 60) - 1), h: 18 + (i * 7) % 20 }));
+  const score = () => { const el = document.getElementById('tankScore'); if (el) el.textContent = TANK.fed ? `已經餵了 ${TANK.fed} 顆飼料` : ''; };
+  score();
+  cv.onclick = e => {
+    const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width, py = (e.clientY - r.top) * H / r.height;
+    const hit = TANK.fish.find(f => px >= f.x && px <= f.x + f.w && py >= f.y && py <= f.y + f.h);
+    if (hit) { TANK.tip = { text: hit.c.name, x: hit.x + hit.w / 2, y: hit.y - 4, until: performance.now() + 1800 }; SFX.tap(); return; }
+    if (py < floorY - 4) { TANK.food.push({ x: px, y: py, vy: .25 }); ac(); SFX.tap(); }
+  };
+  let last = performance.now();
+  const frame = now => {
+    if (!document.body.contains(cv)) return;
+    const dt = Math.min(3, (now - last) / 16.7); last = now;
+    // 背景：一層層的海水、沙地、海草
+    const bands = ['#1d5a8c', '#174c7a', '#123f68', '#0e3356', '#0b2846'];
+    bands.forEach((c, i) => { x.fillStyle = c; x.fillRect(0, Math.floor(i * floorY / bands.length), W, Math.ceil(floorY / bands.length) + 1); });
+    x.fillStyle = '#c2a36b'; x.fillRect(0, floorY, W, H - floorY);
+    x.fillStyle = '#a3864f'; for (let i = 0; i < W; i += 7) x.fillRect(i, floorY + 3 + (i % 3), 2, 2);
+    weeds.forEach((w, i) => { for (let j = 0; j < w.h; j += 3) { const sway = Math.round(Math.sin(now / 700 + i + j / 6) * 2); x.fillStyle = j % 6 ? '#38b764' : '#257179'; x.fillRect(w.x + sway, floorY - j, 3, 3); } });
+    // 氣泡
+    if (Math.random() < .03 * dt) TANK.bub.push({ x: Math.random() * W, y: floorY, s: 1 + Math.round(Math.random()) });
+    TANK.bub = TANK.bub.filter(b => (b.y -= .5 * dt) > 0);
+    x.fillStyle = 'rgba(180,240,255,.55)'; TANK.bub.forEach(b => x.fillRect(Math.round(b.x), Math.round(b.y), b.s, b.s));
+    // 飼料
+    TANK.food.forEach(f => { if (f.y < floorY - 2) f.y += f.vy * dt; f.age = (f.age || 0) + dt; });
+    TANK.food = TANK.food.filter(f => f.age < 900);
+    x.fillStyle = '#ef7d57'; TANK.food.forEach(f => x.fillRect(Math.round(f.x), Math.round(f.y), 2, 2));
+    // 生物
+    for (const f of TANK.fish) {
+      if (!f.ground) {
+        let food = null, best = 1e9;
+        for (const p of TANK.food) { const dd = Math.hypot(p.x - (f.x + f.w / 2), p.y - (f.y + f.h / 2)); if (dd < best) { best = dd; food = p; } }
+        if (food && best < W) {
+          const dx = food.x - (f.x + f.w / 2), dy = food.y - (f.y + f.h / 2), sp = .9 * dt;
+          f.x += Math.sign(dx) * Math.min(Math.abs(dx), sp); f.baseY += Math.sign(dy) * Math.min(Math.abs(dy), sp * .8);
+          if (Math.abs(dx) > .5) f.vx = Math.sign(dx) * Math.abs(f.vx || .3);
+          if (best < Math.max(4, f.w / 3)) { TANK.food.splice(TANK.food.indexOf(food), 1); TANK.fed++; SFX.eat(); score(); }
+        } else f.x += f.vx * dt;
+        f.baseY = Math.max(4, Math.min(floorY - f.h - 4, f.baseY));
+        f.y = f.baseY + Math.sin(now / 900 + f.ph) * 3;
+      } else f.x += f.vx * dt;
+      if (f.x < 0) { f.x = 0; f.vx = Math.abs(f.vx); } else if (f.x > W - f.w) { f.x = W - f.w; f.vx = -Math.abs(f.vx); }
+      x.save();
+      if (f.vx < 0) { x.translate(Math.round(f.x) + f.w, Math.round(f.y)); x.scale(-1, 1); x.drawImage(f.s, 0, 0, f.w, f.h); }
+      else x.drawImage(f.s, Math.round(f.x), Math.round(f.y), f.w, f.h);
+      x.restore();
+    }
+    if (!TANK.fish.length) { x.fillStyle = '#eaf2ff'; x.font = '10px monospace'; x.textAlign = 'center'; x.fillText('還沒有生物，完成事情來開寶箱吧', W / 2, H / 2); }
+    if (TANK.tip && now < TANK.tip.until) {
+      x.font = '10px "Microsoft JhengHei",monospace'; const tw = x.measureText(TANK.tip.text).width + 8;
+      const tx = Math.max(2, Math.min(W - tw - 2, TANK.tip.x - tw / 2)), ty = Math.max(2, TANK.tip.y - 14);
+      x.fillStyle = '#0d2442'; x.fillRect(tx, ty, tw, 13); x.fillStyle = '#ffcd75'; x.textAlign = 'left'; x.fillText(TANK.tip.text, tx + 4, ty + 10);
+    }
+    TANK.raf = requestAnimationFrame(frame);
+  };
+  TANK.raf = requestAnimationFrame(frame);
 }
 
 // 商店項目由使用者自己設定，存在 S.shop；沒設定過就用 CONFIG.shop 當預設
@@ -897,8 +943,8 @@ function finishShop() {
   UI.shopEdit = false; save();
 }
 function finishHabits() {
-  for (const c of S.gcats) if (!c.n.trim()) { if (c.id === 'other') c.n = '其他'; else c.off = true; }
   for (const c of S.gcats) if (!String(c.e).trim()) c.e = '🔖';
+  for (const c of S.gcats) if (!c.n.trim()) { if (c.id === 'other') c.n = '其他'; else c.off = true; }
   for (const h of S.habits) if (!String(h.e).trim()) h.e = '⭐';
   for (const h of S.habits) if (!h.n.trim()) {
     if (h.kind === 'custom') h.off = true;
@@ -909,14 +955,13 @@ function finishHabits() {
 function shop(D) {
   const hist = S.logs.filter(l => l.k === 'redeem').slice(-8).reverse();
   if (UI.shopEdit) return `<section class="px shop">${sh('編輯獎勵', 'REWARDS', '<button class="pri" data-act="shopdone">完成</button>')}
-    <div class="mini">設定你真的想要的獎勵。參考：每天前三件都完成，大約能賺 60–90 金幣。</div>
+    <div class="mini">設定你真的想要的獎勵。參考：每天大約能賺 60–90 金幣。</div>
     ${S.shop.map((it, i) => `<div class="it">
       <input data-sf="icon" data-si="${i}" value="${esc(it.icon)}" style="width:52px;text-align:center" title="圖示（可貼 emoji）">
       <input class="sp" data-sf="name" data-si="${i}" value="${esc(it.name)}" placeholder="獎勵名稱，例如：吃甜點（100 元內）">
       <input type="number" min="1" data-sf="price" data-si="${i}" value="${it.price}" style="width:90px">${COIN}
       <button class="ghost" data-act="shopdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
     <div class="row" style="margin-top:8px"><button data-act="shopadd">＋ 新增獎勵</button></div></section>`;
-  // 用最近 14 天的平均收入估計「還要努力幾天」；有收入的日子不到 5 天時用 CONFIG.coinsPerDay
   const since = addDays(dayKey(), -13), recent = S.logs.filter(l => l.d >= since && l.c > 0 && l.k !== 'welcome');
   const activeDays = new Set(recent.map(l => l.d)).size;
   const rate = activeDays >= 5 ? Math.max(10, Math.round(recent.reduce((a, l) => a + l.c, 0) / 14)) : CONFIG.coinsPerDay;
@@ -925,7 +970,7 @@ function shop(D) {
   return `<section class="px shop">${sh('獎勵商店', 'REWARDS', '<button class="ghost" data-act="shopedit">編輯</button>')}
     <div class="mini">你可以自行設定想要的獎勵。${activeDays >= 5 ? `最近 14 天平均每天賺 ${rate} 金幣。` : `目前以每天約 ${rate} 金幣估算。`}</div>
     ${next ? `<div class="goal"><div class="label">NEXT GOAL</div>
-      <div class="row"><span>${esc(next.icon)} ${esc(next.name)}</span><span class="sp"></span><span class="coin" style="font-size:16px">${D.coins} / ${next.price}${COIN}</span></div>
+      <div class="row"><span>${esc(next.icon)} ${esc(next.name)}</span><span class="sp"></span><span class="coin">${D.coins} / ${next.price}${COIN}</span></div>
       <div class="bar c"><i style="width:${Math.max(0, D.coins / next.price * 100)}%"></i></div>
       <div class="mini">大約還要 ${daysFor(next.price - D.coins)} 天</div></div>` : ''}
     ${items.length ? '' : '<div class="dim" style="margin-top:8px">還沒有獎勵，按「編輯」新增。</div>'}
@@ -937,37 +982,65 @@ function shop(D) {
   <section class="px">${sh('兌換紀錄', 'HISTORY')}${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(l.name)}</span><span class="sp"></span><span class="price">${l.c}${COIN}</span></div>`).join('') : '<div class="dim">還沒有兌換過。</div>'}</section>`;
 }
 
+// 最近的打卡紀錄（含運動細節、文章標題），也包含舊版在六件事裡記的
+function recentEntries() {
+  const out = [];
+  for (const [d, C] of Object.entries(S.checks)) for (const [id, arr] of Object.entries(C)) for (const e of arr) out.push({ d, id, t: e.t || 0, e });
+  for (const [d, P] of Object.entries(S.plans)) for (const it of P) if (it.done) {
+    if (it.cat === 'exercise') out.push({ d, id: 'exercise', t: 0, e: { ...(it.ex || {}), note: (it.ex && it.ex.note) || it.text } });
+    if (it.cat === 'vocus' && it.pub && it.pub.on) out.push({ d, id: 'vocus', t: 0, e: { title: it.pub.title || it.text } });
+  }
+  return out.sort((a, b) => b.d.localeCompare(a.d) || b.t - a.t);
+}
+function entryText(r) {
+  const h = S.habits.find(x => x.id === r.id) || { e: '•', n: r.id };
+  const body = r.id === 'vocus' ? `發布：${r.e.title || '（無標題）'}` : r.id === 'exercise' ? (exText(r.e) || '運動') : `${h.n} ✓`;
+  return `${h.e} ${body}`;
+}
+
 function log(D) {
-  const td = dayKey(), start = addDays(weekKey(td), -7 * 17), H = activeHabits();
+  const lv = levelOf(D.xp), ri = rankIdx(lv), nxt = RANKS[ri + 1], lo = xpFor(lv), hi = xpFor(lv + 1);
+  const td = dayKey(), H = activeHabits();
+  // 熱力圖從第一次使用的那週開始（最多顯示 26 週）
+  const firstDay = Object.keys(D.days).filter(k => k <= td).sort()[0] || td;
+  let start = weekKey(firstDay); const limit = addDays(weekKey(td), -7 * 25); if (start < limit) start = limit;
   let cells = '';
-  for (let k = start; k <= td; k = addDays(k, 1)) {
+  for (let k = start; k <= addDays(weekKey(td), 6); k = addDays(k, 1)) {
+    if (k > td) { cells += '<i class="blank"></i>'; continue; }
     const x = D.days[k] || {}, done = H.filter(h => x[h.id]), n = done.length;
-    const lv = n === 0 ? 0 : n >= H.length ? 4 : Math.min(3, Math.ceil(n / H.length * 3));
-    cells += `<i class="l${lv}${k === td ? ' today' : ''}" title="${k}　${esc(done.map(h => h.e + ' ' + h.n).join(' ')) || '—'}"></i>`;
+    const l = n === 0 ? 0 : n >= H.length ? 4 : Math.min(3, Math.ceil(n / H.length * 3));
+    cells += `<i class="l${l}${k === td ? ' today' : ''}" title="${k}　${esc(done.map(h => h.e + ' ' + h.n).join(' ')) || '—'}"></i>`;
   }
   const daysOf = k => Object.values(D.days).filter(x => x[k]).length;
-  const runs = allExercise().filter(e => e.type === '跑步' && e.dist > 0), runKm = runs.reduce((a, e) => a + +e.dist, 0);
-  const pomos = S.logs.filter(l => l.k === 'pomo');
-  const pomoHours = pomos.reduce((a, l) => a + (l.min || CONFIG.pomodoroMin), 0) / 60;
-  return `<section class="px">${sh('最近 18 週', 'ACTIVITY')}
+  const rec = recentEntries();
+  const runs = rec.filter(r => r.id === 'exercise' && r.e.type === '跑步' && r.e.dist > 0), runKm = runs.reduce((a, r) => a + +r.e.dist, 0);
+  const pomos = S.logs.filter(l => l.k === 'pomo'), pomoHours = pomos.reduce((a, l) => a + (l.min || CONFIG.pomodoroMin), 0) / 60;
+  return `<section class="px">${sh('等級', 'LEVEL')}
+    <div class="row"><div class="big-lv"><span>Lv.</span>${lv}</div><div><b>${RANKS[ri][1]}</b><div class="mini" style="margin:0">共 ${D.xp} XP</div></div></div>
+    <div class="bar"><i style="width:${Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100))}%"></i></div>
+    <div class="mini">升到 Lv.${lv + 1} 還差 ${hi - D.xp} XP${nxt ? `・Lv.${nxt[0]} 成為「${nxt[1]}」` : ''}</div></section>
+  <section class="px">${sh('打卡紀錄', 'ACTIVITY')}
     <div class="heat">${cells}</div>
     <small class="legend">少 <i style="background:#0f2a4d"></i><i style="background:#1f5a8a"></i><i style="background:#2f8fc0"></i><i style="background:#73eff7"></i><i style="background:#e8ffff"></i> 多</small></section>
+  <section class="px">${sh('最近紀錄', 'RECENT')}
+    ${rec.length ? rec.slice(0, 12).map(r => `<div class="entry"><span class="dim" style="flex:none">${r.d.slice(5).replace('-', '/')}</span><span class="sp">${esc(entryText(r))}</span></div>`).join('')
+      : '<div class="dim">點「今日」的習慣卡片打卡，就會記在這裡。</div>'}</section>
   <section class="px">${sh('累積', 'TOTALS')}<div class="stat">
     ${H.map(h => h.kind === 'vocus' ? `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${D.articles}</b><small>篇文章</small></div>`
       : `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`).join('')}
     <div><small>番茄鐘</small><b>${pomos.length}</b><small>段・${pomoHours.toFixed(1)} 小時</small></div>
     <div><small>跑步總距離</small><b>${runKm.toFixed(1)}</b><small>km・${runs.length} 次</small></div>
   </div></section>
-  <section class="px">${sh('存檔', 'BACKUP')}
-    <div class="mini">紀錄只存在這個瀏覽器，不會上傳。換裝置或清除瀏覽資料就會消失，請定期下載備份。</div>
-    ${FS.ok ? `<div class="mini">✓ 同步寫入檔案「${esc(FS.handle.name)}」${FS.last ? '，最後寫入 ' + FS.last : ''}</div>` : ''}
-    <div class="row" style="margin-top:8px">${'showSaveFilePicker' in window ? `<button data-act="linknew">建立存檔檔案</button><button data-act="linkopen">開啟既有存檔</button>` : ''}
-      <button data-act="export">下載備份</button><button data-act="import">從備份還原</button></div></section>`;
+  <section class="px">${sh('設定與備份', 'SETTINGS')}
+    <label class="switch"><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button><span>音效</span></label>
+    <div class="mini" style="margin-top:12px">紀錄只存在這個瀏覽器。換手機、換瀏覽器或清除瀏覽資料就會消失，請定期備份。</div>
+    <div class="row" style="margin-top:6px"><button data-act="export">備份</button><button data-act="import">還原</button></div></section>`;
 }
 
-// 關於頁：作者的 Vocus 沙龍與潛水文章
+// 關於頁
+const SALON = { name: 'Frog Journey｜兩棲類的冒險生活', url: 'https://vocus.cc/salon/frog-journey',
+  desc: '一個真的去過、住過、做過的人的第一手紀錄。登山、潛水、旅居，還有一路上的成長。' };
 const ABOUT_LINKS = [
-  { title: 'Frog Journey｜兩棲類的冒險生活', sub: 'Vocus 沙龍：登山、潛水、旅居的第一手紀錄', url: 'https://vocus.cc/salon/frog-journey' },
   { title: '潛水日誌 #1｜印尼・Nusa Penida・Manta Point：5 隻鬼蝠魟從頭頂飛過', sub: '圖鑑裡的鬼蝠魟，就是從這裡來的', url: 'https://vocus.cc/article/6a8ec287fd897800012e765a' },
   { title: '潛水日誌 #2｜印尼・Nusa Penida・Crystal Bay：沒看到翻車魚！', sub: '想抽到翻車魚？先看看我在海裡等了多久', url: 'https://vocus.cc/article/6ad986a9fd89780001033212' },
   { title: 'OW 潛水考照心得｜課程都在學什麼？我的完整考照紀錄', sub: '從零開始學潛水的紀錄', url: 'https://vocus.cc/article/6a45ddadfd89780001dff50b' },
@@ -976,11 +1049,14 @@ function about() {
   return `<section class="px">${sh('關於習慣深潛', 'ABOUT')}
     <p>嗨，我是 Harry，喜歡潛水，也在努力每週寫文章。這個遊戲是我為了讓自己持續寫作和運動而做的：每天寫下最重要的事，完成就開寶箱，收集我在海裡遇過（或還在等）的生物。</p>
     <p class="dim">從浮潛客一路升到潛水教練的稱號、圖鑑裡的鬼蝠魟和翻車魚，都來自我的潛水經驗。希望它也能陪你一點一點往前進。</p></section>
-  <section class="px">${sh('我的文章', 'READ')}
+  <section class="px">${sh('我的沙龍', 'SALON')}
+    <div class="salon"><b style="font-size:17px">${SALON.name}</b><p class="dim" style="margin:6px 0 12px">${SALON.desc}</p>
+      <a href="${SALON.url}" target="_blank" rel="noopener"><button class="pri" style="margin:0">前往沙龍 ↗</button></a></div></section>
+  <section class="px">${sh('推薦文章', 'READ')}
     ${ABOUT_LINKS.map(l => `<a class="link" href="${l.url}" target="_blank" rel="noopener">
       <span class="sp"><b>${esc(l.title)}</b><br><small>${esc(l.sub)}</small></span><span class="dim">↗</span></a>`).join('')}</section>
   <section class="px">${sh('資料與隱私', 'PRIVACY')}
-    <div class="mini">你的紀錄只存在你自己的瀏覽器裡，不會上傳到任何伺服器，我也看不到。記得定期到「紀錄」下載備份。</div>
+    <div class="mini">你的紀錄只存在你自己的瀏覽器裡，不會上傳到任何伺服器，我也看不到。記得定期到「紀錄」備份。</div>
     <div class="mini">本工具為個人作品，與方格子 vocus 官方無關。</div></section>`;
 }
 
@@ -989,12 +1065,26 @@ function toast(msg) {
   const t = document.getElementById('toast'); t.textContent = msg; t.classList.remove('hidden');
   clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.add('hidden'), 2600);
 }
+async function exportBackup() {
+  const name = `習慣深潛-備份-${dayKey()}.json`, json = JSON.stringify(S, null, 1);
+  const file = new File([json], name, { type: 'application/json' });
+  // 手機優先用分享選單（可存到檔案、雲端硬碟）；不支援時改用下載
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: '習慣深潛備份' }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast(IN_APP ? '如果沒有下載，請改用 Chrome 或 Safari 開啟再備份' : '備份檔已下載');
+}
+function sheetDay() { return addDays(dayKey(), UI.sheet.day); }
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const v = b.dataset.v;
   switch (b.dataset.act) {
-    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tab = v; render(); break;
+    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tab = v; render(); window.scrollTo(0, 0); break;
     case 'pday': UI.pday = +v; render(); break;
+    case 'iabok': UI.iabOk = true; render(); break;
     case 'start': startTimer(); break;
     case 'skipbreak': {
       const T = S.timer;
@@ -1007,19 +1097,39 @@ document.addEventListener('click', async e => {
       break;
     case 'askyes': ask.res && ask.res(true); break;
     case 'askno': ask.res && ask.res(false); break;
+    case 'habtap':
+      if (v === 'plan') { document.getElementById('six').scrollIntoView({ behavior: 'smooth' }); break; }
+      UI.sheet = { id: v, day: 0 }; renderSheet(); break;
+    case 'shday': UI.sheet.day = +v; renderSheet(); break;
+    case 'sheetclose': UI.sheet = null; renderSheet(); break;
+    case 'chk': {
+      const d = sheetDay(), id = UI.sheet.id;
+      if (dayChecks(d, id).length) { while (dayChecks(d, id).length) delCheck(d, id, 0); }
+      else { addCheck(d, id, {}); ac(); SFX.tap(); }
+      reward(() => {}, UI.sheet.day === 0); break;
+    }
+    case 'exadd': {
+      const g = id => document.getElementById(id).value, dist = +g('exDist') || undefined, min = +g('exMin') || undefined, note = g('exNote').trim() || undefined;
+      addCheck(sheetDay(), 'exercise', { type: g('exType'), dist, min, note }); ac(); SFX.tap();
+      reward(() => {}, UI.sheet.day === 0); break;
+    }
+    case 'artadd':
+      addCheck(sheetDay(), 'vocus', { title: document.getElementById('artTitle').value.trim() || undefined }); ac(); SFX.tap();
+      reward(() => {}, UI.sheet.day === 0); break;
+    case 'chkdel': delCheck(sheetDay(), UI.sheet.id, +v); reward(() => {}, false); break;
     case 'habedit': UI.habEdit = true; render(); break;
     case 'habdone': finishHabits(); render(); toast('習慣已更新'); break;
     case 'habadd':
       if (customCount() >= CONFIG.maxCustom) break;
       S.habits.push({ id: 'h' + rid(), e: '⭐', n: '', kind: 'custom', weeks: 0, target: 1 }); save(); render(); break;
-    case 'gcatadd': S.gcats.push({ id: 'g' + rid(), e: '🔖', n: '' }); save(); render(); break;
-    case 'gcatdel': S.gcats[+v].off = true; save(); render(); break;
-    case 'habrestore': { const h = S.habits.find(x => x.id === v); h.off = false; save(); render(); break; }
     case 'habdel': {
       const h = S.habits[+v];
       if (!(await ask(`刪除習慣「${h.e} ${h.n || '（未命名）'}」？\n過去的紀錄會保留，只是不再顯示和計算。`, '刪除'))) break;
       h.off = true; save(); render(); break;
     }
+    case 'habrestore': { const h = S.habits.find(x => x.id === v); h.off = false; save(); render(); break; }
+    case 'gcatadd': S.gcats.push({ id: 'g' + rid(), e: '🔖', n: '' }); save(); render(); break;
+    case 'gcatdel': S.gcats[+v].off = true; save(); render(); break;
     case 'vcfg': {
       const V = habit('vocus');
       V.weeks = +document.getElementById('vW').value; V.target = +document.getElementById('vT').value;
@@ -1029,35 +1139,25 @@ document.addEventListener('click', async e => {
     case 'shopadd': S.shop.push({ id: 'c' + Date.now(), icon: '🎁', name: '', price: 100 }); save(); render(); break;
     case 'shopdel': S.shop.splice(+v, 1); save(); render(); break;
     case 'shopdone': finishShop(); render(); toast('商店已更新'); break;
-    // 發文：在 ✍️ Vocus 項目打勾後勾「發布了文章」。不論在第幾項，每天第一篇開寶箱（防刷），補登昨天不開
-    case 'pub': {
-      const it = getPlan(viewDay())[v];
-      it.pub = { ...(it.pub || {}), on: !(it.pub && it.pub.on) };
-      if (it.pub.on) { ac(); SFX.tap(); }
-      reward(() => {}, UI.pday === 0);
-      break;
-    }
     case 'openchest': openChest(); break;
     case 'close': UI.opened = false; nextChest(); break;
     case 'mute':
       S.mute = !S.mute; save(); render();
-      if (!S.mute) { ac(); SFX.tap(); }   // 打開時響一聲，確認有聲音
+      if (!S.mute) { ac(); SFX.tap(); }
       toast(S.mute ? '音效已關閉' : '音效已開啟'); break;
-    case 'fact': { const c = CR[v]; toast(`${c.name}：${c.fact}`); break; }
+    case 'fact': UI.sheet = { creature: v }; renderSheet(); break;
     case 'pdone': {
       const d = viewDay(), it = getPlan(d)[v], c = catOf(it.cat);
       if (UI.pday > 0) break;
       if (!it.text.trim()) { toast('先寫下這件事'); render(); break; }
       it.done = !it.done;
       if (it.done) ac();
-      // 只有「今天」打勾才開寶箱，每一格一天只抽一次；昨天的補勾只算連續天數。
-      // 勾錯可以取消：獎勵先收進 it.held，再勾回來就原封不動還回去（不重抽）
+      // 只有「今天」打勾才開寶箱，每一格一天只抽一次；勾錯取消時獎勵先收進 it.held，再勾回來原封不動還回去
       reward(() => {
         if (UI.pday !== 0) { if (it.done) SFX.tap(); return; }
         if (!it.done) {
           let i = S.logs.findIndex(l => it.lid && l.id === it.lid);
           if (i < 0 && it.rw) {
-            // 舊版打勾沒記下是哪一筆：找同一天、同分類、還沒被其他項目認領的那筆
             const linked = new Set(Object.values(S.plans).flat().map(x => x.lid).filter(Boolean));
             for (let j = S.logs.length - 1; j >= 0; j--) {
               const l = S.logs[j];
@@ -1070,7 +1170,7 @@ document.addEventListener('click', async e => {
         if (it.held) { S.logs.push(it.held); delete it.held; SFX.tap(); toast('已恢復這一項的獎勵'); return; }
         if (it.rw || +v >= CONFIG.rewardRows) { SFX.tap(); return; }
         it.rw = true;
-        it.lid = grant('check', c.n, { title: `${c.e} ${it.text} ✔`, xp: it.cat === 'exercise' ? CONFIG.xp.exercise : CONFIG.xp.check }).id;
+        it.lid = grant('check', c.n, { title: `${c.e} ${it.text} ✔`, xp: CONFIG.xp.check }).id;
       }, UI.pday === 0);
       break;
     }
@@ -1085,30 +1185,21 @@ document.addEventListener('click', async e => {
       S.logs.push({ id: rid(), t: Date.now(), d: dayKey(), k: 'redeem', name: it.name, c: -it.price });
       save(); render(); SFX.buy(); toast(`${it.icon} 兌換成功，去享受吧！`); break;
     }
-    case 'export': {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }));
-      a.download = `習慣深潛-備份-${dayKey()}.json`; a.click(); break;
-    }
+    case 'export': exportBackup(); break;
     case 'import': document.getElementById('importFile').click(); break;
-    case 'linknew':
-      try { await attach(await showSaveFilePicker({ suggestedName: '習慣深潛-存檔.json', types: FILE_TYPES }), true); toast('已連結，之後每次操作都會自動寫入'); } catch (e) {}
-      break;
-    case 'linkopen':
-      try {
-        const [h] = await showOpenFilePicker({ types: FILE_TYPES });
-        if (await h.requestPermission({ mode: 'readwrite' }) === 'granted') { await attach(h, false); toast('已連結存檔'); }
-      } catch (e) {}
-      break;
-    case 'relink':
-      try { if (await FS.handle.requestPermission({ mode: 'readwrite' }) === 'granted') await attach(FS.handle, false); } catch (e) {}
-      break;
   }
 });
-// 輸入框只存資料不重畫，避免打字時失去焦點；換分類、換頻率要重畫（欄位會變）
+// 點彈窗外面的暗色區域就關閉面板
+document.getElementById('sheetov').addEventListener('click', e => { if (e.target.id === 'sheetov') { UI.sheet = null; renderSheet(); } });
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('askov').classList.contains('hidden') && ask.res) {
+    if (e.key === 'Enter') { e.preventDefault(); ask.res(true); }
+    if (e.key === 'Escape') { e.preventDefault(); ask.res(false); }
+  } else if (e.key === 'Escape' && UI.sheet) { UI.sheet = null; renderSheet(); }
+});
+// 輸入框只存資料不重畫，避免打字時失去焦點
 document.addEventListener('input', e => {
   const el = e.target, i = el.dataset.i;
-  if (el.dataset.sf) { S.shop[el.dataset.si][el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); return; }
   if (el.id === 'pomoMin') {
     const m = Math.round(+el.value);
     if (m >= 5 && m <= 120) {
@@ -1118,6 +1209,12 @@ document.addEventListener('input', e => {
     }
     return;
   }
+  if (el.id === 'exDist' || el.id === 'exMin' || el.id === 'exType') {
+    const p = document.getElementById('exPace');
+    if (p) p.textContent = paceText({ type: document.getElementById('exType').value, dist: +document.getElementById('exDist').value, min: +document.getElementById('exMin').value });
+    return;
+  }
+  if (el.dataset.sf) { S.shop[el.dataset.si][el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); return; }
   if (el.dataset.gf) { S.gcats[el.dataset.gi][el.dataset.gf] = el.value; save(); return; }
   if (el.dataset.hf) {
     const h = S.habits[el.dataset.hi], f = el.dataset.hf;
@@ -1125,17 +1222,10 @@ document.addEventListener('input', e => {
     save(); if (f === 'weeks') render();
     return;
   }
-  if (i === undefined) return;
+  if (i === undefined || !el.dataset.pf) return;
   const it = getPlan(viewDay())[i];
-  if (el.dataset.pub) it.pub = { ...(it.pub || { on: true }), title: el.value };
-  else if (el.dataset.pf) {
-    it[el.dataset.pf] = el.value;
-    if (el.dataset.pf === 'cat') render();
-  } else if (el.dataset.ex) {
-    it.ex = it.ex || { type: ETAGS[0] };
-    it.ex[el.dataset.ex] = el.dataset.ex === 'dist' || el.dataset.ex === 'min' ? (el.value === '' ? '' : +el.value) : el.value;
-    const p = document.getElementById('pace' + i); if (p) p.textContent = paceText(it.ex);
-  }
+  it[el.dataset.pf] = el.value;
+  if (el.dataset.pf === 'cat') render();
   save();
 });
 document.getElementById('importFile').addEventListener('change', async e => {
@@ -1149,28 +1239,14 @@ document.getElementById('importFile').addEventListener('change', async e => {
   } catch (err) { toast('這不是有效的備份檔'); }
 });
 
-document.addEventListener('keydown', e => {
-  if (document.getElementById('askov').classList.contains('hidden') || !ask.res) return;
-  if (e.key === 'Enter') { e.preventDefault(); ask.res(true); }
-  if (e.key === 'Escape') { e.preventDefault(); ask.res(false); }
-});
-
 /* ========= 啟動 ========= */
-(async function init() {
+(function init() {
   document.getElementById('logo').innerHTML = img(CR.clown.px, 3);
   const bub = document.getElementById('bubbles');
   for (let i = 0; i < 10; i++) {
     const s = 3 + (i % 3) * 2;
     bub.insertAdjacentHTML('beforeend', `<i style="left:${(i * 37 + 7) % 100}%;width:${s}px;height:${s}px;animation-duration:${9 + (i * 7) % 11}s;animation-delay:-${(i * 3) % 13}s"></i>`);
   }
-  try {
-    const h = await idb.get('handle');
-    if (h) {
-      FS.handle = h;
-      FS.ok = (await h.queryPermission({ mode: 'readwrite' })) === 'granted';
-      if (FS.ok && S.logs.length <= 1) await attach(h, false);
-    }
-  } catch (e) {}
   render(); tick();
   setInterval(tick, 500);
   if (!derive().claimed.has('welcome')) { grant('welcome', null, { key: 'welcome' }); save(); render(); nextChest(); }
