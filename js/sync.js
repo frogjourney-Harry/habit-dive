@@ -48,7 +48,7 @@ async function cloudPull(first) {
     const snap = await userDoc().get();
     if (!snap.exists) { await cloudPush(); return; }
     const cloud = JSON.parse(snap.data().data), cm = cloud.mtime || 0, lm = S.mtime || 0;
-    if (cm === lm) { CLOUD.last = Date.now(); renderCloud(); return; }
+    if (cm === lm) { CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); return; }
     if (!hasProgress(S)) { adopt(cloud); toast('已從雲端載入你的紀錄'); }
     else if (!hasProgress(cloud)) await cloudPush();
     else if (first) {
@@ -68,7 +68,7 @@ async function cloudPush() {
   try {
     await userDoc().set({ data, mtime: S.mtime || 0, v: S.v, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     CLOUD.last = Date.now(); CLOUD.error = '';
-  } catch (e) { CLOUD.error = '同步失敗，稍後會再試'; CLOUD.pending = true; }
+  } catch (e) { CLOUD.error = '同步失敗，稍後會再試'; CLOUD.pending = true; CLOUD.timer = setTimeout(cloudPush, 30000); }
   renderCloud();
 }
 // save() 之後呼叫：幾秒內的變動合併成一次上傳，省寫入次數
@@ -115,13 +115,14 @@ function cloudSection() {
   else if (IN_APP) body = '<div class="mini">在 App 內建瀏覽器裡無法用 Google 登入。請用 Chrome 或 Safari 開啟網站後登入，紀錄就能在各裝置同步。</div>';
   else body = `<div class="mini">登入後紀錄會存到雲端，換手機、換瀏覽器都能接續，也不怕資料不見。不登入也能照常使用。</div>
       <button class="gbtn" data-act="login">${GOOGLE_G}用 Google 帳戶登入</button>`;
-  return `<section class="px">${sh('雲端同步', 'CLOUD')}${body}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div>` : ''}</section>`;
+  return `<section class="px" id="cloudBox">${sh('雲端同步', 'CLOUD')}${body}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div>` : ''}</section>`;
 }
 function cloudStatusText() {
   if (CLOUD.pending) return '同步中…';
   return CLOUD.last ? `已同步・${new Date(CLOUD.last).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}` : '同步中…';
 }
-function renderCloud() { const el = document.getElementById('cloudStatus'); if (el) el.textContent = cloudStatusText(); }
+// 只重畫雲端區塊（狀態、錯誤訊息），不動整個頁面
+function renderCloud() { const el = document.getElementById('cloudBox'); if (el) el.outerHTML = cloudSection(); }
 
 // 切到別的 App 前先把還沒上傳的存上去；切回來時看看別的裝置有沒有更新
 document.addEventListener('visibilitychange', () => {
