@@ -62,7 +62,7 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--ok);box-shadow:no
 /* HUD */
 .hud{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
 .depth{font-size:34px;line-height:1;color:var(--xp);font-weight:bold}
-.depth span{font-size:16px;margin-left:2px}
+.depth span{font-size:16px;margin-right:3px}
 .rank{color:var(--dim);font-size:14px;margin-top:4px}
 .hud-m{flex:1;min-width:180px}
 .hud-m small{font-size:14px}
@@ -232,9 +232,10 @@ const RARITY = [
   { name: '普通', color: 'var(--r0)' }, { name: '少見', color: 'var(--r1)' }, { name: '稀有', color: 'var(--r2)' },
   { name: '史詩', color: 'var(--r3)' }, { name: '傳說', color: 'var(--r4)' },
 ];
+// 等級稱號照潛水證照的進階路線：[從幾級開始, 稱號]
 const RANKS = [
-  [0, '浮潛客'], [5, '體驗潛水員'], [12, '開放水域潛水員'], [18, '進階潛水員'], [30, '深潛專長'],
-  [40, '休閒潛水極限'], [60, '技術潛水員'], [100, '深海探險家'], [150, '深淵行者'], [200, '馬里亞納傳說'],
+  [1, '浮潛客'], [3, '體驗潛水員'], [5, '開放水域潛水員'], [8, '進階潛水員'], [12, '救援潛水員'],
+  [16, '潛水長'], [20, '潛水教練'], [25, '技術潛水員'], [30, '深海探險家'], [40, '海洋傳說'],
 ];
 
 /* ========= 像素圖 ========= */
@@ -466,8 +467,10 @@ function streaks(D) {
     : chain(d => dayDone(D, d, h.id), today, d => addDays(d, -1), first, 2);
   return out;
 }
-const depthOf = xp => Math.floor(Math.sqrt(xp));
-const rankIdx = dep => RANKS.reduce((a, r, i) => dep >= r[0] ? i : a, 0);
+// 等級：升到 Lv.n 需要累積 10×(n−1)² XP，越後面越慢（Lv.5≈160、Lv.20≈3600、Lv.40≈15000）
+const levelOf = xp => Math.floor(Math.sqrt(Math.max(0, xp) / 10)) + 1;
+const xpFor = lv => 10 * (lv - 1) ** 2;
+const rankIdx = lv => RANKS.reduce((a, r, i) => lv >= r[0] ? i : a, 0);
 
 /* ========= 音效 ========= */
 let AC;
@@ -564,11 +567,11 @@ function reconcile(allowGrant) {
 }
 // 做完 fn 之後檢查額外寶箱與升級，再存檔、播寶箱。補登昨天時 allowGrant=false：只還原、不發新獎勵
 function reward(fn, allowGrant = true) {
-  const before = rankIdx(depthOf(derive().xp));
+  const before = levelOf(derive().xp);
   fn();
   reconcile(allowGrant);
-  const after = rankIdx(depthOf(derive().xp));
-  if (after > before) Q.push({ rank: after });
+  const after = levelOf(derive().xp);
+  if (after > before) Q.push({ level: after, title: rankIdx(after) > rankIdx(before) ? RANKS[rankIdx(after)][1] : '' });
   save(); render(); nextChest();
 }
 
@@ -634,10 +637,10 @@ function nextChest() {
   const it = Q.shift(), ov = document.getElementById('ov'), m = document.getElementById('modal');
   if (!it) { ov.classList.add('hidden'); return; }
   UI.opened = true; UI.cur = it; ov.classList.remove('hidden');
-  if (it.rank !== undefined) {
-    const [dep, name] = RANKS[it.rank];
-    m.innerHTML = `<div class="label">NEW DEPTH</div><h2>抵達 ${dep} m</h2><div class="depth pop">${name}</div>
-      <p class="dim">比昨天的自己再深一點。</p><button class="pri" data-act="close">繼續下潛</button>`;
+  if (it.level !== undefined) {
+    m.innerHTML = `<div class="label">LEVEL UP</div><div class="depth pop" style="margin:10px 0">Lv.${it.level}</div>
+      ${it.title ? `<h2>取得稱號：${it.title}</h2>` : `<p class="dim">${RANKS[rankIdx(it.level)][1]}</p>`}
+      <button class="pri" data-act="close">繼續</button>`;
     SFX.rank(); return;
   }
   m.innerHTML = `<h2>${esc(it.title)}</h2>${img(CHEST, 9, false, 'shake')}<p class="dim">點一下打開寶箱</p>
@@ -660,12 +663,12 @@ function openChest() {
 
 /* ========= 畫面 ========= */
 function render() {
-  const D = derive(), dep = depthOf(D.xp), ri = rankIdx(dep), nxt = RANKS[ri + 1];
-  const lo = RANKS[ri][0] ** 2, hi = nxt ? nxt[0] ** 2 : lo + 1;
+  const D = derive(), lv = levelOf(D.xp), ri = rankIdx(lv), nxt = RANKS[ri + 1];
+  const lo = xpFor(lv), hi = xpFor(lv + 1);
   document.getElementById('hud').innerHTML = `
-    <div><div class="label">深度</div><div class="depth">${dep}<span>m</span></div><div class="rank">${RANKS[ri][1]}</div></div>
-    <div class="hud-m"><div class="bar"><i style="width:${nxt ? Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100)) : 100}%"></i></div>
-      <small>${nxt ? `距離 ${nxt[0]}m「${nxt[1]}」還差 ${hi - D.xp} XP` : '已抵達最深處'}</small></div>
+    <div><div class="label">等級</div><div class="depth"><span>Lv.</span>${lv}</div><div class="rank">${RANKS[ri][1]}</div></div>
+    <div class="hud-m"><div class="bar"><i style="width:${Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100))}%"></i></div>
+      <small>升到 Lv.${lv + 1} 還差 ${hi - D.xp} XP${nxt ? `・Lv.${nxt[0]} 成為「${nxt[1]}」` : ''}</small></div>
     <div class="hud-r"><div class="label">金幣</div><div class="coin big">${D.coins.toLocaleString()}${COIN}</div>
       <label class="switch" title="音效開關"><span>音效</span><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button></label></div>`;
   document.getElementById('banner').innerHTML = FS.handle && !FS.ok
@@ -908,7 +911,7 @@ const ABOUT_LINKS = [
 function about() {
   return `<section class="px">${sh('關於習慣深潛', 'ABOUT')}
     <p>嗨，我是 Harry，喜歡潛水，也在努力每週寫文章。這個遊戲是我為了讓自己持續寫作和運動而做的：每天寫下最重要的事，完成就開寶箱，收集我在海裡遇過（或還在等）的生物。</p>
-    <p class="dim">往下潛的深度、圖鑑裡的鬼蝠魟和翻車魚，都來自我的潛水經驗。希望它也能陪你一點一點往下潛。</p></section>
+    <p class="dim">從浮潛客一路升到潛水教練的稱號、圖鑑裡的鬼蝠魟和翻車魚，都來自我的潛水經驗。希望它也能陪你一點一點往前進。</p></section>
   <section class="px">${sh('我的文章', 'READ')}
     ${ABOUT_LINKS.map(l => `<a class="link" href="${l.url}" target="_blank" rel="noopener">
       <span class="sp"><b>${esc(l.title)}</b><br><small>${esc(l.sub)}</small></span><span class="dim">↗</span></a>`).join('')}</section>
