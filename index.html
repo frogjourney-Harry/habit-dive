@@ -148,6 +148,7 @@ nav{display:flex;flex-wrap:wrap;margin:0 0 12px}
 const CONFIG = {
   pomodoroMin: 25,            // 番茄鐘預設長度；使用者可在番茄鐘區域調整（5–120 分）
   pomoRewardMin: 20,          // 專注滿這麼多分鐘才開寶箱，避免設 1 分鐘來刷
+  breakMin: 5, longBreakMin: 15, longBreakEvery: 4,   // 番茄工作法：每顆後短休息，每 4 顆長休息
   dayStartHour: 4,            // 凌晨 4 點前都算「前一天」，熬夜做的也算數
   habitDays: 66,              // Lally et al. 2010：習慣自動化所需天數中位數
   maxCustom: 5,               // 自訂習慣最多幾個（不含內建的六件事、Vocus、運動）
@@ -523,6 +524,7 @@ const pomoMin = () => S.pomoMin || CONFIG.pomodoroMin;
 function startTimer() {
   if (S.timer) return;
   ac();
+  S.breakReady = false;
   S.timer = { start: Date.now(), dur: pomoMin() * 60e3 };
   SFX.tap(); save(); render(); tick();
 }
@@ -531,6 +533,12 @@ function tick() {
   const T = S.timer, left = T.start + T.dur - Date.now();
   if (left <= 0) {
     S.timer = null;
+    if (T.mode === 'break') {
+      SFX.done(); document.title = '⏰ 休息結束';
+      save(); render(); toast('休息結束，準備好就開始下一顆吧！');
+      return;
+    }
+    S.breakReady = true;
     const mins = Math.round(T.dur / 60e3), d = dayKey(T.start);
     SFX.done(); document.title = '✅ 番茄完成！';
     if (mins >= CONFIG.pomoRewardMin) reward(() => grant('pomo', null, { title: `🍅 專注 ${mins} 分鐘完成！`, d, extra: { min: mins } }));
@@ -675,11 +683,17 @@ function today(D) {
       <input class="ptext" data-pf="text" data-i="${i}" value="${esc(it.text)}" placeholder="${esc(placeholder(c))}"></div>${ex}`;
   }).join('');
   const T = S.timer, pm = pomoMin(), todayPomo = S.logs.filter(l => l.k === 'pomo' && l.d === td).length;
+  const longBreak = todayPomo > 0 && todayPomo % CONFIG.longBreakEvery === 0;
+  const breakLen = longBreak ? CONFIG.longBreakMin : CONFIG.breakMin;
   const timer = T ? `<section class="px timer">
-      <div>🍅 專注中（${Math.round(T.dur / 60e3)} 分鐘）</div>
+      <div>${T.mode === 'break' ? '☕ 休息中' : '🍅 專注中'}（${Math.round(T.dur / 60e3)} 分鐘）</div>
       <div class="clock" id="tclock">--:--</div><div class="bar c"><i id="tbar" style="width:0"></i></div>
-      <small>關掉這個頁面也沒關係，時間到再打開就會自動領獎。</small><br>
-      <button class="ghost" data-act="cancel">放棄這顆番茄</button></section>`
+      <small>${T.mode === 'break' ? '起來走走、喝口水，讓眼睛離開螢幕。' : '關掉這個頁面也沒關係，時間到再打開就會自動領獎。'}</small><br>
+      <button class="ghost" data-act="cancel">${T.mode === 'break' ? '結束休息' : '放棄這顆番茄'}</button></section>`
+    : S.breakReady ? `<section class="px timer"><div>🎉 完成一顆番茄！${longBreak ? '已經 ' + todayPomo + ' 顆了，' : ''}休息一下</div>
+      <div class="row" style="justify-content:center">
+        <button class="pri" data-act="breakstart">☕ 休息 ${breakLen} 分鐘</button><button data-act="breakskip">跳過休息</button></div>
+      <div class="mini">番茄工作法：每顆之後休息 ${CONFIG.breakMin} 分鐘，每 ${CONFIG.longBreakEvery} 顆長休息 ${CONFIG.longBreakMin} 分鐘。</div></section>`
     : `<section class="px"><div class="row"><b>🍅 番茄鐘</b><span class="sp"></span><small class="dim">今天完成 ${todayPomo} 顆</small></div>
       <div class="row">${[15, 25, 45, 60].map(m => `<button class="${pm === m ? 'sel' : ''}" data-act="pomoset" data-v="${m}">${m} 分</button>`).join('')}
         <input type="number" id="pomoMin" min="5" max="120" step="5" value="${pm}" style="width:70px" title="自訂長度（分鐘）"><span class="dim">分</span>
@@ -845,8 +859,16 @@ document.addEventListener('click', async e => {
     case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tab = v; render(); break;
     case 'pday': UI.pday = +v; render(); break;
     case 'start': startTimer(); break;
+    case 'breakstart': {
+      const td = dayKey(), cnt = S.logs.filter(l => l.k === 'pomo' && l.d === td).length;
+      const len = cnt > 0 && cnt % CONFIG.longBreakEvery === 0 ? CONFIG.longBreakMin : CONFIG.breakMin;
+      S.breakReady = false; S.timer = { mode: 'break', start: Date.now(), dur: len * 60e3 };
+      ac(); SFX.tap(); save(); render(); tick(); break;
+    }
+    case 'breakskip': S.breakReady = false; save(); render(); break;
     case 'pomoset': S.pomoMin = +v; save(); render(); break;
     case 'cancel':
+      if (S.timer && S.timer.mode === 'break') { S.timer = null; save(); render(); tick(); break; }
       if (await ask('放棄這顆番茄？\n不會有獎勵。', '放棄', '繼續專注')) { S.timer = null; save(); render(); tick(); }
       break;
     case 'askyes': ask.res && ask.res(true); break;
