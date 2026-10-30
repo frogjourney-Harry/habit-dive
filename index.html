@@ -345,7 +345,7 @@ const CREATURES = [
   { id:'shark', name:'白鰭鯊', r:2, fact:'白天常趴在礁洞底下休息。', px: ['.......kk.......','......kwk.......','k...kkSSkkkk....','kwkkSSSSSSSSkkk.','.kSSSSSSSSSSSkSk','kwkkwwwwwwwwwwk.','k...kkwkkkkkkk..','......kwk.......'] },
   { id:'moray', name:'裸胸鯙', r:2, fact:'嘴巴一開一合是在呼吸，不是要咬你。', px: ['..........kkkk..','...kkkkkkkgggkk.','..kgygggygggkgwk','.kgggygggyggggkk','kgkkkkkkkkkkkwwk','k...............'] },
   { id:'jelly', name:'水母', r:2, fact:'沒有腦也沒有心臟，已在海裡活了五億年。', px: ['...kkkkk...','..kcccccck.','.kcwcccccck','kccccccccck','kkkkkkkkkkk','.c.c.c.c.c.','.c..c.c..c.','..c.c..c.c.','..c..c.c...','.c...c..c..'] },
-  { id:'manta', name:'鬼蝠魟', r:3, fact:'Nusa Penida Manta Point 的明星，翼展可達 7 公尺。', px: ['......kk.kk......','.....knkkknk.....','...kknnnnnnnkk...','.kknnnnnnnnnnnkk.','knnnnnnwnwnnnnnnk','.kkknnnnnnnnnkkk.','....kkknnnkkk....','.......knk.......','........k........'] },
+  { id:'manta', name:'鬼蝠魟', r:3, fact:'Nusa Penida Manta Point 的明星，翼展可達 7 公尺。', px: ['.........kk..........', '........knnk.........', '........knnnk........', '.......knnnnnkk......', '......knnnnnnnnk.....', '......knnnnnnwnnk.kk.', '.....knnnnnnnnnnnkk..', 'kkkkknnnnnnnnnnnnnnk.', '.....knnnnnnnnnnnkk..', '......knnnnnnwnnk.kk.', '......knnnnnnnnk.....', '.......knnnnnkk......', '........knnnk........', '........knnk.........', '.........kk..........'] },
   { id:'mola', name:'翻車魚', r:3, fact:'Crystal Bay 的夢幻魚種，世界最重的硬骨魚。', px: ['....k.......','...ksk......','.kkssskkk...','kssssssssk..','kssssssskwk.','ksswssssssk.','kssssssssssk','kswsssssssk.','.kkssssskk..','...ksssk....','....ksk.....','.....k......'] },
   { id:'dolphin', name:'海豚', r:3, fact:'睡覺時只讓半邊大腦休息。', px: ['........k.......','.......kbk......','k...kkkbbbkkk...','kbkkbbbbbbbbbkk.','.kbbbbbbbbbbkbkk','kbkkwwwwwwwwwkbk','k...kkkbkkkkkkk.','.......k........'] },
   { id:'whaleshark', name:'鯨鯊', r:4, fact:'世界上最大的魚，卻只吃浮游生物。', px: ['........kk........','.......knk........','k....kkknnkkkk....','kk.kknwnnnwnnnnkk.','knkknnnnwnnnnwnknk','knnnnwnnnnwnnnnnnk','kkkkwwwwwwwwwwwwk.','k...kkkkknkkkkkk..','.........k........'] },
@@ -376,7 +376,7 @@ const JUV = {
   shark: ['....kk.....', '...kSk.....', 'k.kSSSSkk..', 'kkSSSSSSkSk', 'k.kwwwwwkk.', '....kwk....'],
   moray: ['......kkk.', '.kkkkkgggk', 'kgygygggwk', '.kkkkkkkk.'],
   jelly: ['.c.c.c.', 'ccccccc', '.ccwcc.', 'ccccccc', '.c.c.c.'],      // 碟狀幼體
-  manta: ['..kk.kk..', '.knnnnnk.', 'knnwnwnnk', '.kknnnkk.', '....k....'],
+  manta: ['.....kk......', '....knnnk....', '...knnnnwk.k.', '..knnnnnnnkk.', 'kkknnnnnnnnk.', '..knnnnnnnkk.', '...knnnnwk.k.', '....knnnk....', '.....kk......'],
   mola: ['....k....', '...ksk...', '.kkssskk.', 'kssssskwk', 'ksssssssk', '.kkssskk.', '...ksk...', '....k....'],   // 小翻車魚：上下兩片鰭、圓圓的身體
   dolphin: ['.....k....', '....kbk...', 'k..kbbbkk.', 'kbkbbbbkbk', 'k..kwwwkk.'],
   whaleshark: ['......k.....', '.....knk....', 'k..kknnnkkk.', 'kkknwnnwnnkk', 'k..kkwwwwwk.'],
@@ -390,7 +390,7 @@ const MORPH = {
   hermit: { n: '藍腿寄居蟹', map: { r: '#41a6f6' } },                     // Clibanarius tricolor
   urchin: { n: '火焰海膽', map: { P: '#e43b44' } },                       // Asthenosoma varium
   turtle: { n: '玳瑁', map: { G: '#7a4a1c', g: '#d9a441', y: '#ffe0a0' } },   // 綠蠵龜的近親，極度瀕危
-  octopus: { n: '藍環章魚', map: { r: '#ffcd75', w: '#41a6f6' } },        // Hapalochlaena
+  octopus: { n: '藍環章魚', map: {}, px: ['....kkkkkkk....', '...kyyybyyyk...', '..kyyybybyyyk..', '..kybyybyybyk..', '..kbybyyybybk..', '..kybyyyyybyk..', '..kywkyyywkyk..', '...kyyyyyyyk...', '..kykykykykyk..', '.kyk.ky.yk.kyk.', 'kyk..ky.yk..kyk', 'yk...k...k...ky', 'k.............k'] },   // Hapalochlaena，身上的藍環
   nudi: { n: '藍龍海蛞蝓', map: { P: '#41a6f6', o: '#73eff7', y: '#f4f4f4' } },   // Glaucus atlanticus
   lion: { n: '黑色獅子魚', map: { r: '#3a3f58', w: '#f4f4f4' } },         // 魔鬼蓑鮋的黑色型
   puffer: { n: '星斑河豚', map: { y: '#94b0c2', w: '#f4f4f4' } },         // 近親 Arothron stellatus
@@ -770,7 +770,7 @@ function openChest() {
   const it = UI.cur, cr = it.cr, R = RARITY[cr.r];
   document.getElementById('modal').innerHTML = `
     <div><span class="rar" style="background:${R.color}">${R.name}</span></div>
-    ${img(cr.px, 9, false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
+    ${img(cr.px, Math.min(9, Math.floor(200 / Math.max(...cr.px.map(r => r.length)))), false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
     <h2>${cr.name} ${it.isNew ? '<span class="new">NEW</span>' : `<small>×${it.owned}</small>`}</h2>
     <div class="dim" style="font-size:15px">${cr.fact}</div>
     <div class="gain"><span style="color:var(--xp)">+${it.xp} XP</span>　<span class="coin">+${it.c + it.dup}${COIN}</span></div>
@@ -991,7 +991,7 @@ const seenStage = sp => Math.max(1, (S.seen && S.seen[sp]) || 1, ...pets(sp).map
 const stageCv = {};
 function stageCanvas(c, s) {
   const key = c.id + s; if (stageCv[key]) return stageCv[key];
-  const rows = s === 1 ? JUV[c.id] : c.px, map = s === 3 ? MORPH[c.id].map : {};
+  const rows = s === 1 ? JUV[c.id] : s === 3 && MORPH[c.id].px ? MORPH[c.id].px : c.px, map = s === 3 ? MORPH[c.id].map : {};
   const cv = document.createElement('canvas'); cv.width = Math.max(...rows.map(r => r.length)); cv.height = rows.length;
   const x = cv.getContext('2d');
   rows.forEach((r, j) => [...r].forEach((ch, i) => {
@@ -1020,8 +1020,8 @@ function dex(D) {
     ${RARITY.map((R, r) => `<div class="grp row"><span class="rar" style="background:${R.color}">${R.name}</span>
       <small>掉落率 ${(CONFIG.rarityRates[r] / total * 100).toFixed(1).replace('.0', '')}%</small></div>
       <div class="dex">${CREATURES.filter(c => c.r === r).map(c => D.col[c.id]
-        ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${stageImg(c, seenStage(c.id), 5)}<div class="nm">${c.name}</div><small>${pets(c.id).length} 隻</small></div>`
-        : `<div class="cell no">${img(c.px, 5, true)}<div class="nm dim">？？？</div><small>&nbsp;</small></div>`).join('')}</div>`).join('')}</section>`;
+        ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${stageImg(c, seenStage(c.id), Math.min(5, Math.floor(100 / stageCanvas(c, seenStage(c.id)).width)))}<div class="nm">${c.name}</div><small>${pets(c.id).length} 隻</small></div>`
+        : `<div class="cell no">${img(c.px, Math.min(5, Math.floor(100 / Math.max(...c.px.map(r => r.length)))), true)}<div class="nm dim">？？？</div><small>&nbsp;</small></div>`).join('')}</div>`).join('')}</section>`;
 }
 
 /* ========= 水族箱小遊戲 ========= */
@@ -1030,7 +1030,7 @@ function dex(D) {
 const TANK_SPECIES = {
   clown: [1, .45], damsel: [.9, .6], butterfly: [1, .4], star: [1, .05, 1], hermit: [1, .18, 1], urchin: [1, .04, 1],
   turtle: [1.7, .2], octopus: [1.3, .25], nudi: [.9, .07, 1], lion: [1.3, .2], puffer: [1.1, .25], cuttle: [1.3, .35],
-  seahorse: [1, .1], shark: [2.3, .7], moray: [1.8, .3], jelly: [1.3, .08], manta: [2.6, .35], mola: [2.3, .15],
+  seahorse: [1, .1], shark: [2.3, .7], moray: [1.8, .3], jelly: [1.3, .08], manta: [2.1, .35], mola: [2.3, .15],
   dolphin: [2.2, .9], whaleshark: [3.3, .2],
 };
 const STAGE_SCALE = [1, 1, 1.1];   // 幼體圖本身就比較小
