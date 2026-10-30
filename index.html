@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>習慣深潛</title>
+<meta name="description" content="像素風的習慣養成遊戲：每天寫下最重要的事，完成就開寶箱、收集水下生物。資料只存在你自己的瀏覽器。">
+<meta name="theme-color" content="#0b2546">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="習慣深潛">
+<!-- 不載入任何外部資源；所有資料只存在使用者自己的瀏覽器（localStorage），不會上傳。 -->
+<style>
+:root{
+  --panel:#0f2747; --panel2:#17406e; --line:#2b5d94; --ink:#e8f1ff; --dim:#8fb0d6;
+  --coin:#ffcd75; --xp:#73eff7; --ok:#38b764; --warn:#ef7d57;
+  --r0:#94b0c2; --r1:#38b764; --r2:#41a6f6; --r3:#b267e6; --r4:#ffcd75;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{color:var(--ink);background:#051226;min-height:100vh;
+  font:15px/1.55 "Cascadia Mono",Consolas,"Microsoft JhengHei UI","Microsoft JhengHei",monospace}
+body::before{content:"";position:fixed;inset:0;z-index:-2;background:linear-gradient(180deg,
+  #1a4f80 0 12%,#15406c 12% 28%,#103258 28% 46%,#0b2546 46% 66%,#081a35 66% 84%,#051226 84%)}
+.bubbles i{position:fixed;bottom:-12px;width:6px;height:6px;background:rgba(115,239,247,.3);z-index:-1;animation:rise linear infinite}
+@keyframes rise{to{transform:translateY(-110vh)}}
+@media (prefers-reduced-motion:reduce){.bubbles{display:none}}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+.px{background:var(--panel);margin:4px 4px 16px;padding:12px 14px;
+  box-shadow:0 -4px 0 var(--line),0 4px 0 var(--line),-4px 0 0 var(--line),4px 0 0 var(--line),0 9px 0 rgba(0,0,0,.35)}
+button{font:inherit;color:var(--ink);background:var(--panel2);border:0;padding:5px 12px;margin:5px 4px;cursor:pointer;
+  box-shadow:0 -3px 0 #3f78b6,0 3px 0 #08162b,-3px 0 0 #2b5d94,3px 0 0 #2b5d94}
+button:hover{background:#1f5590}
+button:active{transform:translateY(2px)}
+button:disabled{opacity:.35;cursor:not-allowed;transform:none}
+button.pri{background:#2a8048;box-shadow:0 -3px 0 #4fc073,0 3px 0 #0d3a1e,-3px 0 0 #2f9a55,3px 0 0 #2f9a55}
+button.pri:hover{background:#33955a}
+button.sel{background:#e0a940;color:#1a1c2c;box-shadow:0 -3px 0 #ffd98a,0 3px 0 #7a5a1c,-3px 0 0 #c59a3c,3px 0 0 #c59a3c}
+button.ghost{background:transparent;box-shadow:none;color:var(--dim);padding:2px 6px}
+button.ghost:hover{color:var(--ink)}
+small,.dim{color:var(--dim)}
+b{color:#fff}
+.hidden{display:none!important}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sp{flex:1}
+input,select{font:inherit;color:var(--ink);background:#08182f;border:0;padding:4px 6px;box-shadow:inset 0 0 0 2px #2b5d94;color-scheme:dark}
+input:focus,select:focus{outline:none;box-shadow:inset 0 0 0 2px var(--coin)}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--ok);box-shadow:none;cursor:pointer;flex:none}
+
+/* HUD */
+.hud{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.depth{font-size:28px;line-height:1;color:var(--xp)}
+.depth b{color:var(--xp)}
+.rank{color:var(--dim);font-size:13px}
+.hud-m{flex:1;min-width:180px}
+.bar{height:12px;background:#08182f;box-shadow:inset 0 0 0 2px #1d3d66;margin:4px 0}
+.bar i{display:block;height:100%;background:var(--xp)}
+.bar.c i{background:var(--coin)}
+.coin{color:var(--coin);font-size:20px}
+nav{display:flex;flex-wrap:wrap;margin:0 0 12px}
+.banner{background:#5a2a14;margin:4px 4px 16px;padding:8px 12px;box-shadow:0 0 0 3px var(--warn)}
+
+/* 今日 */
+.habits{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.habits div{background:#123259;padding:6px 8px;font-size:13px}
+.habits .on{box-shadow:inset 0 0 0 2px var(--ok)}
+.streak{color:var(--warn)}
+.warn{color:var(--warn);font-size:13px;margin-top:8px}
+.done-tag{color:var(--ok)}
+.mini{font-size:12px;color:var(--dim);margin-top:4px}
+.erow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:2px dashed #1d3d66;flex-wrap:wrap}
+.erow input.sp{flex:1 1 100px;min-width:0}
+.prow{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
+.prow .ptext{flex:1 1 220px;min-width:0}
+.prow.done .ptext{text-decoration:line-through;color:var(--dim)}
+.prow b{width:14px;text-align:center}
+.timer{text-align:center;box-shadow:0 -4px 0 var(--coin),0 4px 0 var(--coin),-4px 0 0 var(--coin),4px 0 0 var(--coin),0 9px 0 rgba(0,0,0,.35)}
+.clock{font-size:56px;line-height:1.1;color:var(--coin);letter-spacing:4px}
+.pomo{color:var(--warn);font-size:13px;white-space:nowrap}
+.exrow{margin:-2px 0 10px 52px;font-size:13px}
+.exrow input{width:72px}
+.exrow .note{flex:1;min-width:140px;width:auto}
+@media (max-width:520px){.exrow{margin-left:0}}
+
+/* 寶箱 */
+.ov{position:fixed;inset:0;background:rgba(2,8,20,.8);display:flex;align-items:center;justify-content:center;z-index:10;padding:16px}
+.modal{width:min(380px,100%);text-align:center}
+.modal h2{margin:4px 0 10px;font-size:18px}
+.msg{white-space:pre-line;margin:6px 0 12px}
+.sprite{image-rendering:pixelated;image-rendering:crisp-edges;display:block;margin:8px auto}
+.shake{animation:shake .22s steps(2) infinite}
+@keyframes shake{0%{transform:translateX(-4px) rotate(-4deg)}100%{transform:translateX(4px) rotate(4deg)}}
+.pop{animation:pop .4s steps(5)}
+@keyframes pop{from{transform:scale(.2)}to{transform:scale(1)}}
+.rar{display:inline-block;padding:1px 8px;color:#1a1c2c;font-size:13px}
+.glow3{filter:drop-shadow(0 0 10px var(--r3))}
+.glow4{filter:drop-shadow(0 0 14px var(--r4));animation:pop .4s steps(5),gold 1s steps(2) infinite .4s}
+@keyframes gold{50%{filter:drop-shadow(0 0 24px #fff3b0)}}
+.new{color:var(--coin)}
+.gain{margin:10px 0;font-size:16px}
+
+/* 圖鑑 */
+.dex{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px}
+.dex .cell{background:#123259;padding:8px 4px;text-align:center;cursor:pointer;box-shadow:0 0 0 3px var(--rc)}
+.dex .cell.no{background:#0a1d36;cursor:default;opacity:.8}
+.dex .nm{font-size:13px}
+.grp{margin:14px 0 8px}
+
+/* 商店 */
+.shop .it{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:2px dashed #1d3d66}
+.shop .ic{font-size:24px;width:36px;text-align:center}
+.price{color:var(--coin);min-width:90px;text-align:right}
+.mini .bar{height:8px;display:inline-block;width:120px;vertical-align:middle;margin:0 6px}
+
+/* 紀錄 */
+.heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,13px);gap:3px;overflow-x:auto;padding-bottom:4px}
+.heat i{width:13px;height:13px;background:#10284a}
+.heat i.l1{background:#1f5a8a}.heat i.l2{background:#2f8fc0}.heat i.l3{background:#73eff7}.heat i.l4{background:#e8ffff}
+.heat i.today{outline:2px solid var(--coin)}
+.legend i{display:inline-block;width:11px;height:11px;margin:0 2px;vertical-align:middle}
+.stat{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.stat div{background:#123259;padding:8px 10px}
+.stat b{font-size:20px;display:block}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#17406e;padding:8px 16px;z-index:20;
+  box-shadow:0 0 0 3px var(--xp);max-width:90vw}
+</style>
+</head>
+<body>
+<div class="bubbles" id="bubbles"></div>
+<div class="wrap">
+  <header class="px hud" id="hud"></header>
+  <div id="banner"></div>
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<div class="ov hidden" id="ov"><div class="px modal" id="modal"></div></div>
+<div class="ov hidden" id="askov" style="z-index:15"><div class="px modal"><div class="msg" id="askmsg"></div>
+  <input id="askin" class="hidden" style="width:100%;margin-bottom:10px">
+  <button data-act="askno" id="askno">取消</button><button class="pri" data-act="askyes" id="askyes">確定</button></div></div>
+<div class="toast hidden" id="toast"></div>
+<input type="file" id="importFile" accept=".json,application/json" class="hidden">
+
+<script>
+/* ========= 可自行調整的設定 ========= */
+const CONFIG = {
+  pomodoroMin: 25,
+  dayStartHour: 4,            // 凌晨 4 點前都算「前一天」，熬夜做的也算數
+  habitDays: 66,              // Lally et al. 2010：習慣自動化所需天數中位數
+  maxCustom: 5,               // 自訂習慣最多幾個（不含內建的六件事、Vocus、運動）
+  xp:    { check: 10, exercise: 20, plan: 10, pomo: 10, pubchest: 30, period: 30, top3: 15 },
+  coins: { base: 5, rand: 6, critChance: 0.1, period: 40, welcome: 20, top3: 20, pubchest: 25 },
+  rewardRows: 3,              // 六件事只有前幾項打勾／番茄鐘會開寶箱，其餘只做紀錄
+  rarityRates: [55, 28, 12, 4.5, 0.5],   // 普通 / 少見 / 稀有 / 史詩 / 傳說（%）
+  dupCoins: [2, 5, 15, 40, 100],         // 抽到重複生物時換成的金幣
+  shop: [
+    { id: 'tea',     icon: '🧋', name: '喝一杯手搖飲',       price: 300 },
+    { id: 'episode', icon: '📺', name: '追一集劇',           price: 300 },
+    { id: 'sweet',   icon: '🍰', name: '吃一份甜點',         price: 500 },
+    { id: 'meal',    icon: '🍜', name: '吃一頓喜歡的餐廳',   price: 1200 },
+    { id: 'buy',     icon: '🛍', name: '買一樣想要很久的東西', price: 3500 },
+  ],
+  // 六件事裡不算連勝的一般分類
+  generalCats: [
+    { id: 'other',   e: '📌', n: '其他',     ph: '其他重要的事' },
+  ],
+};
+
+// 內建習慣（不能刪）。weeks: 0 = 每天；1、2 = 每 1／2 週至少 target 次
+// kind: plan = 寫好六件事、vocus = 勾「發布了文章」才算、exercise = 可記距離時間、custom = 自訂
+const DEFAULT_HABITS = [
+  { id: 'plan',     e: '📝', n: '六件事', kind: 'plan',     weeks: 0, target: 1 },
+  { id: 'vocus',    e: '✍️', n: 'Vocus',  kind: 'vocus',    weeks: 1, target: 1 },
+  { id: 'exercise', e: '🏃', n: '運動',   kind: 'exercise', weeks: 1, target: 3 },
+];
+const PH = { vocus: 'Vocus：今天寫哪一段？', exercise: '運動：跑步、游泳…' };
+const ETAGS = ['跑步', '游泳', '重訓', '潛水', '登山', '其他'];
+const RARITY = [
+  { name: '普通', color: 'var(--r0)' }, { name: '少見', color: 'var(--r1)' }, { name: '稀有', color: 'var(--r2)' },
+  { name: '史詩', color: 'var(--r3)' }, { name: '傳說', color: 'var(--r4)' },
+];
+const RANKS = [
+  [0, '浮潛客'], [5, '體驗潛水員'], [12, '開放水域潛水員'], [18, '進階潛水員'], [30, '深潛專長'],
+  [40, '休閒潛水極限'], [60, '技術潛水員'], [100, '深海探險家'], [150, '深淵行者'], [200, '馬里亞納傳說'],
+];
+
+/* ========= 像素圖 ========= */
+const PAL = { k:'#1a1c2c', w:'#f4f4f4', o:'#ef7d57', y:'#ffcd75', b:'#41a6f6', n:'#3b5dc9', c:'#73eff7',
+  g:'#38b764', G:'#257179', P:'#b267e6', r:'#e43b44', s:'#94b0c2', S:'#566c86', t:'#a0703c' };
+const FISH = [
+  '.....kkkk....',
+  '...kkAAAAkk..',
+  'kk.kAAAAAAAk.',
+  'kAkAAAAAAAkAk',
+  'kAAAAAAAAAAAk',
+  'kAkAAAAAAAAk.',
+  'kk.kAAAAAAk..',
+  '...kkAAAAk...',
+  '.....kkkk....',
+];
+function fish(body, stripes = {}, top) {
+  const rows = FISH.map(r => [...r].map((ch, i) => ch === 'A' ? (stripes[i] || body) : ch).join(''));
+  return top ? [top, ...rows] : rows;
+}
+const CHEST = ['.kkkkkkkkkk.','kttttttttttk','kttttttttttk','kyyyyyyyyyyk','ktttkyyktttk',
+  'ktttkyyktttk','kttttkkttttk','kttttttttttk','kyyyyyyyyyyk','.kkkkkkkkkk.'];
+
+const CREATURES = [
+  { id:'clown', name:'小丑魚', r:0, fact:'住在海葵裡，出生時全是雄性。', px: fish('o', {4:'w', 8:'w'}) },
+  { id:'damsel', name:'藍魔鬼雀鯛', r:0, fact:'珊瑚礁上最常見的亮藍色小魚。', px: fish('b', {1:'c', 2:'c'}) },
+  { id:'butterfly', name:'蝴蝶魚', r:0, fact:'多半成對生活，在礁石間一起覓食。', px: fish('y', {9:'k', 1:'w'}) },
+  { id:'star', name:'海星', r:0, fact:'沒有腦，斷掉的腕還能再長回來。', px: ['.....k.....','....kok....','....kok....','kkkkoookkkk','kooooyooook','.kkoooookk.','...kooook..','..kok.kok..','.kok...kok.','.kk.....kk.'] },
+  { id:'hermit', name:'寄居蟹', r:0, fact:'長大就要換更大的殼——跟習慣一樣。', px: ['....kkkkk...','...ktttttk..','..kttkkkttk.','..ktkttktk..','..kttkkttk..','.kkkttttk...','krrrkkkk....','krkrrk......','.k.k.k......'] },
+  { id:'urchin', name:'海膽', r:0, fact:'下水時最該注意別踩到的傢伙。', px: ['k....k....k','.k...k...k.','..k.kPk.k..','...kPPPk...','kkkPPPPPkkk','...kPPPk...','..k.kPk.k..','.k...k...k.','k....k....k'] },
+  { id:'turtle', name:'綠蠵龜', r:1, fact:'休息時可以閉氣好幾個小時。', px: ['.....kkkkk....','...kkGgGgGkk..','..kGgGgGgGgkkk','.kGgGgGgGgGkgk','.kyyyyyyyyykgk','..kkgkkkkgkkk.','..kgk....kgk..','...k......k...'] },
+  { id:'octopus', name:'章魚', r:1, fact:'三顆心臟、藍色的血。', px: ['...kkkkk...','..krrrrrk..','.krrrrrrrk.','.krwkrwkrk.','.krrrrrrrk.','..krrrrrk..','.krkrkrkrk.','kr.kr.kr.rk','k..k..k...k'] },
+  { id:'nudi', name:'海蛞蝓', r:1, fact:'微距攝影的最愛，配色一隻比一隻浮誇。', px: ['..o.o...o.o.o','.kPPPkkkkPPPk','kPPwPPPPPPPPk','kPPPPPwPPPPPk','.kyyyyyyyyyk.','..kkkkkkkkk..'] },
+  { id:'lion', name:'獅子魚', r:1, fact:'很美，但背鰭有毒，看就好。', px: fish('r', {3:'w', 5:'w', 7:'w', 9:'w'}, '...r.r.r.r...') },
+  { id:'puffer', name:'河豚', r:1, fact:'受到威脅時會吸水膨脹成一顆球。', px: ['..k..k..k..','...kkkkk...','..kyyyyyk..','.kyyyyykyk.','kkyyyyyyyyk','kyywwwwwyyk','.kwwwwwwwk.','..kkkkkkk..'] },
+  { id:'cuttle', name:'烏賊', r:1, fact:'能在一瞬間改變膚色與紋路。', px: ['....kkkkkkkk..','...kwswswswsk.','kkkswkswswswsk','sskswswswswswk','kkksssssssssk.','...kkkkkkkkk..'] },
+  { id:'seahorse', name:'海馬', r:2, fact:'由爸爸懷孕、生下寶寶。', px: ['..kkk...','.kyyyk..','.kykyyyk','..kyykk.','..kyyk..','.kyyyk..','kyyyyk..','kyyyk...','.kyyk...','..kyk...','.kyk....','.kk.....'] },
+  { id:'shark', name:'白鰭鯊', r:2, fact:'白天常趴在礁洞底下休息。', px: ['.......kk.......','......kwk.......','k...kkSSkkkk....','kwkkSSSSSSSSkkk.','.kSSSSSSSSSSSkSk','kwkkwwwwwwwwwwk.','k...kkwkkkkkkk..','......kwk.......'] },
+  { id:'moray', name:'裸胸鯙', r:2, fact:'嘴巴一開一合是在呼吸，不是要咬你。', px: ['..........kkkk..','...kkkkkkkgggkk.','..kgygggygggkgwk','.kgggygggyggggkk','kgkkkkkkkkkkkwwk','k...............'] },
+  { id:'jelly', name:'水母', r:2, fact:'沒有腦也沒有心臟，已在海裡活了五億年。', px: ['...kkkkk...','..kcccccck.','.kcwcccccck','kccccccccck','kkkkkkkkkkk','.c.c.c.c.c.','.c..c.c..c.','..c.c..c.c.','..c..c.c...','.c...c..c..'] },
+  { id:'manta', name:'鬼蝠魟', r:3, fact:'Nusa Penida Manta Point 的明星，翼展可達 7 公尺。', px: ['......kk.kk......','.....knkkknk.....','...kknnnnnnnkk...','.kknnnnnnnnnnnkk.','knnnnnnwnwnnnnnnk','.kkknnnnnnnnnkkk.','....kkknnnkkk....','.......knk.......','........k........'] },
+  { id:'mola', name:'翻車魚', r:3, fact:'Crystal Bay 的夢幻魚種，世界最重的硬骨魚。', px: ['....k.......','...ksk......','.kkssskkk...','kssssssssk..','kssssssskwk.','ksswssssssk.','kssssssssssk','kswsssssssk.','.kkssssskk..','...ksssk....','....ksk.....','.....k......'] },
+  { id:'dolphin', name:'海豚', r:3, fact:'睡覺時只讓半邊大腦休息。', px: ['........k.......','.......kbk......','k...kkkbbbkkk...','kbkkbbbbbbbbbkk.','.kbbbbbbbbbbkbkk','kbkkwwwwwwwwwkbk','k...kkkbkkkkkkk.','.......k........'] },
+  { id:'whaleshark', name:'鯨鯊', r:4, fact:'世界上最大的魚，卻只吃浮游生物。', px: ['........kk........','.......knk........','k....kkknnkkkk....','kk.kknwnnnwnnnnkk.','knkknnnnwnnnnwnknk','knnnnwnnnnwnnnnnnk','kkkkwwwwwwwwwwwwk.','k...kkkkknkkkkkk..','.........k........'] },
+];
+const CR = Object.fromEntries(CREATURES.map(c => [c.id, c]));
+
+const spriteCache = {};
+function spriteURL(rows, sil) {
+  const key = rows.join('|') + sil;
+  if (spriteCache[key]) return spriteCache[key];
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const x = cv.getContext('2d');
+  rows.forEach((r, j) => [...r].forEach((ch, i) => {
+    if (ch === '.' || !PAL[ch]) return;
+    x.fillStyle = sil ? '#1b3a60' : PAL[ch]; x.fillRect(i, j, 1, 1);
+  }));
+  return spriteCache[key] = { src: cv.toDataURL(), w, h };
+}
+function img(rows, scale, sil = false, cls = '') {
+  const s = spriteURL(rows, sil);
+  return `<img class="sprite ${cls}" src="${s.src}" width="${s.w * scale}" height="${s.h * scale}" alt="">`;
+}
+
+/* ========= 日期 ========= */
+const pad = n => String(n).padStart(2, '0');
+const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const dayKey = (ts = Date.now()) => keyOf(new Date(ts - CONFIG.dayStartHour * 3600e3));
+const parseKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+const addDays = (k, n) => { const d = parseKey(k); d.setDate(d.getDate() + n); return keyOf(d); };
+const weekKey = k => { const d = parseKey(k); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return keyOf(d); };
+const EPOCH = '2026-01-05'; // 一個星期一，兩週為一期時從這天起算
+function periodKey(d, weeks) {
+  const w = weekKey(d);
+  if (weeks <= 1) return w;
+  const days = Math.round((parseKey(w) - parseKey(EPOCH)) / 864e5);
+  return addDays(EPOCH, Math.floor(days / (7 * weeks)) * 7 * weeks);
+}
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+const rid = () => Math.random().toString(36).slice(2);
+
+/* ========= 存檔 ========= */
+const KEY = 'habitdive.v1';
+const blank = () => ({ v: 3, logs: [], plans: {}, mute: false });
+const OLD_CAT = { '☀️': 'wake', '💻': 'research', '✍️': 'vocus', '🏃': 'exercise', '📘': 'digital', '📌': 'other' };
+// v1：六件事有 line/time/dur；v2：分類用 emoji、習慣寫死；v3：習慣可自訂，分類改用習慣 id
+function migrate(s) {
+  const old = (s.v || 1) < 3;
+  for (const l of s.logs) if (!l.id) l.id = rid();   // 讓舊紀錄也能被收回
+  for (const P of Object.values(s.plans || {})) for (const it of P) {
+    if (!it.cat) it.cat = it.line || '📌';
+    if (OLD_CAT[it.cat]) it.cat = OLD_CAT[it.cat];
+    if (it.done && it.rw === undefined) it.rw = true;
+    delete it.line; delete it.time; delete it.dur; delete it.cal;
+  }
+  if (!s.habits) {
+    s.habits = DEFAULT_HABITS.map(h => ({ ...h }));
+    if (s.vcfg) { Object.assign(s.habits[1], { weeks: s.vcfg.weeks, target: s.vcfg.target }); s.vocusSet = true; }
+    // 舊版使用者原本就有早起、研究，轉成他的自訂習慣
+    if (old && (s.logs.length > 1 || Object.keys(s.plans || {}).length))
+      s.habits.push({ id: 'wake', e: '☀️', n: '早起', kind: 'custom', weeks: 0, target: 1 },
+                    { id: 'research', e: '💻', n: '研究', kind: 'custom', weeks: 0, target: 1 });
+    delete s.vcfg;
+  }
+  if (s.timer && s.timer.i === undefined) delete s.timer;   // v1 的番茄鐘格式
+  s.v = 3;
+  return s;
+}
+function load() {
+  try { const j = JSON.parse(localStorage.getItem(KEY)); if (j && Array.isArray(j.logs)) return migrate(Object.assign(blank(), j)); } catch (e) {}
+  return migrate(blank());
+}
+let S = load();
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  clearTimeout(save.t); save.t = setTimeout(writeFile, 400);
+}
+
+// 檔案存檔（File System Access API，電腦版 Chrome／Edge）：每次變動自動寫進使用者指定的 JSON 檔
+const FS = { handle: null, ok: false, last: '' };
+const idb = (() => {
+  let p;
+  const db = () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open('habitdive', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  return {
+    get: async k => { const d = await db(); return new Promise((res, rej) => { const r = d.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+    set: async (k, v) => { const d = await db(); return new Promise((res, rej) => { const t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); },
+  };
+})();
+async function writeFile() {
+  if (!FS.ok || !FS.handle) return;
+  try {
+    const w = await FS.handle.createWritable(); await w.write(JSON.stringify(S)); await w.close();
+    FS.last = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) { FS.ok = false; }
+  if (UI.tab === 'log') render();
+}
+async function attach(h, fresh) {
+  FS.handle = h; FS.ok = true;
+  try { await idb.set('handle', h); } catch (e) {}
+  if (!fresh) {
+    try {
+      const j = JSON.parse(await (await h.getFile()).text());
+      if (j && Array.isArray(j.logs) && j.logs.length && JSON.stringify(j.logs) !== JSON.stringify(S.logs)) {
+        const useFile = j.logs.length > S.logs.length && S.logs.length <= 1
+          || await ask(`檔案有 ${j.logs.length} 筆紀錄，瀏覽器有 ${S.logs.length} 筆。\n要用哪一邊的資料？`, '用檔案的', '用瀏覽器的');
+        if (useFile) S = migrate(Object.assign(blank(), j));
+      }
+    } catch (e) {}
+  }
+  save(); await writeFile(); render();
+}
+const FILE_TYPES = [{ description: '習慣深潛存檔', accept: { 'application/json': ['.json'] } }];
+
+/* ========= 習慣與分類 ========= */
+const activeHabits = () => S.habits.filter(h => !h.off);
+const habit = id => S.habits.find(h => h.id === id && !h.off);
+const customCount = () => activeHabits().filter(h => h.kind === 'custom').length;
+// 六件事的分類 = 啟用中的習慣（六件事本身除外）＋一般分類
+const catList = () => [...activeHabits().filter(h => h.kind !== 'plan'), ...CONFIG.generalCats];
+function catOf(id) {
+  return habit(id) || CONFIG.generalCats.find(c => c.id === id) || CONFIG.generalCats[CONFIG.generalCats.length - 1];
+}
+const placeholder = c => c.ph || PH[c.id] || `${c.n}：今天要做什麼？`;
+const unitOf = h => h.weeks === 0 ? '天' : h.weeks === 1 ? '週' : '期';
+const countWord = h => h.kind === 'vocus' ? '篇' : '次';
+
+/* ========= 狀態推導 ========= */
+// XP、金幣、圖鑑由 logs 算；每天完成了哪些習慣由六件事的打勾算（加上舊版紀錄）
+function derive() {
+  const D = { xp: 0, coins: 0, col: {}, days: {}, per: {}, articles: 0, claimed: new Set() };
+  const inc = (d, k) => { const x = D.days[d] || (D.days[d] = {}); x[k] = (x[k] || 0) + 1; };
+  for (const l of S.logs) {
+    D.xp += l.xp || 0; D.coins += l.c || 0;
+    if (l.drop) D.col[l.drop] = (D.col[l.drop] || 0) + 1;
+    if (l.key) D.claimed.add(l.key);
+    if (['wake', 'plan', 'research', 'exercise'].includes(l.k) && !l.late) inc(l.d, l.k);
+    if (l.k === 'article') inc(l.d, 'vocus');
+  }
+  for (const [d, P] of Object.entries(S.plans)) for (const it of P) {
+    if (!it.done) continue;
+    if (it.cat === 'vocus') { if (it.pub && it.pub.on) inc(d, 'vocus'); }
+    else if (habit(it.cat)) inc(d, it.cat);
+  }
+  for (const x of Object.values(D.days)) D.articles += x.vocus || 0;
+  // 週期型習慣：Vocus 算篇數，其他算「有做的天數」
+  for (const h of activeHabits()) if (h.weeks) for (const [d, x] of Object.entries(D.days)) if (x[h.id]) {
+    const k = h.id + '@' + periodKey(d, h.weeks);
+    D.per[k] = (D.per[k] || 0) + (h.kind === 'vocus' ? x[h.id] : 1);
+  }
+  return D;
+}
+const dayDone = (D, d, k) => !!(D.days[d] && D.days[d][k]);
+const perCount = (D, h, p) => D.per[h.id + '@' + p] || 0;
+const periodDone = (D, h, p) => perCount(D, h, p) >= h.target;
+
+// 每天的習慣「不連續漏兩次」：漏一次不斷，連續漏兩次才歸零；進行中的今天不算漏。
+// 週期型習慣漏一期就斷：週期本身已經是自己選的寬鬆度
+function chain(isDone, cur, step, first, maxMiss) {
+  let n = isDone(cur) ? 1 : 0, miss = 0, k = step(cur);
+  const prevMissed = !isDone(k);
+  while (k >= first) {
+    if (isDone(k)) { n++; miss = 0; } else if (++miss >= maxMiss) break;
+    k = step(k);
+  }
+  return { n, risk: maxMiss > 1 && n > 0 && !isDone(cur) && prevMissed };
+}
+function streaks(D) {
+  const today = dayKey(), first = Object.keys(D.days).sort()[0] || today, out = {};
+  for (const h of activeHabits()) out[h.id] = h.weeks
+    ? chain(p => periodDone(D, h, p), periodKey(today, h.weeks), p => addDays(p, -7 * h.weeks), periodKey(first, h.weeks), 1)
+    : chain(d => dayDone(D, d, h.id), today, d => addDays(d, -1), first, 2);
+  return out;
+}
+const depthOf = xp => Math.floor(Math.sqrt(xp));
+const rankIdx = dep => RANKS.reduce((a, r, i) => dep >= r[0] ? i : a, 0);
+
+/* ========= 音效 ========= */
+let AC;
+function ac() { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; }
+function tone(f, t0, d, type = 'square', vol = .05) {
+  if (S.mute) return;
+  try {
+    const a = ac(), o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(vol, a.currentTime + t0);
+    g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + t0 + d);
+    o.connect(g).connect(a.destination); o.start(a.currentTime + t0); o.stop(a.currentTime + t0 + d + .05);
+  } catch (e) {}
+}
+const SFX = {
+  tap: () => tone(660, 0, .05),
+  shake: () => tone(196, 0, .06, 'square', .03),
+  open: r => [[523, 659, 784], [523, 659, 784, 1047], [587, 740, 880, 1175], [523, 659, 784, 1047, 1319, 1568],
+    [392, 523, 659, 784, 1047, 1319, 1568, 2093]][r].forEach((f, i) => tone(f, i * .08, .2)),
+  done: () => [784, 988, 1175, 1568].forEach((f, i) => tone(f, i * .16, .35, 'triangle', .09)),
+  buy: () => [880, 1320, 1760].forEach((f, i) => tone(f, i * .07, .12)),
+  rank: () => [262, 330, 392, 523, 392, 523].forEach((f, i) => tone(f, i * .12, .25, 'triangle', .08)),
+};
+
+/* ========= 遊戲動作 ========= */
+const UI = { tab: 'today', pday: 0, opened: false };
+const Q = [];
+const viewDay = () => addDays(dayKey(), UI.pday);
+const BONUS = {
+  welcome: '🎁 歡迎下水！新手寶箱',
+  top3: '✅ 前三件重要的事都完成了！額外寶箱',
+  pubchest: '📰 今天發布了文章！寶箱',
+  period: '🏆 本期達標！額外寶箱',
+  weekly: '🏆 本週運動達標！額外寶箱',
+};
+
+// 最多六件，空著的格子不算；寫了的都打勾才算全部完成
+const filled = P => P.filter(x => x.text.trim());
+const allDone = P => filled(P).length > 0 && filled(P).every(x => x.done);
+// 新的一天預先排好：每天的自訂習慣（帶入名稱）、Vocus、運動，其餘留給「其他」
+function getPlan(d) {
+  if (S.plans[d]) return S.plans[d];
+  const rows = [
+    ...activeHabits().filter(h => h.kind === 'custom' && h.weeks === 0).map(h => [h.id, h.n]),
+    ...['vocus', 'exercise'].filter(habit).map(id => [id, '']),
+  ].slice(0, 6);
+  while (rows.length < 6) rows.push(['other', '']);
+  return S.plans[d] = rows.map(([cat, text]) => ({ text, cat, done: false, rw: false }));
+}
+function rollCreature() {
+  let x = Math.random() * CONFIG.rarityRates.reduce((a, b) => a + b, 0), r = 0;
+  while (x >= CONFIG.rarityRates[r] && r < 4) { x -= CONFIG.rarityRates[r]; r++; }
+  const pool = CREATURES.filter(c => c.r === r);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+function grant(kind, tag, o = {}) {
+  const D = derive(), cr = rollCreature(), isNew = !D.col[cr.id];
+  let xp = o.xp ?? CONFIG.xp[kind] ?? 0, c, title = o.title || BONUS[kind], crit = false;
+  if (BONUS[kind]) c = CONFIG.coins[kind];
+  else {
+    c = CONFIG.coins.base + Math.floor(Math.random() * (CONFIG.coins.rand + 1));
+    if (Math.random() < CONFIG.coins.critChance) { crit = true; c *= 2; }
+  }
+  const dup = isNew ? 0 : CONFIG.dupCoins[cr.r];
+  const log = { id: rid(), t: Date.now(), d: o.d || dayKey(), k: kind, tag: tag || undefined, xp, c: c + dup, drop: cr.id, key: o.key, ...o.extra };
+  S.logs.push(log);
+  Q.push({ title, cr, isNew, xp, c, dup, crit, owned: (D.col[cr.id] || 0) + 1 });
+  return log;
+}
+// 額外寶箱（前三件、今天發文、週期型習慣達標）跟著條件走：條件不再成立時把獎勵收進 S.held，
+// 條件恢復時原封不動還回來（不重抽，避免用勾掉再勾回刷稀有生物）
+function reconcile(allowGrant) {
+  const d = dayKey(), P = S.plans[d] || [];
+  S.held = S.held || {};
+  const conds = [
+    ['top3:' + d, 'top3', P.length > 0 && allDone(P.slice(0, CONFIG.rewardRows))],
+    ['art:' + d, 'pubchest', P.some(x => x.done && x.cat === 'vocus' && x.pub && x.pub.on)],
+  ];
+  for (const h of activeHabits()) if (h.weeks && h.kind !== 'vocus') {
+    const p = periodKey(d, h.weeks);
+    conds.push([h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`, 'period',
+      periodDone(derive(), h, p), `🏆 ${h.e} ${h.n} 本${unitOf(h)}達標！額外寶箱`]);
+  }
+  for (const [key, kind, ok, title] of conds) {
+    const has = derive().claimed.has(key);
+    if (ok && !has) {
+      if (S.held[key]) { S.logs.push(S.held[key]); delete S.held[key]; }
+      else if (allowGrant) grant(kind, null, { key, title });
+    } else if (!ok && has) {
+      const i = S.logs.findIndex(l => l.key === key);
+      if (i >= 0) S.held[key] = S.logs.splice(i, 1)[0];
+    }
+  }
+}
+// 做完 fn 之後檢查額外寶箱與升級，再存檔、播寶箱。補登昨天時 allowGrant=false：只還原、不發新獎勵
+function reward(fn, allowGrant = true) {
+  const before = rankIdx(depthOf(derive().xp));
+  fn();
+  reconcile(allowGrant);
+  const after = rankIdx(depthOf(derive().xp));
+  if (after > before) Q.push({ rank: after });
+  save(); render(); nextChest();
+}
+
+// 番茄鐘綁在今天六件事的某一格；前三項完成一顆開一個寶箱（要真的花 25 分鐘，刷不了）
+function startTimer(i) {
+  if (S.timer) return;
+  const it = getPlan(dayKey())[i];
+  if (!it.text.trim()) { toast('先寫下這件事'); return; }
+  ac();
+  S.timer = { d: dayKey(), i: +i, start: Date.now(), dur: CONFIG.pomodoroMin * 60e3 };
+  SFX.tap(); save(); render(); tick();
+}
+function tick() {
+  if (!S.timer) { document.title = '習慣深潛'; return; }
+  const T = S.timer, left = T.start + T.dur - Date.now();
+  if (left <= 0) {
+    S.timer = null;
+    const it = getPlan(T.d)[T.i], c = catOf(it.cat);
+    it.pomo = (it.pomo || 0) + 1;
+    SFX.done(); document.title = '✅ 番茄完成！';
+    if (T.i < CONFIG.rewardRows) reward(() => grant('pomo', c.n, { title: `🍅 番茄完成：${c.e} ${it.text}`, d: T.d }));
+    else {
+      S.logs.push({ id: rid(), t: Date.now(), d: T.d, k: 'pomo', tag: c.n, xp: 0, c: 0 });
+      save(); render(); toast(`🍅 番茄完成！（第 ${CONFIG.rewardRows + 1} 項之後只做紀錄）`);
+    }
+    return;
+  }
+  const txt = `${pad(Math.floor(left / 60000))}:${pad(Math.floor(left / 1000) % 60)}`;
+  document.title = `⏳ ${txt} 習慣深潛`;
+  const el = document.getElementById('tclock'); if (el) el.textContent = txt;
+  const bar = document.getElementById('tbar'); if (bar) bar.style.width = (100 - left / T.dur * 100) + '%';
+}
+
+/* ========= 寶箱彈窗 ========= */
+function nextChest() {
+  if (UI.opened) return;
+  const it = Q.shift(), ov = document.getElementById('ov'), m = document.getElementById('modal');
+  if (!it) { ov.classList.add('hidden'); return; }
+  UI.opened = true; UI.cur = it; ov.classList.remove('hidden');
+  if (it.rank !== undefined) {
+    const [dep, name] = RANKS[it.rank];
+    m.innerHTML = `<h2>📍 抵達 ${dep} m</h2><div class="depth pop">${name}</div>
+      <p class="dim">你已經下潛得比昨天的自己更深了。</p><button class="pri" data-act="close">繼續下潛</button>`;
+    SFX.rank(); return;
+  }
+  m.innerHTML = `<h2>${esc(it.title)}</h2>${img(CHEST, 9, false, 'shake')}<p class="dim">點一下打開寶箱</p>
+    <button class="pri" data-act="openchest">開啟</button>`;
+  SFX.shake();
+}
+function openChest() {
+  const it = UI.cur, cr = it.cr, R = RARITY[cr.r];
+  document.getElementById('modal').innerHTML = `
+    <div><span class="rar" style="background:${R.color}">${R.name}</span></div>
+    ${img(cr.px, 9, false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
+    <h2>${cr.name} ${it.isNew ? '<span class="new">NEW!</span>' : `<small>×${it.owned}</small>`}</h2>
+    <div class="dim" style="font-size:13px">${cr.fact}</div>
+    <div class="gain"><span style="color:var(--xp)">+${it.xp} XP</span>　<span style="color:var(--coin)">+${it.c + it.dup} 🪙</span></div>
+    ${it.crit ? '<div class="new">⚡ 爆擊！金幣 ×2</div>' : ''}
+    ${it.dup ? `<div class="dim" style="font-size:13px">重複的生物換成 ${it.dup} 🪙</div>` : ''}
+    <button class="pri" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
+  SFX.open(cr.r);
+}
+
+/* ========= 畫面 ========= */
+function render() {
+  const D = derive(), dep = depthOf(D.xp), ri = rankIdx(dep), nxt = RANKS[ri + 1];
+  const lo = RANKS[ri][0] ** 2, hi = nxt ? nxt[0] ** 2 : lo + 1;
+  document.getElementById('hud').innerHTML = `
+    <div><div class="depth">↓<b>${dep}</b>m</div><div class="rank">${RANKS[ri][1]}</div></div>
+    <div class="hud-m"><div class="bar"><i style="width:${nxt ? Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100)) : 100}%"></i></div>
+      <small>${nxt ? `下潛到 ${nxt[0]}m「${nxt[1]}」還差 ${hi - D.xp} XP` : '你已抵達深淵'}　·　共 ${D.xp} XP</small></div>
+    <div class="row"><span class="coin">🪙 ${D.coins.toLocaleString()}</span>
+      <button class="ghost" data-act="mute" title="音效">${S.mute ? '🔇' : '🔊'}</button></div>`;
+  document.getElementById('banner').innerHTML = FS.handle && !FS.ok
+    ? `<div class="banner row">🔗 存檔檔案需要重新授權才能自動備份。<span class="sp"></span><button data-act="relink">重新連結</button></div>` : '';
+  const tabs = [['today', '🌊 今日'], ['dex', `🐠 圖鑑 ${Object.keys(D.col).length}/${CREATURES.length}`], ['shop', '🛍 商店'], ['log', '📊 紀錄']];
+  document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}</button>`).join('');
+  document.getElementById('main').innerHTML = ({ today, dex, shop, log })[UI.tab](D);
+}
+
+const freqOpts = (h, sel) => (h.kind === 'custom' ? [[0, '每天']] : []).concat([[1, '每週'], [2, '每兩週']])
+  .map(([v, n]) => `<option value="${v}" ${sel === v ? 'selected' : ''}>${n}</option>`).join('');
+const targetOpts = sel => [1, 2, 3, 4, 5, 6, 7].map(n => `<option ${sel === n ? 'selected' : ''}>${n}</option>`).join('');
+
+function habitEditor() {
+  return `<section class="px"><div class="row"><b>編輯習慣</b><span class="sp"></span><button class="pri" data-act="habdone">完成</button></div>
+    <small>圖示可以貼任何 emoji（Windows 按 Win＋. 叫出表情符號）。自訂習慣最多 ${CONFIG.maxCustom} 個。</small>
+    ${S.habits.map((h, i) => h.off ? '' : `<div class="erow">
+      <input data-hf="e" data-hi="${i}" value="${esc(h.e)}" style="width:48px;text-align:center" title="圖示">
+      ${h.kind === 'custom' ? `<input class="sp" data-hf="n" data-hi="${i}" value="${esc(h.n)}" placeholder="習慣名稱，例如：冥想 10 分鐘">`
+        : `<span class="sp">${esc(h.n)} <small class="dim">（內建）</small></span>`}
+      ${h.kind === 'plan' ? '<span class="dim">每天寫好清單</span>'
+        : `<select data-hf="weeks" data-hi="${i}">${freqOpts(h, h.weeks)}</select>
+           ${h.weeks ? `<span class="dim">至少</span><select data-hf="target" data-hi="${i}">${targetOpts(h.target)}</select><span class="dim">${countWord(h)}</span>` : ''}`}
+      ${h.kind === 'custom' ? `<button class="ghost" data-act="habdel" data-v="${i}" title="刪除">🗑</button>` : ''}</div>`).join('')}
+    <div class="row"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣（${customCount()}/${CONFIG.maxCustom}）</button></div>
+    <div class="mini">每天的習慣：不連續漏兩天就不會斷。每週／每兩週的習慣：沒達標那一期就會斷。</div></section>`;
+}
+
+function today(D) {
+  const st = streaks(D), td = dayKey(), d = viewDay(), P = getPlan(d);
+  const claimed = D.claimed.has('plan:' + d), doneN = filled(P).filter(x => x.done).length;
+  const chips = activeHabits().map(h => {
+    const s = st[h.id];
+    if (h.weeks) {
+      const p = periodKey(td, h.weeks);
+      return `<div class="${periodDone(D, h, p) ? 'on' : ''}">${esc(h.e)} ${esc(h.n)}<br><span class="streak">🔥 ${s.n} ${unitOf(h)}</span>
+        <span class="dim">本${unitOf(h)} ${perCount(D, h, p)}/${h.target} ${countWord(h)}${h.kind === 'vocus' ? `・共 ${D.articles} 篇` : ''}</span></div>`;
+    }
+    return `<div class="${dayDone(D, td, h.id) ? 'on' : ''}">${esc(h.e)} ${esc(h.n)}<br><span class="streak">🔥 ${s.n} 天</span>
+      <span class="dim">${Math.min(s.n, CONFIG.habitDays)}/${CONFIG.habitDays} 天</span></div>`;
+  }).join('');
+  const risky = activeHabits().filter(h => st[h.id].risk).map(h => `${h.e} ${h.n}`);
+  const pWarn = activeHabits().filter(h => h.weeks && st[h.id].n > 0 && !periodDone(D, h, periodKey(td, h.weeks))).map(h => {
+    const p = periodKey(td, h.weeks), left = Math.round((parseKey(addDays(p, 7 * h.weeks)) - parseKey(td)) / 864e5);
+    return `<div class="warn">${esc(h.e)} ${esc(h.n)}：本${unitOf(h)}還剩 ${left} 天，再 ${h.target - perCount(D, h, p)} ${countWord(h)}就能延續連勝</div>`;
+  }).join('');
+  const V = habit('vocus');
+  const setup = S.vocusSet || !V ? '' : `<section class="px"><b>✍️ 先設定你的 Vocus 發文節奏</b>
+      <div class="mini">不用每天發文。選一個你做得到的節奏，連勝就照這個算（之後可以按「✎ 編輯習慣」修改）。</div>
+      <div class="row">每 <select id="vW"><option value="1">1 週</option><option value="2">2 週</option></select>
+        至少 <select id="vT">${targetOpts(1)}</select> 篇
+        <button class="pri" data-act="vcfg">確定</button></div></section>`;
+  const hint = UI.pday < 0 ? '補登昨天：只能在隔天補勾，不會開寶箱，但能保住連續天數。'
+    : UI.pday > 0 ? '睡前寫好明天的重要事項最有效（最多六件，不用湊滿）。寫好就能開寶箱，明天再打勾。'
+    : `最多六件、不用湊滿，照重要性排序。前 ${CONFIG.rewardRows} 件打勾會開寶箱。`;
+  const cats = catList();
+  const rows = P.map((it, i) => {
+    const c = catOf(it.cat);
+    let ex = '';
+    if (it.cat === 'exercise' && it.done) {
+      const e = it.ex || {};
+      ex = `<div class="row exrow">
+        <select data-ex="type" data-i="${i}">${ETAGS.map(t => `<option ${e.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
+        <input type="number" min="0" step="0.1" data-ex="dist" data-i="${i}" value="${esc(e.dist)}" placeholder="km">
+        <input type="number" min="0" step="1" data-ex="min" data-i="${i}" value="${esc(e.min)}" placeholder="分鐘">
+        <span class="dim" id="pace${i}">${paceText(e)}</span>
+        <input class="note" data-ex="note" data-i="${i}" value="${esc(e.note)}" placeholder="備註（例：河堤間歇 4×800、自由式）"></div>`;
+    }
+    if (it.cat === 'vocus' && it.done) {
+      const p = it.pub || {};
+      ex = `<div class="row exrow"><label class="row" style="gap:6px;cursor:pointer">
+          <input type="checkbox" data-act="pub" data-v="${i}" ${p.on ? 'checked' : ''}>📰 這次發布了文章</label>
+        ${p.on ? `<input class="note" data-pub="title" data-i="${i}" value="${esc(p.title)}" placeholder="文章標題（可留空）">` : ''}</div>`;
+    }
+    const divider = i === CONFIG.rewardRows ? `<div class="mini" style="border-top:2px dashed #1d3d66;padding-top:6px;margin-top:10px">以下只做紀錄：打勾會算進習慣和連續天數，但不開寶箱</div>` : '';
+    return `${divider}<div class="prow ${it.done ? 'done' : ''}">
+      <input type="checkbox" data-act="pdone" data-v="${i}" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
+      <b>${i + 1}</b>
+      <select data-pf="cat" data-i="${i}">${cats.map(x => `<option value="${x.id}" ${c.id === x.id ? 'selected' : ''}>${esc(x.e)} ${esc(x.n)}</option>`).join('')}</select>
+      <input class="ptext" data-pf="text" data-i="${i}" value="${esc(it.text)}" placeholder="${esc(placeholder(c))}">
+      ${it.pomo ? `<span class="pomo">🍅×${it.pomo}</span>` : ''}
+      ${UI.pday === 0 ? `<button class="ghost" data-act="start" data-v="${i}" title="為這件事專注 ${CONFIG.pomodoroMin} 分鐘" ${S.timer ? 'disabled' : ''}>▶ 🍅</button>` : ''}</div>${ex}`;
+  }).join('');
+  const T = S.timer, Tit = T && getPlan(T.d)[T.i];
+  const timer = T ? `<section class="px timer">
+      <div>🍅 專注中：${esc(`${catOf(Tit.cat).e} ${Tit.text}`)}</div>
+      <div class="clock" id="tclock">--:--</div><div class="bar c"><i id="tbar" style="width:0"></i></div>
+      <small>關掉這個頁面也沒關係，時間到再打開就會自動領獎。</small><br>
+      <button class="ghost" data-act="cancel">放棄這顆番茄</button></section>` : '';
+  const habits = UI.habEdit ? habitEditor() : `<section class="px"><div class="habits">${chips}</div>
+      ${risky.length ? `<div class="warn">⚠️ 昨天漏了 ${esc(risky.join('、'))}，今天做到就不會斷（規則：不連續漏兩天）</div>` : ''}${pWarn}
+      <div class="row" style="justify-content:flex-end"><button class="ghost" data-act="habedit">✎ 編輯習慣</button></div></section>`;
+  return `${timer}${setup}${habits}
+    <section class="px"><div class="row"><b>📝 最重要的六件事</b><span class="sp"></span>
+      ${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</div>
+      <div class="mini">${d}　${hint}</div>
+      ${rows}
+      <div class="row">${UI.pday < 0 ? '' : claimed ? '<span class="done-tag">✓ 清單已寫好</span>' : '<button class="pri" data-act="plansave">寫好了，開寶箱</button>'}
+        <span class="sp"></span><small>完成 ${doneN}/${filled(P).length}</small>
+        ${UI.pday < 0 ? '' : '<button class="ghost" data-act="cal" title="把這天的清單加成 Google 日曆整天活動">📅 加到 Google 日曆</button>'}</div></section>`;
+}
+
+// 跑步算每公里配速，游泳算每 100 公尺
+function paceText(e) {
+  if (!(e.dist > 0) || !(e.min > 0)) return '';
+  const swim = e.type === '游泳', sec = Math.round(e.min * 60 / (swim ? e.dist * 10 : e.dist));
+  return `配速 ${Math.floor(sec / 60)}'${pad(sec % 60)}"${swim ? '/100m' : '/km'}`;
+}
+const exText = e => [e.type, e.dist ? `${e.dist} km` : '', e.min ? `${e.min} 分` : '', paceText(e), e.note].filter(Boolean).join('・');
+function allExercise() {
+  const out = [];
+  for (const [d, P] of Object.entries(S.plans)) for (const it of P)
+    if (it.done && it.cat === 'exercise') out.push({ d, text: it.text, ...(it.ex || {}) });
+  for (const l of S.logs) if (l.k === 'exercise') out.push({ d: l.d, type: l.tag, dist: l.dist, min: l.min, note: l.note });
+  return out.sort((a, b) => b.d.localeCompare(a.d));
+}
+function gcalURL(d, P) {
+  const ymd = k => k.replace(/-/g, '');
+  const list = filled(P).map((x, i) => `${i + 1}. ${catOf(x.cat).e} ${x.text}`).join('\n');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + `&text=${encodeURIComponent('📝 最重要的六件事')}&dates=${ymd(d)}/${ymd(addDays(d, 1))}`
+    + `&details=${encodeURIComponent(list)}`;
+}
+
+// input=true 時多一個輸入框，按確定回傳輸入的文字，按取消回傳 false
+function ask(msg, yes = '確定', no = '取消', input = false) {
+  const inp = document.getElementById('askin');
+  document.getElementById('askmsg').textContent = msg;
+  document.getElementById('askyes').textContent = yes;
+  document.getElementById('askno').textContent = no;
+  inp.classList.toggle('hidden', !input); inp.value = '';
+  document.getElementById('askov').classList.remove('hidden');
+  if (input) inp.focus();
+  return new Promise(res => { ask.res = v => { document.getElementById('askov').classList.add('hidden'); res(v && input ? inp.value.trim() : v); }; });
+}
+
+function dex(D) {
+  const total = CONFIG.rarityRates.reduce((a, b) => a + b, 0);
+  return `<section class="px"><div class="row"><b>水下生物圖鑑</b><span class="sp"></span>
+    <span class="dim">已收集 ${Object.keys(D.col).length} / ${CREATURES.length}</span></div>
+    <small>每完成一件事就開一個寶箱。點已收集的生物看介紹。</small>
+    ${RARITY.map((R, r) => `<div class="grp"><span class="rar" style="background:${R.color}">${R.name}</span>
+      <small>掉落率 ${(CONFIG.rarityRates[r] / total * 100).toFixed(1).replace('.0', '')}%</small></div>
+      <div class="dex">${CREATURES.filter(c => c.r === r).map(c => {
+        const n = D.col[c.id] || 0;
+        return n ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${img(c.px, 5)}<div class="nm">${c.name}</div><small>×${n}</small></div>`
+          : `<div class="cell no" style="--rc:#1d3d66">${img(c.px, 5, true)}<div class="nm dim">？？？</div><small>&nbsp;</small></div>`;
+      }).join('')}</div>`).join('')}</section>`;
+}
+
+// 商店項目由使用者自己設定，存在 S.shop；沒設定過就用 CONFIG.shop 當預設
+const shopItems = () => S.shop || CONFIG.shop;
+function finishShop() {
+  S.shop = S.shop.filter(x => x.name.trim()).map(x => ({ ...x, price: Math.max(1, Math.round(+x.price) || 1) }));
+  UI.shopEdit = false; save();
+}
+function finishHabits() {
+  for (const h of S.habits) if (h.kind === 'custom' && !h.n.trim()) h.off = true;
+  UI.habEdit = false; save();
+}
+function shop(D) {
+  const hist = S.logs.filter(l => l.k === 'redeem').slice(-8).reverse();
+  if (UI.shopEdit) return `<section class="px shop"><div class="row"><b>編輯獎勵商店</b><span class="sp"></span>
+      <button class="pri" data-act="shopdone">完成</button></div>
+    <small>設定你真的想要的獎勵。參考：每天前三件都完成的話，大約能賺 60–90 🪙。</small>
+    ${S.shop.map((it, i) => `<div class="it">
+      <input data-sf="icon" data-si="${i}" value="${esc(it.icon)}" style="width:48px;text-align:center" title="圖示（可貼 emoji）">
+      <input class="sp" data-sf="name" data-si="${i}" value="${esc(it.name)}" placeholder="獎勵名稱，例如：吃甜點（100 元內）">
+      <input type="number" min="1" data-sf="price" data-si="${i}" value="${it.price}" style="width:90px"><span class="coin">🪙</span>
+      <button class="ghost" data-act="shopdel" data-v="${i}" title="刪除">🗑</button></div>`).join('')}
+    <div class="row"><button data-act="shopadd">＋ 新增獎勵</button></div></section>`;
+  return `<section class="px shop"><div class="row"><b>獎勵商店</b><small>（你可以自行設定想要的獎勵）</small><span class="sp"></span><span class="coin">🪙 ${D.coins.toLocaleString()}</span>
+      <button class="ghost" data-act="shopedit">✎ 編輯</button></div>
+    <small>兌換之後就真的去享受，不要心虛——這是你賺來的。</small>
+    ${shopItems().length ? '' : '<div class="dim" style="margin-top:8px">還沒有獎勵，按「✎ 編輯」新增。</div>'}
+    ${shopItems().map(it => `<div class="it"><span class="ic">${esc(it.icon)}</span><span class="sp">${esc(it.name)}
+      ${D.coins < it.price ? `<div class="mini">還差 ${it.price - D.coins} 🪙<span class="bar c"><i style="width:${Math.max(0, D.coins / it.price * 100)}%"></i></span></div>` : ''}</span>
+      <span class="price">${it.price} 🪙</span><button class="pri" data-act="redeem" data-v="${it.id}" ${D.coins < it.price ? 'disabled' : ''}>兌換</button></div>`).join('')}
+  </section>
+  <section class="px"><b>兌換紀錄</b>${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(l.name)}</span><span class="sp"></span><span class="coin">${l.c} 🪙</span></div>`).join('') : '<div class="dim">還沒有兌換過</div>'}</section>`;
+}
+
+function log(D) {
+  const td = dayKey(), start = addDays(weekKey(td), -7 * 17), H = activeHabits();
+  let cells = '';
+  for (let k = start; k <= td; k = addDays(k, 1)) {
+    const x = D.days[k] || {}, done = H.filter(h => x[h.id]), n = done.length;
+    const lv = n === 0 ? 0 : n >= H.length ? 4 : Math.min(3, Math.ceil(n / H.length * 3));
+    cells += `<i class="l${lv}${k === td ? ' today' : ''}" title="${k}　${done.map(h => h.e + ' ' + h.n).join(' ') || '—'}"></i>`;
+  }
+  const daysOf = k => Object.values(D.days).filter(x => x[k]).length;
+  const exs = allExercise(), runs = exs.filter(e => e.type === '跑步' && e.dist > 0);
+  const runKm = runs.reduce((a, e) => a + +e.dist, 0);
+  const pomos = S.logs.filter(l => l.k === 'pomo').length;
+  const arts = [];
+  for (const [d, P] of Object.entries(S.plans)) for (const it of P)
+    if (it.done && it.cat === 'vocus' && it.pub && it.pub.on) arts.push({ d, title: it.pub.title || it.text });
+  for (const l of S.logs) if (l.k === 'article') arts.push({ d: l.d, title: l.title });
+  arts.sort((a, b) => b.d.localeCompare(a.d)).splice(10);
+  return `<section class="px"><b>最近 18 週</b>
+    <div class="heat" style="margin-top:8px">${cells}</div>
+    <small class="legend">完成的習慣比例：<i style="background:#10284a"></i>無 <i style="background:#1f5a8a"></i> <i style="background:#2f8fc0"></i> <i style="background:#73eff7"></i> <i style="background:#e8ffff"></i>全部</small></section>
+  <section class="px"><b>累積</b><div class="stat" style="margin-top:8px">
+    ${H.map(h => h.kind === 'vocus' ? `<div><small>${esc(h.e)} ${esc(h.n)} 文章</small><b>${D.articles}</b><small>篇</small></div>`
+      : `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`).join('')}
+    <div><small>🍅 番茄鐘</small><b>${pomos}</b><small>約 ${(pomos * CONFIG.pomodoroMin / 60).toFixed(1)} 小時</small></div>
+    <div><small>🏃 跑步總距離</small><b>${runKm.toFixed(1)} km</b><small>${runs.length} 次</small></div>
+  </div></section>
+  <section class="px"><b>✍️ 文章紀錄</b>
+    ${arts.length ? arts.map(l => `<div class="mini">${l.d}　${esc(l.title || '（無標題）')}</div>`).join('') : '<div class="dim">在六件事裡把 ✍️ Vocus 那一項打勾，再勾「📰 這次發布了文章」就會記在這裡。</div>'}</section>
+  <section class="px"><b>運動紀錄</b>
+    ${exs.length ? exs.slice(0, 15).map(e => `<div class="mini">${e.d.slice(5)}　${esc(exText(e) || e.text || '運動')}</div>`).join('') : '<div class="dim">打勾 🏃 運動那一項之後，就能填距離、時間和備註。</div>'}</section>
+  <section class="px"><b>存檔</b>
+    <div class="mini">✓ 每次操作都自動存在你這個瀏覽器裡，不會上傳到任何地方，別人也看不到。</div>
+    <div class="mini">⚠️ 換手機、換瀏覽器或清除瀏覽資料，紀錄就會不見。請定期按「下載備份」；手機建議「加入主畫面」再使用。</div>
+    <div class="mini">${FS.ok ? `✓ 同步寫入檔案「${FS.handle.name}」${FS.last ? '，最後寫入 ' + FS.last : ''}` : ('showSaveFilePicker' in window ? '電腦版可以連結一個存檔檔案（放在雲端硬碟資料夾，例如 Google Drive、OneDrive），每次操作都會自動備份。' : '')}</div>
+    <div class="row">${'showSaveFilePicker' in window ? `<button data-act="linknew">建立存檔檔案</button><button data-act="linkopen">開啟既有存檔</button>` : ''}
+      <button data-act="export">下載備份</button><button data-act="import">從備份還原</button></div></section>`;
+}
+
+/* ========= 事件 ========= */
+function toast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.add('hidden'), 2600);
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const v = b.dataset.v;
+  switch (b.dataset.act) {
+    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tab = v; render(); break;
+    case 'pday': UI.pday = +v; render(); break;
+    case 'start': startTimer(v); break;
+    case 'cancel':
+      if (await ask('放棄這顆番茄？\n不會有獎勵。', '放棄', '繼續專注')) { S.timer = null; save(); render(); tick(); }
+      break;
+    case 'askyes': ask.res && ask.res(true); break;
+    case 'askno': ask.res && ask.res(false); break;
+    case 'habedit': UI.habEdit = true; render(); break;
+    case 'habdone': finishHabits(); render(); toast('習慣已更新'); break;
+    case 'habadd':
+      if (customCount() >= CONFIG.maxCustom) break;
+      S.habits.push({ id: 'h' + rid(), e: '⭐', n: '', kind: 'custom', weeks: 0, target: 1 }); save(); render(); break;
+    case 'habdel': {
+      const h = S.habits[+v];
+      if (!(await ask(`刪除習慣「${h.e} ${h.n || '（未命名）'}」？\n過去的紀錄會保留，只是不再顯示和計算。`, '刪除'))) break;
+      h.off = true; save(); render(); break;
+    }
+    case 'vcfg': {
+      const V = habit('vocus');
+      V.weeks = +document.getElementById('vW').value; V.target = +document.getElementById('vT').value;
+      S.vocusSet = true; save(); render(); toast(`設定好了：每 ${V.weeks} 週至少 ${V.target} 篇`); break;
+    }
+    case 'shopedit': S.shop = shopItems().map(x => ({ ...x })); UI.shopEdit = true; render(); break;
+    case 'shopadd': S.shop.push({ id: 'c' + Date.now(), icon: '🎁', name: '', price: 100 }); save(); render(); break;
+    case 'shopdel': S.shop.splice(+v, 1); save(); render(); break;
+    case 'shopdone': finishShop(); render(); toast('商店已更新'); break;
+    // 發文：在 ✍️ Vocus 項目打勾後勾「發布了文章」。不論在第幾項，每天第一篇開寶箱（防刷），補登昨天不開
+    case 'pub': {
+      const it = getPlan(viewDay())[v];
+      it.pub = { ...(it.pub || {}), on: !(it.pub && it.pub.on) };
+      if (it.pub.on) { ac(); SFX.tap(); }
+      reward(() => {}, UI.pday === 0);
+      break;
+    }
+    case 'openchest': openChest(); break;
+    case 'close': UI.opened = false; nextChest(); break;
+    case 'mute': S.mute = !S.mute; save(); render(); break;
+    case 'fact': { const c = CR[v]; toast(`${c.name}：${c.fact}`); break; }
+    case 'pdone': {
+      const d = viewDay(), it = getPlan(d)[v], c = catOf(it.cat);
+      if (UI.pday > 0) break;
+      if (!it.text.trim()) { toast('先寫下這件事'); render(); break; }
+      it.done = !it.done;
+      if (it.done) ac();
+      // 只有「今天」打勾才開寶箱，每一格一天只抽一次；昨天的補勾只算連續天數。
+      // 勾錯可以取消：獎勵先收進 it.held，再勾回來就原封不動還回去（不重抽）
+      reward(() => {
+        if (UI.pday !== 0) { if (it.done) SFX.tap(); return; }
+        if (!it.done) {
+          let i = S.logs.findIndex(l => it.lid && l.id === it.lid);
+          if (i < 0 && it.rw) {
+            // 舊版打勾沒記下是哪一筆：找同一天、同分類、還沒被其他項目認領的那筆
+            const linked = new Set(Object.values(S.plans).flat().map(x => x.lid).filter(Boolean));
+            for (let j = S.logs.length - 1; j >= 0; j--) {
+              const l = S.logs[j];
+              if (l.k === 'check' && l.d === d && l.tag === c.n && !linked.has(l.id)) { i = j; break; }
+            }
+          }
+          if (i >= 0) { it.lid = S.logs[i].id; it.held = S.logs.splice(i, 1)[0]; toast('已取消，這一項的獎勵先收回（再勾回來會還你）'); }
+          return;
+        }
+        if (it.held) { S.logs.push(it.held); delete it.held; SFX.tap(); toast('已恢復這一項的獎勵'); return; }
+        if (it.rw || +v >= CONFIG.rewardRows) { SFX.tap(); return; }
+        it.rw = true;
+        it.lid = grant('check', c.n, { title: `${c.e} ${it.text} ✔`, xp: it.cat === 'exercise' ? CONFIG.xp.exercise : CONFIG.xp.check }).id;
+      }, UI.pday === 0);
+      break;
+    }
+    case 'plansave': {
+      const d = viewDay();
+      if (!filled(getPlan(d)).length) { toast('至少寫下一件重要的事'); break; }
+      ac(); reward(() => grant('plan', null, { key: 'plan:' + d, d, title: '📝 今天的重要事項寫好了！' })); break;
+    }
+    case 'cal': {
+      const d = viewDay(), P = getPlan(d);
+      if (!filled(P).length) { toast('先寫下要做的事'); break; }
+      window.open(gcalURL(d, P), '_blank', 'noopener'); break;
+    }
+    case 'redeem': {
+      const it = shopItems().find(x => x.id === v);
+      if (derive().coins < it.price || !(await ask(`用 ${it.price} 🪙 兌換「${it.name}」？`, '兌換'))) break;
+      S.logs.push({ id: rid(), t: Date.now(), d: dayKey(), k: 'redeem', name: it.name, c: -it.price });
+      save(); render(); SFX.buy(); toast(`${it.icon} 兌換成功，去享受吧！`); break;
+    }
+    case 'export': {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }));
+      a.download = `習慣深潛-備份-${dayKey()}.json`; a.click(); break;
+    }
+    case 'import': document.getElementById('importFile').click(); break;
+    case 'linknew':
+      try { await attach(await showSaveFilePicker({ suggestedName: '習慣深潛-存檔.json', types: FILE_TYPES }), true); toast('已連結，之後每次操作都會自動寫入'); } catch (e) {}
+      break;
+    case 'linkopen':
+      try {
+        const [h] = await showOpenFilePicker({ types: FILE_TYPES });
+        if (await h.requestPermission({ mode: 'readwrite' }) === 'granted') { await attach(h, false); toast('已連結存檔'); }
+      } catch (e) {}
+      break;
+    case 'relink':
+      try { if (await FS.handle.requestPermission({ mode: 'readwrite' }) === 'granted') await attach(FS.handle, false); } catch (e) {}
+      break;
+  }
+});
+// 輸入框只存資料不重畫，避免打字時失去焦點；換分類、換頻率要重畫（欄位會變）
+document.addEventListener('input', e => {
+  const el = e.target, i = el.dataset.i;
+  if (el.dataset.sf) { S.shop[el.dataset.si][el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); return; }
+  if (el.dataset.hf) {
+    const h = S.habits[el.dataset.hi], f = el.dataset.hf;
+    h[f] = f === 'weeks' || f === 'target' ? +el.value : el.value;
+    save(); if (f === 'weeks') render();
+    return;
+  }
+  if (i === undefined) return;
+  const it = getPlan(viewDay())[i];
+  if (el.dataset.pub) it.pub = { ...(it.pub || { on: true }), title: el.value };
+  else if (el.dataset.pf) {
+    it[el.dataset.pf] = el.value;
+    if (el.dataset.pf === 'cat') render();
+  } else if (el.dataset.ex) {
+    it.ex = it.ex || { type: ETAGS[0] };
+    it.ex[el.dataset.ex] = el.dataset.ex === 'dist' || el.dataset.ex === 'min' ? (el.value === '' ? '' : +el.value) : el.value;
+    const p = document.getElementById('pace' + i); if (p) p.textContent = paceText(it.ex);
+  }
+  save();
+});
+document.getElementById('importFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    if (!Array.isArray(j.logs)) throw 0;
+    if (await ask(`備份檔有 ${j.logs.length} 筆紀錄，目前有 ${S.logs.length} 筆。\n確定用備份取代目前資料？`, '還原')) {
+      S = migrate(Object.assign(blank(), j)); save(); render(); toast('已還原');
+    }
+  } catch (err) { toast('這不是有效的備份檔'); }
+});
+
+/* ========= 啟動 ========= */
+(async function init() {
+  const bub = document.getElementById('bubbles');
+  for (let i = 0; i < 10; i++) {
+    const s = 3 + (i % 3) * 2;
+    bub.insertAdjacentHTML('beforeend', `<i style="left:${(i * 37 + 7) % 100}%;width:${s}px;height:${s}px;animation-duration:${9 + (i * 7) % 11}s;animation-delay:-${(i * 3) % 13}s"></i>`);
+  }
+  try {
+    const h = await idb.get('handle');
+    if (h) {
+      FS.handle = h;
+      FS.ok = (await h.queryPermission({ mode: 'readwrite' })) === 'granted';
+      if (FS.ok && S.logs.length <= 1) await attach(h, false);
+    }
+  } catch (e) {}
+  render(); tick();
+  setInterval(tick, 500);
+  if (!derive().claimed.has('welcome')) { grant('welcome', null, { key: 'welcome' }); save(); render(); nextChest(); }
+  // 跨過換日時間時重新整理畫面
+  let lastDay = dayKey();
+  setInterval(() => { if (dayKey() !== lastDay) { lastDay = dayKey(); render(); } }, 30e3);
+})();
+</script>
+</body>
+</html>
