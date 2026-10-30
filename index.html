@@ -104,6 +104,24 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .prow select{font-size:14px;padding:4px 4px;flex:none;max-width:42%}
 .divider{margin:10px 0 2px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;letter-spacing:.2em;color:var(--faint)}
 .seg-switch{display:inline-flex}
+.favs{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin:2px 0 6px}
+.fav{display:inline-flex;align-items:center;background:var(--panel2)}
+.fav button{margin:0;padding:3px 2px 3px 9px;font-size:14px;color:var(--ink)}
+.fav .x{padding:3px 7px;color:var(--faint)}
+.star{flex:none;font-size:18px;color:var(--coin);padding:0 4px;margin:0}
+.stages{display:flex;justify-content:center;gap:18px;margin:6px 0}
+.stages>div{display:flex;flex-direction:column;align-items:center}
+.stages .sprite,.entry .sprite,.erow .sprite{margin:2px auto}
+.streakbox{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.streakbox div{background:var(--panel2);padding:8px 10px}
+.streakbox b{font-size:22px;display:block;color:var(--warn)}
+.cal{display:grid;grid-template-columns:40px repeat(7,1fr);gap:3px;max-width:340px;align-items:center}
+.cal .wd{text-align:center;font-size:12px;color:var(--faint)}
+.cal .wk{font-size:11px;color:var(--faint)}
+.cal i{aspect-ratio:1;background:#0f2a4d}
+.cal i.l1{background:#1f5a8a}.cal i.l2{background:#2f8fc0}.cal i.l3{background:#73eff7}.cal i.l4{background:#e8ffff}
+.cal i.today{outline:2px solid var(--coin);outline-offset:-2px}
+.cal i.blank{background:transparent}
 .seg-switch button{margin:0 0 0 -2px;padding:3px 12px;font-size:14px}
 
 /* 番茄鐘 */
@@ -414,7 +432,15 @@ function migrate(s) {
     }
     it.cat = 'other'; delete it.ex; delete it.pub;
   }
-  if (s.fed) for (const k of Object.keys(s.fed)) if (!k.includes('#')) { s.fed[k + '#0'] = (s.fed[k + '#0'] || 0) + s.fed[k]; delete s.fed[k]; }
+  if (s.fed) for (const k of Object.keys(s.fed)) if (!k.includes('#') && CR[k]) { s.fed[k + '#0'] = (s.fed[k + '#0'] || 0) + s.fed[k]; delete s.fed[k]; }
+  // 每一隻改用抽到牠的那筆紀錄 id 當身分：clown#0 → 第 1 筆小丑魚紀錄的 id
+  if (s.fed) for (const k of Object.keys(s.fed)) {
+    const m = k.match(/^(\w+)#(\d+)$/); if (!m) continue;
+    const lg = s.logs.filter(l => l.drop === m[1])[+m[2]];
+    if (lg) s.fed[lg.id] = (s.fed[lg.id] || 0) + s.fed[k];
+    delete s.fed[k];
+  }
+  s.released = s.released || {}; s.outTank = s.outTank || {}; s.favs = Array.isArray(s.favs) ? s.favs : [];
   if (!s.gcats) {
     s.gcats = CONFIG.generalCats.map(c => ({ ...c }));
     if (Object.values(s.plans).some(P => P.some(it => it.cat === 'digital')))
@@ -568,6 +594,7 @@ function grant(kind, tag, o = {}) {
   const log = { id: rid(), t: Date.now(), d: o.d || dayKey(), k: kind, tag: tag || undefined, xp, c: c + dup, drop: cr.id, key: o.key, ...o.extra };
   S.logs.push(log);
   Q.push({ title, cr, isNew, xp, c, dup, crit, owned: (D.col[cr.id] || 0) + 1 });
+  if (pets(cr.id).length > MAX_PETS) Q.push({ release: cr.id, newId: log.id });
   return log;
 }
 // 今天的寶箱（前三件、每個習慣的打卡、週期達標）跟著條件走：條件不再成立時把獎勵收進 S.held，
@@ -665,6 +692,15 @@ function nextChest() {
   const it = Q.shift(), ov = document.getElementById('ov'), m = document.getElementById('modal');
   if (!it) { ov.classList.add('hidden'); return; }
   UI.opened = true; UI.cur = it; ov.classList.remove('hidden');
+  if (it.release) {
+    const c = CR[it.release], P = pets(c.id);
+    if (P.length <= MAX_PETS) { UI.opened = false; nextChest(); return; }
+    m.innerHTML = `<h2>${c.name}已經有 ${MAX_PETS} 隻了</h2><p class="dim">每種最多養 ${MAX_PETS} 隻，選一隻放生回大海。</p>
+      ${P.map((p, i) => `<div class="entry" style="text-align:left">${stageImg(c, stageOf(p.fed), 2)}
+        <span class="sp">${p.id === it.newId ? '<b class="new">新抽到的</b>' : `${i + 1} 號`}・${STAGE_NAME[stageOf(p.fed) - 1]}・吃了 ${p.fed} 顆</span>
+        <button class="${p.id === it.newId ? 'pri' : ''}" data-act="releasepick" data-v="${p.id}">放生</button></div>`).join('')}`;
+    return;
+  }
   if (it.level !== undefined) {
     m.innerHTML = `<div class="label">LEVEL UP</div><div class="big-lv pop" style="margin:10px 0"><span>Lv.</span>${it.level}</div>
       ${it.title ? `<h2>取得稱號：${it.title}</h2>` : `<p class="dim">${RANKS[rankIdx(it.level)][1]}</p>`}
@@ -724,12 +760,7 @@ function habitEditor() {
     <div class="row" style="margin-top:8px"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣 ${customCount()}/${CONFIG.maxCustom}</button>
       ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${h.id}">加回 ${esc(h.e)} ${esc(h.n)}</button>`).join('')}</div>
     <div class="mini">每天的習慣漏兩天才斷；每週／每兩週的習慣沒達標就斷。</div>
-    <div class="sub" id="cats">六件事的分類</div>
-    ${S.gcats.map((c, i) => c.off ? '' : `<div class="erow">
-      <input data-gf="e" data-gi="${i}" value="${esc(c.e)}" style="width:52px;text-align:center" title="圖示">
-      <input class="sp" data-gf="n" data-gi="${i}" value="${esc(c.n)}" placeholder="分類名稱，例如：工作">
-      ${c.id === 'other' ? '<span class="dim">固定</span>' : `<button class="ghost" data-act="gcatdel" data-v="${i}" title="刪除">✕</button>`}</div>`).join('')}
-    <div class="row" style="margin-top:8px"><button data-act="gcatadd" ${gcats().length >= 6 ? 'disabled' : ''}>＋ 新增分類</button></div></section>`;
+    </section>`;
 }
 
 function today(D) {
@@ -755,17 +786,20 @@ function today(D) {
       <div class="row" style="margin-top:8px">每 <select id="vW"><option value="1">1 週</option><option value="2">2 週</option></select>
         至少 <select id="vT">${targetOpts(1)}</select> 篇
         <button class="pri" data-act="vcfg">確定</button></div></section>`;
-  const hint = UI.pday < 0 ? '補登昨天：只算連勝，不開寶箱。'
+  const hint = UI.pday < 0 ? '補登昨天：只算完成，不開寶箱。'
     : UI.pday > 0 ? '先寫好明天的清單，寫好就能開寶箱。'
-    : `前 ${CONFIG.rewardRows} 件完成會開寶箱。`;
+    : `前 ${CONFIG.rewardRows} 件完成會開寶箱。點 ☆ 存成常用。`;
+  const favs = S.favs || [];
+  // 常用：點一下填進第一個空格，不用每天重打
+  const favBar = favs.length ? `<div class="favs"><small class="dim">常用</small>${favs.map((t, i) => `<span class="fav"><button class="ghost" data-act="usefav" data-v="${i}">${esc(t)}</button><button class="ghost x" data-act="delfav" data-v="${i}" title="從常用移除">×</button></span>`).join('')}</div>` : '';
   const rows = P.map((it, i) => {
-    const c = catOf(it.cat);
     const divider = i === CONFIG.rewardRows ? '<div class="divider">以下只做紀錄</div>' : '';
+    const starred = it.text.trim() && favs.includes(it.text.trim());
     return `${divider}<div class="prow ${it.done ? 'done' : ''}">
       <input type="checkbox" data-act="pdone" data-v="${i}" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
       <span class="no">${i + 1}</span>
-      <input class="ptext" data-pf="text" data-i="${i}" value="${esc(it.text)}" placeholder="${esc(placeholder(c))}">
-      <select data-pf="cat" data-i="${i}" title="分類">${catList().map(x => `<option value="${x.id}" ${c.id === x.id ? 'selected' : ''}>${esc(x.e)} ${esc(x.n)}</option>`).join('')}</select></div>`;
+      <input class="ptext" data-pf="text" data-i="${i}" value="${esc(it.text)}" placeholder="${i === 0 ? '今天最重要的事' : ''}">
+      <button class="ghost star" data-act="fav" data-v="${i}" title="${starred ? '從常用移除' : '存成常用'}">${starred ? '★' : '☆'}</button></div>`;
   }).join('');
   const T = S.timer && S.timer.segs ? S.timer : null, seg = T && T.segs[T.si], pm = pomoMin();
   const todayPomo = S.logs.filter(l => l.k === 'pomo' && l.d === td).length;
@@ -786,32 +820,60 @@ function today(D) {
       <div class="habits">${chips}</div>
       ${risky.length ? `<div class="warn">昨天漏了 ${esc(risky.join('、'))}，今天做到就不會斷。</div>` : ''}</section>`;
   return `${setup}${habits}
-    <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<button class="ghost" data-act="catedit">分類</button><span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
+    <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
       <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}・${hint}</div>
-      ${rows}
+      ${UI.pday >= 0 ? favBar : ''}${rows}
       <div class="row" style="margin-top:8px">${UI.pday < 0 ? '' : claimed ? '<span class="done-tag">✓ 清單已寫好</span>' : '<button class="pri" data-act="plansave">寫好了</button>'}
         <span class="sp"></span><small>完成 ${doneN}/${filled(P).length}</small></div></section>
     ${timer}`;
 }
 
 /* ========= 習慣打卡面板 ========= */
+// 每種運動要記的欄位不一樣：潛水記深度和潛點、登山記爬升；跑步、游泳會算配速。[欄位, 名稱, 單位, 間隔]
+const EX_FIELDS = {
+  '跑步': [['dist', '距離', 'km', .1], ['min', '時間', '分鐘', 1]],
+  '游泳': [['m', '距離', '公尺', 50], ['min', '時間', '分鐘', 1]],
+  '重訓': [['min', '時間', '分鐘', 1]],
+  '潛水': [['depth', '最大深度', '公尺', 1], ['min', '潛水時間', '分鐘', 1], ['site', '潛點', '', 0]],
+  '登山': [['dist', '距離', 'km', .1], ['gain', '爬升', '公尺', 10], ['min', '時間', '分鐘', 1]],
+  '其他': [['min', '時間', '分鐘', 1]],
+};
+const fmtPace = sec => { const s = Math.round(sec); return `${Math.floor(s / 60)}'${pad(s % 60)}"`; };
+const swimMeters = e => e.m || (e.type === '游泳' && e.dist ? e.dist * 1000 : 0);
 function paceText(e) {
-  if (!(e.dist > 0) || !(e.min > 0)) return '';
-  const swim = e.type === '游泳', sec = Math.round(e.min * 60 / (swim ? e.dist * 10 : e.dist));
-  return `配速 ${Math.floor(sec / 60)}'${pad(sec % 60)}"${swim ? '/100m' : '/km'}`;
+  if (!(e.min > 0)) return '';
+  if (e.type === '跑步' && e.dist > 0) return `配速 ${fmtPace(e.min * 60 / e.dist)}/km`;
+  if (e.type === '游泳' && swimMeters(e) > 0) return `配速 ${fmtPace(e.min * 60 / (swimMeters(e) / 100))}/100m`;
+  return '';
 }
-const exText = e => [e.type, e.dist ? `${e.dist} km` : '', e.min ? `${e.min} 分` : '', paceText(e), e.note].filter(Boolean).join('・');
+function exText(e) {
+  const parts = [e.type];
+  if (e.type === '游泳') { if (swimMeters(e)) parts.push(`${swimMeters(e)} m`); }
+  else if (e.dist) parts.push(`${e.dist} km`);
+  if (e.depth) parts.push(`最大 ${e.depth} m`);
+  if (e.gain) parts.push(`爬升 ${e.gain} m`);
+  if (e.min) parts.push(`${e.min} 分`);
+  parts.push(paceText(e), e.site, e.note);
+  return parts.filter(Boolean).join('・');
+}
 function renderSheet() {
   const ov = document.getElementById('sheetov'), el = document.getElementById('sheet');
   if (!UI.sheet) { ov.classList.add('hidden'); return; }
   ov.classList.remove('hidden');
-  if (UI.sheet.creature) {   // 圖鑑放大
-    const c = CR[UI.sheet.creature], R = RARITY[c.r], n = derive().col[c.id] || 0;
+  if (UI.sheet.creature) {   // 圖鑑放大：三種成長外觀＋擁有的每一隻
+    const c = CR[UI.sheet.creature], R = RARITY[c.r], P = pets(c.id), seen = seenStage(c.id);
+    const big = Math.max(3, Math.min(8, Math.floor(110 / Math.max(...c.px.map(r => r.length)))));
     el.style.textAlign = 'center';
     el.innerHTML = `<div class="row"><span class="rar" style="background:${R.color}">${R.name}</span><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
-      ${img(c.px, Math.max(4, Math.min(10, Math.floor(150 / Math.max(...c.px.map(r => r.length))))), false, 'pop')}
-      <h2>${c.name} <small>×${n}</small></h2>
-      <div class="mini">${Array.from({ length: Math.min(3, n) }, (_, k) => `${Math.min(3, n) > 1 ? `${k + 1} 號 ` : '水族箱 '}Lv.${growLv(fedOf(`${c.id}#${k}`))}・吃了 ${fedOf(`${c.id}#${k}`)} 顆`).join('<br>')}</div><p class="dim">${c.fact}</p>`;
+      ${stageImg(c, seen, big, false, 'pop')}
+      <h2>${c.name}</h2><p class="dim" style="margin:0 0 8px">${c.fact}</p>
+      <div class="stages">${[1, 2, 3].map(s => `<div>${stageImg(c, s, 3, s > seen)}<small class="${s > seen ? 'dim' : ''}">${s > seen ? '？？？' : STAGE_NAME[s - 1]}</small></div>`).join('')}</div>
+      <div class="mini">吃到 ${GROW[1]} 顆長成成體、${GROW[2]} 顆變成閃耀型態</div>
+      <div class="sub" style="text-align:left">擁有 ${P.length}/${MAX_PETS} 隻</div>
+      ${P.map((p, i) => `<div class="entry" style="text-align:left">${stageImg(c, stageOf(p.fed), 2)}
+        <span class="sp">${P.length > 1 ? `${i + 1} 號・` : ''}${STAGE_NAME[stageOf(p.fed) - 1]}・吃了 ${p.fed} 顆</span>
+        <label class="row" style="gap:4px;flex:none"><input type="checkbox" data-act="intank" data-v="${p.id}" ${inTank(p.id) ? 'checked' : ''}><small>水族箱</small></label>
+        <button class="ghost" data-act="release" data-v="${p.id}">放生</button></div>`).join('') || '<div class="dim" style="text-align:left">都放生了，再抽到會回來。</div>'}`;
     return;
   }
   el.style.textAlign = '';
@@ -819,16 +881,19 @@ function renderSheet() {
   const D = derive(), s = streaks(D)[h.id], day = UI.sheet.day, d = addDays(dayKey(), day), list = dayChecks(d, h.id);
   const goal = h.weeks ? `${h.weeks === 1 ? '每週' : '每兩週'} ${h.target} ${countWord(h)}・${periodWord(h)} ${perCount(D, h, periodKey(dayKey(), h.weeks))}/${h.target}` : '每天';
   let body;
-  if (h.kind === 'exercise') body = `
+  if (h.kind === 'exercise') {
+    const type = UI.sheet.exType || ETAGS[0];
+    body = `
       ${list.map((e, i) => `<div class="entry"><span class="sp">${esc(exText(e) || '運動')}</span><button class="ghost" data-act="chkdel" data-v="${i}">✕</button></div>`).join('')}
       <div class="form">
-        <select id="exType">${ETAGS.map(t => `<option>${t}</option>`).join('')}</select>
-        <input id="exDist" class="f-num" type="number" min="0" step="0.1" placeholder="km">
-        <input id="exMin" class="f-num" type="number" min="0" step="1" placeholder="分鐘">
+        <select id="exType">${ETAGS.map(t => `<option ${t === type ? 'selected' : ''}>${t}</option>`).join('')}</select>
+        ${EX_FIELDS[type].map(([k, label, unit, step]) => step
+          ? `<input id="ex_${k}" class="f-num" type="number" min="0" step="${step}" placeholder="${label}${unit ? `（${unit}）` : ''}">`
+          : `<input id="ex_${k}" class="f-wide" placeholder="${label}">`).join('')}
         <span class="dim" id="exPace" style="align-self:center"></span>
-        <input id="exNote" class="f-wide" placeholder="備註，例如：河堤間歇 4×800">
-      </div><button class="pri wide" data-act="exadd">記錄這次運動</button>`;
-  else if (h.kind === 'vocus') body = `
+        <input id="ex_note" class="f-wide" placeholder="備註">
+      </div><button class="pri wide" data-act="exadd">記錄這次${type}</button>`;
+  } else if (h.kind === 'vocus') body = `
       ${list.map((e, i) => `<div class="entry"><span class="sp">${esc(e.title || '（無標題）')}</span><button class="ghost" data-act="chkdel" data-v="${i}">✕</button></div>`).join('')}
       <div class="form"><input id="artTitle" class="f-wide" placeholder="發布的文章標題（可留空）"></div>
       <button class="pri wide" data-act="artadd">記錄發布的文章</button>`;
@@ -855,37 +920,77 @@ function ask(msg, yes = '確定', no = '取消', input = false) {
   return new Promise(res => { ask.res = v => { document.getElementById('askov').classList.add('hidden'); ask.res = null; res(v && input ? inp.value.trim() : v); }; });
 }
 
+/* ========= 生物個體與成長 ========= */
+// 每一隻生物＝一筆抽到牠的紀錄（log.drop）；放生的記在 S.released。每種最多養 MAX_PETS 隻
+const MAX_PETS = 5;
+const GROW = [0, 10, 30];                                  // 吃到幾顆：幼體 → 成體 → 閃耀
+const STAGE_NAME = ['幼體', '成體', '閃耀'];
+const fedOf = key => (S.fed && S.fed[key]) || 0;
+const stageOf = n => GROW.filter(t => n >= t).length;
+const inTank = id => !(S.outTank && S.outTank[id]);
+function pets(sp) {
+  return S.logs.filter(l => l.drop === sp && !(S.released && S.released[l.id])).map(l => ({ id: l.id, fed: fedOf(l.id) }));
+}
+// 圖鑑裡解鎖到第幾種外觀：看過的最高型態（放生了也算看過）
+const seenStage = sp => Math.max(1, (S.seen && S.seen[sp]) || 1, ...pets(sp).map(p => stageOf(p.fed)));
+const mixHex = (a, b, t) => '#' + [1, 3, 5].map(i => Math.round(parseInt(a.substr(i, 2), 16) * (1 - t) + parseInt(b.substr(i, 2), 16) * t).toString(16).padStart(2, '0')).join('');
+// 三種外觀：幼體顏色淡一點、成體是原圖、閃耀多一圈金邊
+const stageCv = {};
+function stageCanvas(c, s) {
+  const key = c.id + s; if (stageCv[key]) return stageCv[key];
+  const rows = c.px, w = Math.max(...rows.map(r => r.length)), h = rows.length, b = s === 3 ? 1 : 0;
+  const cv = document.createElement('canvas'); cv.width = w + 2 * b; cv.height = h + 2 * b;
+  const x = cv.getContext('2d');
+  const on = (i, j) => j >= 0 && j < h && i >= 0 && i < rows[j].length && rows[j][i] !== '.' && !!PAL[rows[j][i]];
+  if (s === 3) {
+    x.fillStyle = '#ffcd75';
+    for (let j = -1; j <= h; j++) for (let i = -1; i <= w; i++)
+      if (!on(i, j) && (on(i - 1, j) || on(i + 1, j) || on(i, j - 1) || on(i, j + 1))) x.fillRect(i + b, j + b, 1, 1);
+  }
+  rows.forEach((r, j) => [...r].forEach((ch, i) => {
+    if (!on(i, j)) return;
+    x.fillStyle = s === 1 ? mixHex(PAL[ch], '#ffffff', .35) : PAL[ch]; x.fillRect(i + b, j + b, 1, 1);
+  }));
+  return stageCv[key] = cv;
+}
+const stageUrl = {};
+function stageImg(c, s, scale, sil = false, cls = '') {
+  const key = c.id + s + sil;
+  if (!stageUrl[key]) {
+    const src = stageCanvas(c, s), cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
+    const x = cv.getContext('2d'); x.drawImage(src, 0, 0);
+    if (sil) { x.globalCompositeOperation = 'source-in'; x.fillStyle = '#1b3a60'; x.fillRect(0, 0, cv.width, cv.height); }
+    stageUrl[key] = { src: cv.toDataURL(), w: cv.width, h: cv.height };
+  }
+  const u = stageUrl[key];
+  return `<img class="sprite ${cls}" src="${u.src}" width="${u.w * scale}" height="${u.h * scale}" alt="">`;
+}
+
 function dex(D) {
   const total = CONFIG.rarityRates.reduce((a, b) => a + b, 0);
   return `<section class="px">${sh('水下生物圖鑑', 'COLLECTION', `<span class="dim">${Object.keys(D.col).length} / ${CREATURES.length}</span>`)}
-    <div class="mini">完成事情就會開寶箱。點已收集的生物可以放大看介紹。</div>
+    <div class="mini">完成事情就會開寶箱。點已收集的生物看介紹、成長型態，也可以放生。</div>
     ${RARITY.map((R, r) => `<div class="grp row"><span class="rar" style="background:${R.color}">${R.name}</span>
       <small>掉落率 ${(CONFIG.rarityRates[r] / total * 100).toFixed(1).replace('.0', '')}%</small></div>
-      <div class="dex">${CREATURES.filter(c => c.r === r).map(c => {
-        const n = D.col[c.id] || 0;
-        return n ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${img(c.px, 5)}<div class="nm">${c.name}</div><small>×${n}</small></div>`
-          : `<div class="cell no">${img(c.px, 5, true)}<div class="nm dim">？？？</div><small>&nbsp;</small></div>`;
-      }).join('')}</div>`).join('')}</section>`;
+      <div class="dex">${CREATURES.filter(c => c.r === r).map(c => D.col[c.id]
+        ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${stageImg(c, seenStage(c.id), 5)}<div class="nm">${c.name}</div><small>${pets(c.id).length} 隻</small></div>`
+        : `<div class="cell no">${img(c.px, 5, true)}<div class="nm dim">？？？</div><small>&nbsp;</small></div>`).join('')}</div>`).join('')}</section>`;
 }
 
 /* ========= 水族箱小遊戲 ========= */
-// 收集到的生物會在這裡游；點水面撒飼料，生物吃了會長大；點生物看名字和等級
-// 每種生物的體型（相對大小）與游速，照真實生物的感覺；ground = 在海底爬
+// 你養的生物會在這裡游；點水面撒飼料，吃到的那一隻會長大；點生物看名字和型態
+// 每種生物的體型（相對大小）與游速，照真實生物的感覺；第三個值＝在海底爬
 const TANK_SPECIES = {
   clown: [1, .45], damsel: [.9, .6], butterfly: [1, .4], star: [1, .05, 1], hermit: [1, .18, 1], urchin: [1, .04, 1],
   turtle: [1.7, .2], octopus: [1.3, .25], nudi: [.9, .07, 1], lion: [1.3, .2], puffer: [1.1, .25], cuttle: [1.3, .35],
   seahorse: [1, .1], shark: [2.3, .7], moray: [1.8, .3], jelly: [1.3, .08], manta: [2.6, .35], mola: [2.3, .15],
   dolphin: [2.2, .9], whaleshark: [3.3, .2],
 };
+const STAGE_SCALE = [.75, 1, 1.1];
 const FEED = { free: 3, pack: 10, price: 30 };            // 每天免費 3 顆；商店 30 金幣買 10 顆
-const GROW = [0, 5, 15, 30, 50];                           // 吃到幾顆升到 Lv.2、3、4、5
-const growLv = n => GROW.filter(t => n >= t).length;
-const fedOf = key => (S.fed && S.fed[key]) || 0;
-// 水族箱設定：S.tankCfg[物種] = { n: 放幾隻（0–3）, size: 0.6／1／1.3 }
+// 水族箱設定：S.tankCfg[物種] = { size: 0.6／1／1.3 }；哪幾隻放進去記在 S.outTank
 const SIZES = [[.6, '小'], [1, '標準'], [1.3, '大']];
-const tankCount = (id, owned) => Math.min(3, owned, S.tankCfg && S.tankCfg[id] && S.tankCfg[id].n !== undefined ? S.tankCfg[id].n : 3);
 const tankSize = id => (S.tankCfg && S.tankCfg[id] && S.tankCfg[id].size) || 1;
-const tankGrows = id => !(S.tankCfg && S.tankCfg[id] && S.tankCfg[id].grow === 0);
 const freeLeft = () => S.feedDay && S.feedDay.d === dayKey() ? Math.max(0, FEED.free - S.feedDay.used) : FEED.free;
 const feedLeft = () => freeLeft() + (S.feed || 0);
 function useFeed() {
@@ -894,40 +999,31 @@ function useFeed() {
   else return false;
   save(); return true;
 }
-const spriteCv = {};
-function spriteCanvas(c) {
-  if (spriteCv[c.id]) return spriteCv[c.id];
-  const w = Math.max(...c.px.map(r => r.length)), h = c.px.length, cv = document.createElement('canvas');
-  cv.width = w; cv.height = h;
-  const x = cv.getContext('2d');
-  c.px.forEach((r, j) => [...r].forEach((ch, i) => { if (ch !== '.' && PAL[ch]) { x.fillStyle = PAL[ch]; x.fillRect(i, j, 1, 1); } }));
-  return spriteCv[c.id] = cv;
-}
 const TANK = { raf: 0 };
 function tankFeedText() {
   const f = freeLeft(), b = S.feed || 0;
   return `飼料：今天免費 ${f}/${FEED.free}${b ? `・另有 ${b} 顆` : ''}`;
 }
 function tankEditor(D) {
-  const owned = CREATURES.filter(c => D.col[c.id]);
+  const owned = CREATURES.filter(c => pets(c.id).length);
   return `<section class="px">${sh('水族箱設定', 'AQUARIUM', '<button class="pri" data-act="tankdone">完成</button>')}
-    <div class="mini">決定每種生物要放幾隻、多大。設成 0 隻就不會出現在水族箱。選「維持原本大小」的話，等級照樣會升，只是外觀不會變大。</div>
+    <div class="mini">勾選要放進水族箱的個體，也可以調整每種生物的大小。想送走某一隻，到圖鑑點牠就能放生。</div>
     ${owned.map(c => {
-      const max = Math.min(3, D.col[c.id]), cur = tankCount(c.id, D.col[c.id]);
-      return `<div class="erow">${img(c.px, 2)}<span class="sp">${c.name}</span>
-        <select data-tf="n" data-tv="${c.id}">${Array.from({ length: max + 1 }, (_, k) => `<option value="${k}" ${cur === k ? 'selected' : ''}>${k} 隻</option>`).join('')}</select>
+      const P = pets(c.id);
+      return `<div class="erow">${stageImg(c, seenStage(c.id), 2)}<span class="sp">${c.name}</span>
         <select data-tf="size" data-tv="${c.id}">${SIZES.map(([v, l]) => `<option value="${v}" ${tankSize(c.id) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
-        <select data-tf="grow" data-tv="${c.id}"><option value="1">會長大</option><option value="0" ${tankGrows(c.id) ? '' : 'selected'}>維持原本大小</option></select></div>`;
+        <div class="row" style="flex-basis:100%;gap:10px;padding-left:4px">${P.map((p, i) => `<label class="row" style="gap:4px"><input type="checkbox" data-act="intank" data-v="${p.id}" ${inTank(p.id) ? 'checked' : ''}>
+          <small>${P.length > 1 ? `${i + 1} 號 ` : ''}${STAGE_NAME[stageOf(p.fed) - 1]}</small></label>`).join('')}</div></div>`;
     }).join('') || '<div class="dim">還沒有生物。</div>'}</section>`;
 }
 function tank(D) {
   if (UI.tankEdit) return tankEditor(D);
-  const n = Object.keys(D.col).length;
+  const n = CREATURES.filter(c => pets(c.id).some(p => inTank(p.id))).length;
   return `<section class="px">${sh('水族箱', 'AQUARIUM', `<span class="dim">${n} 種生物</span><button class="ghost" data-act="tankedit">設定</button>`)}
     <canvas id="tank" class="tank"></canvas>
     <div class="row" style="margin-top:8px"><span class="dim" id="feedInfo">${tankFeedText()}</span><span class="sp"></span>
       <button data-act="buyfeed">買飼料 ${FEED.pack} 顆・${FEED.price}${COIN}</button></div>
-    <div class="mini">點水面撒飼料，吃到的那一隻會長大。點生物可以看名字和等級。重複抽到的生物會多一隻（每種最多 3 隻），可以在「設定」調整數量和大小。</div></section>`;
+    <div class="mini">點水面撒飼料，吃到的那一隻會長大（幼體 → 成體 → 閃耀）。點生物可以看名字和型態。</div></section>`;
 }
 function tankStart() {
   cancelAnimationFrame(TANK.raf);
@@ -935,31 +1031,33 @@ function tankStart() {
   const W = Math.max(240, Math.floor(cv.clientWidth / 2)), H = Math.floor(cv.clientHeight / 2);   // 以 2 倍像素畫，維持像素感
   cv.width = W; cv.height = H;
   const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
-  const col = derive().col, floorY = H - 16;
+  const floorY = H - 16;
   const prev = new Map((TANK.fish || []).map(f => [f.key, f]));   // 重畫（例如買飼料）時，每一隻留在原位
   TANK.food = TANK.food || []; TANK.tip = null; TANK.bub = TANK.bub || [];
-  // 體型＝物種大小 × 自訂大小 ×（1 + 每升一級多 15%）；每一隻各自計算
-  const sizeOf = f => {
-    const sc = TANK_SPECIES[f.c.id][0] * tankSize(f.c.id) * (tankGrows(f.c.id) ? 1 + .15 * (growLv(fedOf(f.key)) - 1) : 1);
+  // 外觀和體型跟著型態走：物種大小 × 自訂大小 × 型態大小
+  const look = f => {
+    const st = stageOf(fedOf(f.key));
+    f.st = st; f.s = stageCanvas(f.c, st);
+    const sc = TANK_SPECIES[f.c.id][0] * tankSize(f.c.id) * STAGE_SCALE[st - 1];
     f.w = Math.round(f.s.width * sc); f.h = Math.round(f.s.height * sc);
   };
   TANK.fish = [];
   for (const c of CREATURES) {
-    const copies = tankCount(c.id, col[c.id] || 0), [, speed, ground] = TANK_SPECIES[c.id];
-    for (let k = 0; k < copies; k++) {
-      const f = { c, key: `${c.id}#${k}`, no: k + 1, many: copies > 1, s: spriteCanvas(c), ground: !!ground, ph: Math.random() * 6, rest: 0,
+    const P = pets(c.id), [, speed, ground] = TANK_SPECIES[c.id];
+    P.forEach((p, i) => {
+      if (!inTank(p.id)) return;
+      const f = { c, key: p.id, no: i + 1, many: P.length > 1, ground: !!ground, ph: Math.random() * 6, rest: 0,
         vx: speed * (.8 + Math.random() * .4) * (Math.random() < .5 ? -1 : 1) };
-      sizeOf(f);
-      const p = prev.get(f.key);
-      if (p) { f.vx = p.vx; f.ph = p.ph; f.rest = p.rest; f.x = Math.min(p.x, Math.max(0, W - f.w)); f.baseY = ground ? floorY - f.h + 2 : Math.min(p.baseY, floorY - f.h + 2); f.y = ground ? f.baseY : p.y; }
+      look(f);
+      const q = prev.get(f.key);
+      if (q) { f.vx = q.vx; f.ph = q.ph; f.rest = q.rest; f.x = Math.min(q.x, Math.max(0, W - f.w)); f.baseY = ground ? floorY - f.h + 2 : Math.min(q.baseY, floorY - f.h + 2); f.y = ground ? f.baseY : q.y; }
       else { f.x = Math.random() * Math.max(1, W - f.w); f.y = f.baseY = ground ? floorY - f.h + 2 : 6 + Math.random() * Math.max(1, floorY - f.h - 24); }
       TANK.fish.push(f);
-    }
+    });
   }
-  // 大的畫在後面，小的在前面
-  TANK.fish.sort((a, b) => b.w * b.h - a.w * a.h);
+  TANK.fish.sort((a, b) => b.w * b.h - a.w * a.h);   // 大的畫在後面，小的在前面
   const weeds = Array.from({ length: Math.max(3, Math.floor(W / 60)) }, (_, i) => ({ x: 12 + i * (W - 24) / Math.max(1, Math.floor(W / 60) - 1), h: 18 + (i * 7) % 20 }));
-  const tipFor = f => { const n = fedOf(f.key); return `${f.c.name}${f.many ? ` ${f.no} 號` : ''} Lv.${growLv(n)}・吃了 ${n} 顆`; };
+  const tipFor = f => `${f.c.name}${f.many ? ` ${f.no} 號` : ''}・${STAGE_NAME[f.st - 1]}・吃了 ${fedOf(f.key)} 顆`;
   cv.onclick = e => {
     const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width, py = (e.clientY - r.top) * H / r.height;
     const hit = [...TANK.fish].reverse().find(f => px >= f.x && px <= f.x + f.w && py >= f.y && py <= f.y + f.h);
@@ -979,15 +1077,13 @@ function tankStart() {
     x.fillStyle = '#c2a36b'; x.fillRect(0, floorY, W, H - floorY);
     x.fillStyle = '#a3864f'; for (let i = 0; i < W; i += 7) x.fillRect(i, floorY + 3 + (i % 3), 2, 2);
     weeds.forEach((w, i) => { for (let j = 0; j < w.h; j += 3) { const sway = Math.round(Math.sin(now / 700 + i + j / 6) * 2); x.fillStyle = j % 6 ? '#38b764' : '#257179'; x.fillRect(w.x + sway, floorY - j, 3, 3); } });
-    // 氣泡
     if (Math.random() < .03 * dt) TANK.bub.push({ x: Math.random() * W, y: floorY, s: 1 + Math.round(Math.random()) });
     TANK.bub = TANK.bub.filter(b => (b.y -= .5 * dt) > 0);
     x.fillStyle = 'rgba(180,240,255,.55)'; TANK.bub.forEach(b => x.fillRect(Math.round(b.x), Math.round(b.y), b.s, b.s));
-    // 飼料
     TANK.food.forEach(f => { if (f.y < floorY - 2) f.y += f.vy * dt; f.age = (f.age || 0) + dt; });
     TANK.food = TANK.food.filter(f => f.age < 1800);
     x.fillStyle = '#ef7d57'; TANK.food.forEach(f => x.fillRect(Math.round(f.x), Math.round(f.y), 2, 2));
-    // 生物：飼料碰到身體就算吃到；吃了會長大
+    // 生物：飼料碰到身體就算吃到；吃到的那一隻會長大
     const eats = (f, p) => p.x >= f.x - 2 && p.x <= f.x + f.w + 2 && p.y >= f.y - 2 && p.y <= f.y + f.h + 2;
     for (const f of TANK.fish) {
       const sp0 = Math.abs(f.vx);
@@ -1003,12 +1099,15 @@ function tankStart() {
         if (!f.ground) { const dy = food.y - (f.y + f.h / 2); f.baseY += Math.sign(dy) * Math.min(Math.abs(dy), sp * .8); }
         if (eats(f, food)) {
           TANK.food.splice(TANK.food.indexOf(food), 1); SFX.eat();
-          const before = growLv(fedOf(f.key));
-          S.fed = S.fed || {}; S.fed[f.key] = fedOf(f.key) + 1; save();
-          if (growLv(fedOf(f.key)) > before) {   // 只有吃到的這一隻長大
-            const cx = f.x + f.w / 2, by = f.y + f.h; sizeOf(f); f.x = cx - f.w / 2; if (f.ground) f.y = floorY - f.h + 2; else f.baseY = by - f.h;
-            SFX.rank(); toast(`${f.c.name}${f.many ? ` ${f.no} 號` : ''}長大了！Lv.${growLv(fedOf(f.key))}`);
+          const before = stageOf(fedOf(f.key));
+          S.fed = S.fed || {}; S.fed[f.key] = fedOf(f.key) + 1;
+          const after = stageOf(fedOf(f.key));
+          if (after > before) {
+            S.seen = S.seen || {}; S.seen[f.c.id] = Math.max(S.seen[f.c.id] || 1, after);
+            const cx = f.x + f.w / 2, by = f.y + f.h; look(f); f.x = cx - f.w / 2; if (f.ground) f.y = floorY - f.h + 2; else f.baseY = by - f.h;
+            SFX.rank(); toast(`${f.c.name}${f.many ? ` ${f.no} 號` : ''}長成${STAGE_NAME[after - 1]}了！`);
           }
+          save();
         }
       } else if (f.ground) {
         if (f.rest > 0) f.rest -= dt; else { f.x += f.vx * dt; if (Math.random() < .004 * dt) f.rest = 60 + Math.random() * 180; }
@@ -1022,14 +1121,9 @@ function tankStart() {
       if (f.vx < 0) { x.translate(Math.round(f.x) + f.w, Math.round(f.y)); x.scale(-1, 1); x.drawImage(f.s, 0, 0, f.w, f.h); }
       else x.drawImage(f.s, Math.round(f.x), Math.round(f.y), f.w, f.h);
       x.restore();
-      if (f.many) {
-        const tx = Math.round(f.x + f.w / 2) - 3, ty = Math.max(0, Math.round(f.y) - 8);
-        x.fillStyle = 'rgba(13,36,66,.85)'; x.fillRect(tx, ty, 7, 7);
-        x.fillStyle = '#ffcd75'; x.font = 'bold 7px monospace'; x.textAlign = 'center'; x.fillText(f.no, tx + 3.5, ty + 6);
-      }
     }
-    if (!TANK.fish.length) { x.fillStyle = '#eaf2ff'; x.font = '10px monospace'; x.textAlign = 'center'; x.fillText('還沒有生物，完成事情來開寶箱吧', W / 2, H / 2); }
-    if (TANK.tip && now < TANK.tip.until) {
+    if (!TANK.fish.length) { x.fillStyle = '#eaf2ff'; x.font = '10px monospace'; x.textAlign = 'center'; x.fillText('水族箱是空的', W / 2, H / 2); }
+    if (TANK.tip && now < TANK.tip.until && TANK.fish.includes(TANK.tip.f)) {
       const f = TANK.tip.f, text = tipFor(f);
       x.font = '10px "Microsoft JhengHei",monospace'; const tw = x.measureText(text).width + 8;
       const tx = Math.max(2, Math.min(W - tw - 2, f.x + f.w / 2 - tw / 2)), ty = Math.max(2, f.y - 16);
@@ -1105,15 +1199,21 @@ function entryText(r) {
 function log(D) {
   const lv = levelOf(D.xp), ri = rankIdx(lv), nxt = RANKS[ri + 1], lo = xpFor(lv), hi = xpFor(lv + 1);
   const td = dayKey(), H = activeHabits();
-  // 打卡月曆：一列一週（一到日），從第一次使用那週開始，最多顯示最近 6 週；顏色越亮代表當天完成越多習慣
-  const firstDay = Object.keys(D.days).filter(k => k <= td).sort()[0] || td;
-  let start = weekKey(firstDay); const limit = addDays(weekKey(td), -7 * 5); if (start < limit) start = limit;
-  let cells = ['一', '二', '三', '四', '五', '六', '日'].map(w => `<span class="wd">${w}</span>`).join('');
+  // 「有打卡的日子」＝至少完成一個習慣；算出目前連續、最長連續、總天數
+  const active = k => H.some(h => (D.days[k] || {})[h.id]);
+  const allDays = Object.keys(D.days).filter(k => k <= td && active(k)).sort();
+  let curRun = 0; for (let k = active(td) ? td : addDays(td, -1); active(k); k = addDays(k, -1)) curRun++;
+  let best = 0, run = 0, prevDay = null;
+  for (const k of allDays) { run = prevDay && addDays(prevDay, 1) === k ? run + 1 : 1; best = Math.max(best, run); prevDay = k; }
+  // 月曆：一列一週，從第一次使用那週開始，最多顯示最近 12 週；顏色越亮代表當天完成越多習慣
+  let start = weekKey(allDays[0] || td); const limit = addDays(weekKey(td), -7 * 11); if (start < limit) start = limit;
+  let cells = '<span></span>' + ['一', '二', '三', '四', '五', '六', '日'].map(w => `<span class="wd">${w}</span>`).join('');
   for (let k = start; k <= addDays(weekKey(td), 6); k = addDays(k, 1)) {
+    if (k === weekKey(k)) cells += `<span class="wk">${+k.slice(5, 7)}/${+k.slice(8)}</span>`;
     if (k > td) { cells += '<i class="blank"></i>'; continue; }
     const x = D.days[k] || {}, done = H.filter(h => x[h.id]), n = done.length;
     const l = n === 0 ? 0 : n >= H.length ? 4 : Math.min(3, Math.ceil(n / H.length * 3));
-    cells += `<i class="l${l}${k === td ? ' today' : ''}" title="${k}　${esc(done.map(h => h.e + ' ' + h.n).join(' ')) || '—'}">${+k.slice(8)}</i>`;
+    cells += `<i class="l${l}${k === td ? ' today' : ''}" title="${k}　${esc(done.map(h => h.e + ' ' + h.n).join(' ')) || '—'}"></i>`;
   }
   const daysOf = k => Object.values(D.days).filter(x => x[k]).length;
   const rec = recentEntries();
@@ -1124,7 +1224,9 @@ function log(D) {
     <div class="bar"><i style="width:${Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100))}%"></i></div>
     <div class="mini">升到 Lv.${lv + 1} 還差 ${hi - D.xp} XP${nxt ? `・Lv.${nxt[0]} 成為「${nxt[1]}」` : ''}</div></section>
   <section class="px">${sh('打卡紀錄', 'ACTIVITY')}
-    <div class="heat">${cells}</div>
+    <div class="streakbox"><div><small>目前連續</small><b>${curRun}</b><small>天</small></div>
+      <div><small>最長連續</small><b>${best}</b><small>天</small></div><div><small>總共打卡</small><b>${allDays.length}</b><small>天</small></div></div>
+    <div class="cal">${cells}</div>
     <small class="legend">少 <i style="background:#0f2a4d"></i><i style="background:#1f5a8a"></i><i style="background:#2f8fc0"></i><i style="background:#73eff7"></i><i style="background:#e8ffff"></i> 多</small></section>
   <section class="px">${sh('最近紀錄', 'RECENT')}
     ${rec.length ? rec.slice(0, 12).map(r => `<div class="entry"><span class="dim" style="flex:none">${r.d.slice(5).replace('-', '/')}</span><span class="sp">${esc(entryText(r))}</span></div>`).join('')
@@ -1134,6 +1236,7 @@ function log(D) {
       : `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`).join('')}
     <div><small>番茄鐘</small><b>${pomos.length}</b><small>段・${pomoHours.toFixed(1)} 小時</small></div>
     <div><small>跑步總距離</small><b>${runKm.toFixed(1)}</b><small>km・${runs.length} 次</small></div>
+    <div><small>潛水</small><b>${rec.filter(r => r.id === 'exercise' && r.e.type === '潛水').length}</b><small>支</small></div>
   </div></section>
   <section class="px">${sh('設定與備份', 'SETTINGS')}
     <label class="switch"><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button><span>音效</span></label>
@@ -1212,8 +1315,14 @@ document.addEventListener('click', async e => {
       reward(() => {}, UI.sheet.day === 0); break;
     }
     case 'exadd': {
-      const g = id => document.getElementById(id).value, dist = +g('exDist') || undefined, min = +g('exMin') || undefined, note = g('exNote').trim() || undefined;
-      addCheck(sheetDay(), 'exercise', { type: g('exType'), dist, min, note }); ac(); SFX.tap();
+      const type = document.getElementById('exType').value, e = { type };
+      for (const [k, , , step] of EX_FIELDS[type]) {
+        const v = document.getElementById('ex_' + k).value.trim();
+        if (v) e[k] = step ? +v : v;
+      }
+      const note = document.getElementById('ex_note').value.trim(); if (note) e.note = note;
+      UI.sheet.exType = type;
+      addCheck(sheetDay(), 'exercise', e); ac(); SFX.tap();
       reward(() => {}, UI.sheet.day === 0); break;
     }
     case 'artadd':
@@ -1221,7 +1330,6 @@ document.addEventListener('click', async e => {
       reward(() => {}, UI.sheet.day === 0); break;
     case 'chkdel': delCheck(sheetDay(), UI.sheet.id, +v); reward(() => {}, false); break;
     case 'habedit': UI.habEdit = true; render(); break;
-    case 'catedit': UI.habEdit = true; render(); document.getElementById('cats').scrollIntoView({ behavior: 'smooth' }); break;
     case 'habdone': finishHabits(); render(); toast('習慣已更新'); break;
     case 'habadd':
       if (customCount() >= CONFIG.maxCustom) break;
@@ -1274,7 +1382,7 @@ document.addEventListener('click', async e => {
         if (it.held) { S.logs.push(it.held); delete it.held; SFX.tap(); toast('已恢復這一項的獎勵'); return; }
         if (it.rw || +v >= CONFIG.rewardRows) { SFX.tap(); return; }
         it.rw = true;
-        it.lid = grant('check', c.n, { title: `${c.e} ${it.text} ✔`, xp: CONFIG.xp.check }).id;
+        it.lid = grant('check', c.n, { title: `✔ ${it.text}`, xp: CONFIG.xp.check }).id;
       }, UI.pday === 0);
       break;
     }
@@ -1291,6 +1399,33 @@ document.addEventListener('click', async e => {
     }
     case 'export': exportBackup(); break;
     case 'tankedit': UI.tankEdit = true; render(); break;
+    case 'intank': S.outTank = S.outTank || {}; if (b.checked) delete S.outTank[v]; else S.outTank[v] = true; save(); break;
+    case 'release': {
+      const lg = S.logs.find(l => l.id === v), c = lg && CR[lg.drop]; if (!c) break;
+      const no = pets(c.id).findIndex(p => p.id === v) + 1;
+      if (!(await ask(`放生${c.name}${pets(c.id).length > 1 ? ` ${no} 號` : ''}？\n牠會回到大海，不會再出現在水族箱。圖鑑的收集紀錄會保留。`, '放生'))) break;
+      S.released = S.released || {}; S.released[v] = true; save(); render(); renderSheet(); toast(`${c.name}回到大海了`); break;
+    }
+    case 'releasepick': {
+      const lg = S.logs.find(l => l.id === v);
+      S.released = S.released || {}; S.released[v] = true; save();
+      UI.opened = false; render(); nextChest(); toast(`${CR[lg.drop].name}回到大海了`); break;
+    }
+    case 'fav': {
+      const it = getPlan(viewDay())[v], t = it.text.trim();
+      if (!t) { toast('先寫下內容，再存成常用'); break; }
+      S.favs = S.favs || [];
+      if (S.favs.includes(t)) S.favs = S.favs.filter(x => x !== t);
+      else { if (S.favs.length >= 12) { toast('常用最多 12 個'); break; } S.favs.push(t); toast('已存成常用'); }
+      save(); render(); break;
+    }
+    case 'usefav': {
+      const P = getPlan(viewDay()), t = S.favs[+v], slot = P.find(x => !x.text.trim());
+      if (P.some(x => x.text.trim() === t)) { toast('這件已經在清單裡了'); break; }
+      if (!slot) { toast('六格都寫滿了'); break; }
+      slot.text = t; save(); render(); break;
+    }
+    case 'delfav': S.favs.splice(+v, 1); save(); render(); break;
     case 'tankdone': UI.tankEdit = false; render(); toast('水族箱已更新'); break;
     case 'buyfeed': {
       if (derive().coins < FEED.price) { toast(`金幣不夠，飼料要 ${FEED.price} 金幣`); break; }
@@ -1323,16 +1458,17 @@ document.addEventListener('input', e => {
     }
     return;
   }
-  if (el.id === 'exDist' || el.id === 'exMin' || el.id === 'exType') {
+  if (el.id === 'exType') { UI.sheet.exType = el.value; renderSheet(); return; }
+  if (el.id && el.id.startsWith('ex_')) {
+    const g = k => { const i = document.getElementById('ex_' + k); return i ? +i.value : 0; };
     const p = document.getElementById('exPace');
-    if (p) p.textContent = paceText({ type: document.getElementById('exType').value, dist: +document.getElementById('exDist').value, min: +document.getElementById('exMin').value });
+    if (p) p.textContent = paceText({ type: document.getElementById('exType').value, dist: g('dist'), m: g('m'), min: g('min') });
     return;
   }
   if (el.dataset.sf) { S.shop[el.dataset.si][el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); return; }
   if (el.dataset.tf) {
     S.tankCfg = S.tankCfg || {};
-    const c = S.tankCfg[el.dataset.tv] || (S.tankCfg[el.dataset.tv] = {});
-    c[el.dataset.tf] = +el.value; save(); return;
+    (S.tankCfg[el.dataset.tv] || (S.tankCfg[el.dataset.tv] = {})).size = +el.value; save(); return;
   }
   if (el.dataset.gf) { S.gcats[el.dataset.gi][el.dataset.gf] = el.value; save(); return; }
   if (el.dataset.hf) {
