@@ -101,6 +101,9 @@ async function cloudDelete() {
   } catch (e) { toast('刪除失敗，請重新登入後再試'); }
 }
 
+// Google 的登入按鈕規範：一定要放原色、不變形的「G」標誌，白底
+const GOOGLE_G = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+
 // 設定頁的「雲端同步」區塊
 function cloudSection() {
   if (!FIREBASE_CONFIG) return '';
@@ -111,7 +114,7 @@ function cloudSection() {
   else if (S.cloudUid && !CLOUD.ready) body = '<div class="mini">連線中…</div>';
   else if (IN_APP) body = '<div class="mini">在 App 內建瀏覽器裡無法用 Google 登入。請用 Chrome 或 Safari 開啟網站後登入，紀錄就能在各裝置同步。</div>';
   else body = `<div class="mini">登入後紀錄會存到雲端，換手機、換瀏覽器都能接續，也不怕資料不見。不登入也能照常使用。</div>
-      <button class="pri" data-act="login" style="margin-top:8px">用 Google 登入</button>`;
+      <button class="gbtn" data-act="login">${GOOGLE_G}用 Google 帳戶登入</button>`;
   return `<section class="px">${sh('雲端同步', 'CLOUD')}${body}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div>` : ''}</section>`;
 }
 function cloudStatusText() {
