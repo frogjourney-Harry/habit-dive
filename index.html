@@ -606,7 +606,9 @@ function reconcile(allowGrant) {
   const d = dayKey(), P = S.plans[d] || [];
   S.held = S.held || {};
   const conds = [
-    ['top3:' + d, 'top3', P.length > 0 && allDone(P.slice(0, CONFIG.rewardRows))],
+    // 前三格都要有寫內容、而且都打勾才算（只寫一件不會觸發）
+    ['top3:' + d, 'top3', P.slice(0, CONFIG.rewardRows).length === CONFIG.rewardRows
+      && P.slice(0, CONFIG.rewardRows).every(x => x.text.trim() && x.done)],
     ['art:' + d, 'pubchest', !!habit('vocus') && P.some(x => x.done && x.cat === 'vocus' && x.pub && x.pub.on)],
   ];
   for (const h of activeHabits()) if (h.weeks && h.kind !== 'vocus') {
