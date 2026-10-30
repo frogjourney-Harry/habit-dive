@@ -381,28 +381,46 @@ const JUV = {
   dolphin: ['.....k....', '....kbk...', 'k..kbbbkk.', 'kbkbbbbkbk', 'k..kwwwkk.'],
   whaleshark: ['......k.....', '.....knk....', 'k..kknnnkkk.', 'kkknwnnwnnkk', 'k..kkwwwwwk.'],
 };
-// 特殊型態：真實存在、比較少見的色型或近親物種，名字＋要換掉的顏色
+// 每種生物的實際顏色（對照真實物種調整，蓋過共用調色盤）
+const SPECIES_PAL = {
+  clown: { o: '#ff8a1c' },                                   // 眼斑雙鋸魚：鮮橘色
+  damsel: { b: '#2f6bff', c: '#2f6bff', y: '#2f6bff' },      // 藍魔鬼雀鯛：電光藍
+  butterfly: { y: '#ffd23f' },
+  star: { o: '#f07a3a' },
+  turtle: { G: '#5e4526', g: '#9b7a45', y: '#e6d6a6' },      // 綠蠵龜的殼其實是橄欖褐色
+  octopus: { r: '#b5503a', o: '#cf7556' },                   // 大部分章魚是紅褐色
+  lion: { r: '#a8362e' },                                    // 魔鬼蓑鮋：紅褐色條紋
+  puffer: { y: '#a8957a' },                                  // 白點叉鼻魨：灰褐色
+  cuttle: { s: '#9a8466', w: '#e8dcc4' },                    // 白斑烏賊：褐色斑駁
+  moray: { g: '#7a6a3a', y: '#2f2616' },                     // 爪哇裸胸鯙：褐色帶深色斑點
+  jelly: { c: '#bfe6f5' },                                   // 海月水母：半透明淡藍
+  manta: { n: '#555e6e', w: '#f4f4f4' },                     // 鬼蝠魟：深灰黑色背部、白色肩斑（太黑會看不到）
+  shark: { S: '#7d7f86' },
+  dolphin: { b: '#7d8a99' },                                 // 海豚：灰色
+  whaleshark: { n: '#4a5d78' },                              // 鯨鯊：灰藍色帶白點
+};
+// 特殊型態：真實存在、比較少見的色型或近親物種，名字＋要換掉的顏色（可帶專屬的圖 px）
 const MORPH = {
-  clown: { n: '黑色小丑魚', map: { o: '#3a3f58' } },                      // 眼斑雙鋸魚的黑色型（達爾文小丑）
-  damsel: { n: '黃尾雀鯛', map: { c: '#ffcd75', b: '#3b5dc9' } },         // 近親 Chrysiptera parasema
-  butterfly: { n: '浣熊蝴蝶魚', map: { y: '#f39c3d' } },                  // 近親 Chaetodon lunula
-  star: { n: '藍指海星', map: { o: '#41a6f6', y: '#73eff7' } },           // Linckia laevigata
-  hermit: { n: '藍腿寄居蟹', map: { r: '#41a6f6' } },                     // Clibanarius tricolor
-  urchin: { n: '火焰海膽', map: { P: '#e43b44' } },                       // Asthenosoma varium
-  turtle: { n: '玳瑁', map: { G: '#7a4a1c', g: '#d9a441', y: '#ffe0a0' } },   // 綠蠵龜的近親，極度瀕危
-  octopus: { n: '藍環章魚', map: {}, px: ['....kkkkkkk....', '...kyyybyyyk...', '..kyyybybyyyk..', '..kybyybyybyk..', '..kbybyyybybk..', '..kybyyyyybyk..', '..kywkyyywkyk..', '...kyyyyyyyk...', '..kykykykykyk..', '.kyk.ky.yk.kyk.', 'kyk..ky.yk..kyk', 'yk...k...k...ky', 'k.............k'] },   // Hapalochlaena，身上的藍環
-  nudi: { n: '藍龍海蛞蝓', map: { P: '#41a6f6', o: '#73eff7', y: '#f4f4f4' } },   // Glaucus atlanticus
-  lion: { n: '黑色獅子魚', map: { r: '#3a3f58', w: '#f4f4f4' } },         // 魔鬼蓑鮋的黑色型
-  puffer: { n: '星斑河豚', map: { y: '#94b0c2', w: '#f4f4f4' } },         // 近親 Arothron stellatus
-  cuttle: { n: '火焰烏賊', map: { s: '#b267e6', w: '#ffcd75' } },         // Metasepia pfefferi
-  seahorse: { n: '豆丁海馬', map: { y: '#f5a3c7' } },                     // Hippocampus bargibanti
-  shark: { n: '白化白鰭鯊', map: { S: '#e8eef4' } },                      // 罕見的白化個體
-  moray: { n: '黃邊裸胸鯙', map: { g: '#ffcd75', y: '#38b764' } },        // Gymnothorax flavimarginatus
-  jelly: { n: '紫紋海刺水母', map: { c: '#b267e6', w: '#f4f4f4' } },      // Chrysaora colorata
-  manta: { n: '黑化鬼蝠魟', map: { n: '#3a3f58', w: '#94b0c2' } },        // 黑色型鬼蝠魟
-  mola: { n: '長翻車魚', map: { s: '#a9c8e8' } },                         // 近親 Ranzania laevis，很少被看到
-  dolphin: { n: '中華白海豚', map: { b: '#f5a3c7', w: '#ffe0f0' } },      // 台灣西海岸的粉紅色海豚
-  whaleshark: { n: '白化鯨鯊', map: { n: '#d8e6f0', w: '#ffffff' } },     // 罕見的白化個體
+  clown: { n: '黑色小丑魚', map: { o: '#34343f' } },                      // 眼斑雙鋸魚的黑色型（達爾文小丑）
+  damsel: { n: '黃尾雀鯛', map: { c: '#ffd23f' } },                       // 近親 Chrysiptera parasema：藍身黃尾
+  butterfly: { n: '浣熊蝴蝶魚', map: { y: '#f6a623' } },                  // 近親 Chaetodon lunula：橘黃色
+  star: { n: '藍指海星', map: { o: '#2f6fd6', y: '#2f6fd6' } },           // Linckia laevigata：整隻寶藍色
+  hermit: { n: '藍腿寄居蟹', map: { r: '#2f6fd6' } },                     // Clibanarius tricolor
+  urchin: { n: '火焰海膽', map: { P: '#ff5a3c', k: '#b0302a' } },         // Asthenosoma varium：紅色身體和刺
+  turtle: { n: '玳瑁', map: { G: '#3b2414', g: '#d79a3b', y: '#f0dca0' } },   // 綠蠵龜的近親，琥珀色龜甲，極度瀕危
+  octopus: { n: '藍環章魚', map: { y: '#e3c13a', b: '#1f5fd6' }, px: ['....kkkkkkk....', '...kyyybyyyk...', '..kyyybybyyyk..', '..kybyybyybyk..', '..kbybyyybybk..', '..kybyyyyybyk..', '..kywkyyywkyk..', '...kyyyyyyyk...', '..kykykykykyk..', '.kyk.ky.yk.kyk.', 'kyk..ky.yk..kyk', 'yk...k...k...ky', 'k.............k'] },   // Hapalochlaena，身上的藍環
+  nudi: { n: '藍龍海蛞蝓', map: { P: '#3d6fd6', o: '#9fd0ff', y: '#dfe9f5' } },   // Glaucus atlanticus
+  lion: { n: '黑色獅子魚', map: { r: '#2b2b36' } },                       // 魔鬼蓑鮋的黑色型
+  puffer: { n: '黃金河豚', map: { y: '#ffd23f' } },                       // 近親 Arothron meleagris 的金黃色型
+  cuttle: { n: '火焰烏賊', map: { s: '#5a2a4a', w: '#f2c94c' } },         // Metasepia pfefferi：深紫底帶黃色
+  seahorse: { n: '豆丁海馬', map: { y: '#f19ac0' } },                     // Hippocampus bargibanti
+  shark: { n: '白化白鰭鯊', map: { S: '#eceef0' } },                      // 罕見的白化個體
+  moray: { n: '黃邊裸胸鯙', map: { g: '#b59a3a' } },                      // Gymnothorax flavimarginatus：黃褐色
+  jelly: { n: '紫紋海刺水母', map: { c: '#c9a6e6' } },                    // Chrysaora colorata
+  manta: { n: '黑化鬼蝠魟', map: { n: '#33373f', w: '#33373f' } },        // 黑色型：全身更黑、背上沒有白色肩斑
+  mola: { n: '長翻車魚', map: { s: '#c3d3e6' } },                         // 近親 Ranzania laevis，銀色
+  dolphin: { n: '中華白海豚', map: { b: '#f2b6c6', w: '#fde6ee' } },      // 台灣西海岸的粉紅色海豚
+  whaleshark: { n: '白化鯨鯊', map: { n: '#dfe6ea', w: '#ffffff' } },     // 罕見的白化個體
 };
 const stageName = (c, s) => s === 1 ? '幼體' : s === 2 ? '成體' : MORPH[c.id].n;
 
@@ -770,8 +788,8 @@ function openChest() {
   const it = UI.cur, cr = it.cr, R = RARITY[cr.r];
   document.getElementById('modal').innerHTML = `
     <div><span class="rar" style="background:${R.color}">${R.name}</span></div>
-    ${img(cr.px, Math.min(9, Math.floor(200 / Math.max(...cr.px.map(r => r.length)))), false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
-    <h2>${cr.name} ${it.isNew ? '<span class="new">NEW</span>' : `<small>×${it.owned}</small>`}</h2>
+    ${stageImg(cr, 1, Math.min(10, Math.floor(160 / stageCanvas(cr, 1).width)), false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
+    <h2>${cr.name} <small>幼體</small> ${it.isNew ? '<span class="new">NEW</span>' : ''}</h2>
     <div class="dim" style="font-size:15px">${cr.fact}</div>
     <div class="gain"><span style="color:var(--xp)">+${it.xp} XP</span>　<span class="coin">+${it.c + it.dup}${COIN}</span></div>
     ${it.crit ? '<div class="new">爆擊！金幣 ×2</div>' : ''}
@@ -991,7 +1009,8 @@ const seenStage = sp => Math.max(1, (S.seen && S.seen[sp]) || 1, ...pets(sp).map
 const stageCv = {};
 function stageCanvas(c, s) {
   const key = c.id + s; if (stageCv[key]) return stageCv[key];
-  const rows = s === 1 ? JUV[c.id] : s === 3 && MORPH[c.id].px ? MORPH[c.id].px : c.px, map = s === 3 ? MORPH[c.id].map : {};
+  const rows = s === 1 ? JUV[c.id] : s === 3 && MORPH[c.id].px ? MORPH[c.id].px : c.px;
+  const map = { ...(SPECIES_PAL[c.id] || {}), ...(s === 3 ? MORPH[c.id].map : {}) };
   const cv = document.createElement('canvas'); cv.width = Math.max(...rows.map(r => r.length)); cv.height = rows.length;
   const x = cv.getContext('2d');
   rows.forEach((r, j) => [...r].forEach((ch, i) => {
