@@ -11,129 +11,156 @@
 <!-- 不載入任何外部資源；所有資料只存在使用者自己的瀏覽器（localStorage），不會上傳。 -->
 <style>
 :root{
-  --panel:#0f2747; --panel2:#17406e; --line:#2b5d94; --ink:#e8f1ff; --dim:#8fb0d6;
-  --coin:#ffcd75; --xp:#73eff7; --ok:#38b764; --warn:#ef7d57;
+  --bg:#06152b; --panel:#0d2442; --panel2:#12305a; --edge:#1f4673; --edge-hi:#2f6299;
+  --ink:#eaf2ff; --dim:#8aa9cc; --faint:#5b7ca3; --line:rgba(138,169,204,.16);
+  --coin:#ffcd75; --coin-d:#c59a3c; --xp:#73eff7; --ok:#5fd38d; --warn:#f2945f;
   --r0:#94b0c2; --r1:#38b764; --r2:#41a6f6; --r3:#b267e6; --r4:#ffcd75;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
-body{color:var(--ink);background:#051226;min-height:100vh;
-  font:17px/1.6 "Cascadia Mono",Consolas,"Microsoft JhengHei UI","Microsoft JhengHei",monospace}
+body{color:var(--ink);background:var(--bg);min-height:100vh;
+  font:17px/1.65 "Cascadia Mono",Consolas,"Microsoft JhengHei UI","Microsoft JhengHei",monospace}
 body::before{content:"";position:fixed;inset:0;z-index:-2;background:linear-gradient(180deg,
-  #1a4f80 0 12%,#15406c 12% 28%,#103258 28% 46%,#0b2546 46% 66%,#081a35 66% 84%,#051226 84%)}
-.bubbles i{position:fixed;bottom:-12px;width:6px;height:6px;background:rgba(115,239,247,.3);z-index:-1;animation:rise linear infinite}
+  #174673 0 12%,#133c66 12% 28%,#0f3157 28% 46%,#0b2646 46% 66%,#081b36 66% 84%,#06152b 84%)}
+.bubbles i{position:fixed;bottom:-12px;width:6px;height:6px;background:rgba(115,239,247,.22);z-index:-1;animation:rise linear infinite}
 @keyframes rise{to{transform:translateY(-110vh)}}
 @media (prefers-reduced-motion:reduce){.bubbles{display:none}}
-.wrap{max-width:760px;margin:0 auto;padding:16px}
-.px{background:var(--panel);margin:4px 4px 16px;padding:12px 14px;
-  box-shadow:0 -4px 0 var(--line),0 4px 0 var(--line),-4px 0 0 var(--line),4px 0 0 var(--line),0 9px 0 rgba(0,0,0,.35)}
-button{font:inherit;color:var(--ink);background:var(--panel2);border:0;padding:5px 12px;margin:5px 4px;cursor:pointer;
-  box-shadow:0 -3px 0 #3f78b6,0 3px 0 #08162b,-3px 0 0 #2b5d94,3px 0 0 #2b5d94}
-button:hover{background:#1f5590}
-button:active{transform:translateY(2px)}
+.wrap{max-width:720px;margin:0 auto;padding:20px 16px 40px}
+a{color:var(--xp)}
+.px{background:var(--panel);margin:0 3px 20px;padding:16px 18px;
+  box-shadow:0 -3px 0 var(--edge),0 3px 0 var(--edge),-3px 0 0 var(--edge),3px 0 0 var(--edge)}
+/* 區塊標題：中文標題＋小小的英文標籤 */
+.sh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.sh b{font-size:18px;letter-spacing:.04em}
+.sh em{font-style:normal;font-size:11px;letter-spacing:.24em;color:var(--faint)}
+.sub{margin:18px 0 6px;font-size:15px;color:var(--dim);letter-spacing:.04em}
+button{font:inherit;font-size:15px;color:var(--ink);background:transparent;border:0;padding:5px 12px;margin:4px 3px;cursor:pointer;
+  box-shadow:0 -2px 0 var(--edge-hi),0 2px 0 var(--edge-hi),-2px 0 0 var(--edge-hi),2px 0 0 var(--edge-hi)}
+button:hover{background:rgba(115,239,247,.08)}
+button:active{transform:translateY(1px)}
 button:disabled{opacity:.35;cursor:not-allowed;transform:none}
-button.pri{background:#2a8048;box-shadow:0 -3px 0 #4fc073,0 3px 0 #0d3a1e,-3px 0 0 #2f9a55,3px 0 0 #2f9a55}
-button.pri:hover{background:#33955a}
-button.sel{background:#e0a940;color:#1a1c2c;box-shadow:0 -3px 0 #ffd98a,0 3px 0 #7a5a1c,-3px 0 0 #c59a3c,3px 0 0 #c59a3c}
-button.ghost{background:transparent;box-shadow:none;color:var(--dim);padding:2px 6px}
-button.ghost:hover{color:var(--ink)}
+button.pri{background:var(--coin);color:#1a1c2c;font-weight:bold;
+  box-shadow:0 -2px 0 #fff0c0,0 2px 0 var(--coin-d),-2px 0 0 var(--coin-d),2px 0 0 var(--coin-d)}
+button.pri:hover{background:#ffd98f}
+button.sel{color:var(--xp);background:rgba(115,239,247,.08);
+  box-shadow:0 -2px 0 var(--xp),0 2px 0 var(--xp),-2px 0 0 var(--xp),2px 0 0 var(--xp)}
+button.ghost{box-shadow:none;color:var(--dim);padding:3px 6px}
+button.ghost:hover{color:var(--ink);background:none}
 small,.dim{color:var(--dim)}
 b{color:#fff}
 .hidden{display:none!important}
 .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sp{flex:1}
-input,select{font:inherit;color:var(--ink);background:#08182f;border:0;padding:4px 6px;box-shadow:inset 0 0 0 2px #2b5d94;color-scheme:dark}
-input:focus,select:focus{outline:none;box-shadow:inset 0 0 0 2px var(--coin)}
+input,select{font:inherit;font-size:16px;color:var(--ink);background:#071a33;border:0;padding:5px 8px;box-shadow:inset 0 0 0 2px var(--edge);color-scheme:dark}
+input:focus,select:focus{outline:none;box-shadow:inset 0 0 0 2px var(--xp)}
+input::placeholder{color:var(--faint)}
 input[type=checkbox]{width:22px;height:22px;accent-color:var(--ok);box-shadow:none;cursor:pointer;flex:none}
+/* 像素金幣 */
+.cn{display:inline-block;width:12px;height:12px;margin-left:4px;vertical-align:-1px;background:var(--coin);
+  box-shadow:inset -2px -2px 0 var(--coin-d),inset 2px 2px 0 #fff0c0}
 
 /* HUD */
-.hud{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-.depth{font-size:28px;line-height:1;color:var(--xp)}
-.depth b{color:var(--xp)}
-.rank{color:var(--dim);font-size:15px}
+.hud{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.depth{font-size:34px;line-height:1;color:var(--xp);font-weight:bold}
+.depth span{font-size:16px;margin-left:2px}
+.rank{color:var(--dim);font-size:14px;margin-top:4px}
 .hud-m{flex:1;min-width:180px}
-.bar{height:12px;background:#08182f;box-shadow:inset 0 0 0 2px #1d3d66;margin:4px 0}
+.hud-m small{font-size:14px}
+.bar{height:10px;background:#071a33;box-shadow:inset 0 0 0 2px var(--edge);margin:4px 0}
 .bar i{display:block;height:100%;background:var(--xp)}
 .bar.c i{background:var(--coin)}
-.coin{color:var(--coin);font-size:20px}
-nav{display:flex;flex-wrap:wrap;margin:0 0 12px}
-.banner{background:#5a2a14;margin:4px 4px 16px;padding:8px 12px;box-shadow:0 0 0 3px var(--warn)}
+.coin{color:var(--coin);font-size:20px;font-weight:bold}
+nav{display:flex;flex-wrap:wrap;margin:0 3px 20px;box-shadow:inset 0 -2px 0 var(--edge)}
+nav button{box-shadow:none;margin:0;padding:8px 14px;color:var(--dim);font-size:16px}
+nav button small{font-size:13px;color:var(--faint);margin-left:4px}
+nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--coin)}
+.banner{background:#4a2414;margin:0 3px 20px;padding:10px 14px;box-shadow:0 0 0 2px var(--warn)}
+.foot{text-align:center;color:var(--faint);font-size:13px;margin-top:8px;letter-spacing:.04em}
+.foot a{color:var(--dim);text-decoration:none}
+.foot a:hover{color:var(--ink)}
 
 /* 今日 */
-.habits{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-.habits > div{background:#123259;padding:6px 8px;font-size:15px}
-.habits b{font-size:16px}
-.goal{background:#123259;padding:8px 10px;margin:10px 0}
-.need{text-align:right;font-size:15px;white-space:nowrap}
-.habits .on{box-shadow:inset 0 0 0 2px var(--ok)}
-.streak{color:var(--warn)}
-.warn{color:var(--warn);font-size:15px;margin-top:8px}
+.habits{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.hab{background:var(--panel2);padding:10px 12px;font-size:15px;box-shadow:inset 3px 0 0 var(--edge-hi)}
+.hab.on{box-shadow:inset 3px 0 0 var(--ok)}
+.hab .hn{font-weight:bold;color:#fff;font-size:16px}
+.hab .meter{height:4px;background:#071a33;margin-top:8px}
+.hab .meter i{display:block;height:100%;background:var(--ok)}
+.streak{color:var(--warn);font-weight:bold}
+.streak small{color:var(--warn);font-weight:normal;margin-left:2px}
+.warn{color:var(--warn);font-size:15px;margin-top:10px}
 .done-tag{color:var(--ok)}
 .mini{font-size:14px;color:var(--dim);margin-top:4px}
-.erow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:2px dashed #1d3d66;flex-wrap:wrap}
+.goal{background:var(--panel2);padding:12px 14px;margin:14px 0}
+.label{font-size:12px;letter-spacing:.2em;color:var(--faint)}
+.need{text-align:right;font-size:15px;white-space:nowrap}
+.erow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .erow input.sp{flex:1 1 100px;min-width:0}
-.prow{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
+.prow{display:flex;align-items:center;gap:10px;padding:6px 0;flex-wrap:wrap}
 .prow .ptext{flex:1 1 220px;min-width:0}
 .prow.done .ptext{text-decoration:line-through;color:var(--dim)}
-.prow b{width:14px;text-align:center}
-.timer{text-align:center;box-shadow:0 -4px 0 var(--coin),0 4px 0 var(--coin),-4px 0 0 var(--coin),4px 0 0 var(--coin),0 9px 0 rgba(0,0,0,.35)}
-.clock{font-size:56px;line-height:1.1;color:var(--coin);letter-spacing:4px}
-.segs{margin:8px 0;font-size:15px}
-.segs span{margin:0 3px}
+.prow .no{width:16px;text-align:center;color:var(--faint);font-size:15px}
+.divider{margin:12px 0 4px;padding-top:10px;border-top:1px solid var(--line);font-size:12px;letter-spacing:.2em;color:var(--faint)}
+.seg-switch button{margin:0 0 0 -2px;padding:4px 12px;font-size:14px}
+.timer{text-align:center;box-shadow:0 -3px 0 var(--coin),0 3px 0 var(--coin),-3px 0 0 var(--coin),3px 0 0 var(--coin)}
+.clock{font-size:64px;line-height:1.1;color:var(--coin);letter-spacing:4px;font-weight:bold}
+.segs{margin:10px 0;font-size:14px;color:var(--dim)}
+.segs span{margin:0 4px}
 .segs .past{opacity:.4}
 .segs .now{color:var(--coin);font-weight:bold}
-.link{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:2px dashed #1d3d66;color:var(--ink);text-decoration:none}
+.link{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}
+.link:last-child{border-bottom:0}
 .link:hover b{color:var(--xp)}
-.link .ic{font-size:26px;width:36px;text-align:center}
 .link .sp{min-width:0}
-.exrow{margin:-2px 0 10px 52px;font-size:15px}
-.exrow input{width:72px}
+.exrow{margin:0 0 8px 58px;font-size:15px}
+.exrow input{width:76px}
 .exrow .note{flex:1;min-width:140px;width:auto}
 @media (max-width:520px){.exrow{margin-left:0}}
 
 /* 寶箱 */
-.ov{position:fixed;inset:0;background:rgba(2,8,20,.8);display:flex;align-items:center;justify-content:center;z-index:10;padding:16px}
+.ov{position:fixed;inset:0;background:rgba(2,8,20,.82);display:flex;align-items:center;justify-content:center;z-index:10;padding:16px}
 .modal{width:min(380px,100%);text-align:center}
-.modal h2{margin:4px 0 10px;font-size:18px}
-.msg{white-space:pre-line;margin:6px 0 12px}
-.sprite{image-rendering:pixelated;image-rendering:crisp-edges;display:block;margin:8px auto}
+.modal h2{margin:4px 0 10px;font-size:19px}
+.msg{white-space:pre-line;margin:6px 0 14px}
+.sprite{image-rendering:pixelated;image-rendering:crisp-edges;display:block;margin:10px auto}
 .shake{animation:shake .22s steps(2) infinite}
 @keyframes shake{0%{transform:translateX(-4px) rotate(-4deg)}100%{transform:translateX(4px) rotate(4deg)}}
 .pop{animation:pop .4s steps(5)}
 @keyframes pop{from{transform:scale(.2)}to{transform:scale(1)}}
-.rar{display:inline-block;padding:1px 8px;color:#1a1c2c;font-size:15px}
+.rar{display:inline-block;padding:1px 8px;color:#1a1c2c;font-size:14px;letter-spacing:.1em}
 .glow3{filter:drop-shadow(0 0 10px var(--r3))}
 .glow4{filter:drop-shadow(0 0 14px var(--r4));animation:pop .4s steps(5),gold 1s steps(2) infinite .4s}
 @keyframes gold{50%{filter:drop-shadow(0 0 24px #fff3b0)}}
-.new{color:var(--coin)}
-.gain{margin:10px 0;font-size:16px}
+.new{color:var(--coin);font-size:15px;letter-spacing:.1em}
+.gain{margin:12px 0;font-size:17px}
 
 /* 圖鑑 */
 .dex{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px}
-.dex .cell{background:#123259;padding:8px 4px;text-align:center;cursor:pointer;box-shadow:0 0 0 3px var(--rc)}
-.dex .cell.no{background:#0a1d36;cursor:default;opacity:.8}
+.dex .cell{background:var(--panel2);padding:10px 4px 8px;text-align:center;cursor:pointer;box-shadow:inset 0 -3px 0 var(--rc)}
+.dex .cell.no{background:#0a1d36;cursor:default;box-shadow:none}
 .dex .nm{font-size:15px}
-.grp{margin:14px 0 8px}
+.grp{margin:18px 0 10px}
 
 /* 商店 */
-.shop .it{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:2px dashed #1d3d66}
-.shop .ic{font-size:24px;width:36px;text-align:center}
-.price{color:var(--coin);text-align:right;white-space:nowrap}
-.shop .it{flex-wrap:wrap}
+.shop .it{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.shop .it:last-child{border-bottom:0}
+.shop .ic{font-size:22px;width:32px;text-align:center}
 .shop .it .sp{flex:1 1 120px;min-width:0}
+.price{color:var(--coin);text-align:right;white-space:nowrap}
 .mini .bar{height:8px;display:inline-block;width:120px;vertical-align:middle;margin:0 6px}
 
 /* 紀錄 */
 .heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,13px);gap:3px;overflow-x:auto;padding-bottom:4px}
-.heat i{width:13px;height:13px;background:#10284a}
+.heat i{width:13px;height:13px;background:#0f2a4d}
 .heat i.l1{background:#1f5a8a}.heat i.l2{background:#2f8fc0}.heat i.l3{background:#73eff7}.heat i.l4{background:#e8ffff}
 .heat i.today{outline:2px solid var(--coin)}
-.legend i{display:inline-block;width:11px;height:11px;margin:0 2px;vertical-align:middle}
+.legend{display:flex;align-items:center;gap:4px;margin-top:8px}
+.legend i{display:inline-block;width:11px;height:11px}
 .stat{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.stat div{background:#123259;padding:8px 10px}
-.stat b{font-size:20px;display:block}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#17406e;padding:8px 16px;z-index:20;
-  box-shadow:0 0 0 3px var(--xp);max-width:90vw}
+.stat div{background:var(--panel2);padding:10px 12px}
+.stat b{font-size:22px;display:block}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel2);padding:10px 18px;z-index:20;
+  box-shadow:0 0 0 2px var(--xp);max-width:90vw}
 </style>
 </head>
 <body>
@@ -143,6 +170,7 @@ nav{display:flex;flex-wrap:wrap;margin:0 0 12px}
   <div id="banner"></div>
   <nav id="nav"></nav>
   <main id="main"></main>
+  <footer class="foot">習慣深潛・made by <a href="https://vocus.cc/salon/frog-journey" target="_blank" rel="noopener">Frog Journey</a></footer>
 </div>
 <div class="ov hidden" id="ov"><div class="px modal" id="modal"></div></div>
 <div class="ov hidden" id="askov" style="z-index:15"><div class="px modal"><div class="msg" id="askmsg"></div>
@@ -285,7 +313,10 @@ const OLD_CAT = { '☀️': 'wake', '💻': 'research', '✍️': 'vocus', '🏃
 function migrate(s) {
   const old = (s.v || 1) < 3;
   for (const l of s.logs) if (!l.id) l.id = rid();   // 讓舊紀錄也能被收回
-  for (const P of Object.values(s.plans || {})) for (const it of P) {
+  s.plans = s.plans && typeof s.plans === 'object' ? s.plans : {};
+  for (const [d, P] of Object.entries(s.plans)) if (!Array.isArray(P)) delete s.plans[d];
+  for (const P of Object.values(s.plans)) for (const it of P) {
+    it.text = String(it.text ?? '');
     if (!it.cat) it.cat = it.line || '📌';
     if (OLD_CAT[it.cat]) it.cat = OLD_CAT[it.cat];
     if (it.done && it.rw === undefined) it.rw = true;
@@ -305,7 +336,9 @@ function migrate(s) {
     if (Object.values(s.plans || {}).some(P => P.some(it => it.cat === 'digital')))
       s.gcats.unshift({ id: 'digital', e: '📘', n: '數位商品' });
   }
-  if (s.timer && s.timer.k) delete s.timer;   // v1 的番茄鐘格式
+  if (!s.gcats.some(c => c.id === 'other')) s.gcats.push({ ...CONFIG.generalCats[CONFIG.generalCats.length - 1] });
+  // v1 的番茄鐘格式（有 k 欄位）或壞掉的計時器就丟掉
+  if (s.timer && (s.timer.k || !(s.timer.start > 0) || (s.timer.segs && !(s.timer.segs[s.timer.si] && s.timer.segs[s.timer.si].min > 0)))) delete s.timer;
   s.v = 3;
   return s;
 }
@@ -452,11 +485,11 @@ const UI = { tab: 'today', pday: 0, opened: false };
 const Q = [];
 const viewDay = () => addDays(dayKey(), UI.pday);
 const BONUS = {
-  welcome: '🎁 歡迎下水！新手寶箱',
-  top3: '✅ 前三件重要的事都完成了！額外寶箱',
-  pubchest: '📰 今天發布了文章！寶箱',
-  period: '🏆 習慣達標！額外寶箱',
-  weekly: '🏆 本週運動達標！額外寶箱',
+  welcome: '歡迎下水！新手寶箱',
+  top3: '前三件事都完成了！額外寶箱',
+  pubchest: '今天發布了文章！',
+  period: '習慣達標！額外寶箱',
+  weekly: '本週運動達標！',
 };
 
 // 最多六件，空著的格子不算；寫了的都打勾才算全部完成
@@ -504,7 +537,7 @@ function reconcile(allowGrant) {
   for (const h of activeHabits()) if (h.weeks && h.kind !== 'vocus') {
     const p = periodKey(d, h.weeks);
     conds.push([h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`, 'period',
-      periodDone(derive(), h, p), `🏆 ${h.e} ${h.n} ${periodWord(h)}達標！額外寶箱`]);
+      periodDone(derive(), h, p), `${h.e} ${h.n} ${periodWord(h)}達標！額外寶箱`]);
   }
   for (const [key, kind, ok, title] of conds) {
     const has = derive().claimed.has(key);
@@ -557,10 +590,10 @@ function finishSeg() {
   SFX.done();
   if (seg.m === 'focus') {
     const d = dayKey(end - 1);
-    if (seg.min >= CONFIG.pomoRewardMin) reward(() => grant('pomo', null, { title: `🍅 專注 ${seg.min} 分鐘完成！`, d, extra: { min: seg.min } }));
+    if (seg.min >= CONFIG.pomoRewardMin) reward(() => grant('pomo', null, { title: `專注 ${seg.min} 分鐘完成！`, d, extra: { min: seg.min } }));
     else { S.logs.push({ id: rid(), t: end, d, k: 'pomo', min: seg.min, xp: 0, c: 0 }); save(); render(); }
   } else { save(); render(); }
-  toast(last ? '✅ 這段專注全部完成！' : next.m === 'break' ? `☕ 休息 ${next.min} 分鐘，起來走走吧` : `🍅 休息結束，繼續專注 ${next.min} 分鐘`);
+  toast(last ? '這段專注全部完成！' : next.m === 'break' ? `休息 ${next.min} 分鐘，起來走走吧` : `休息結束，繼續專注 ${next.min} 分鐘`);
 }
 function tick() {
   if (!S.timer) { document.title = '習慣深潛'; return; }
@@ -581,6 +614,9 @@ function tick() {
 }
 
 /* ========= 寶箱彈窗 ========= */
+const COIN = '<i class="cn" aria-label="金幣"></i>';
+const sh = (title, tag, right = '') => `<div class="sh"><b>${title}</b><em>${tag}</em><span class="sp"></span>${right}</div>`;
+
 function nextChest() {
   if (UI.opened) return;
   const it = Q.shift(), ov = document.getElementById('ov'), m = document.getElementById('modal');
@@ -588,8 +624,8 @@ function nextChest() {
   UI.opened = true; UI.cur = it; ov.classList.remove('hidden');
   if (it.rank !== undefined) {
     const [dep, name] = RANKS[it.rank];
-    m.innerHTML = `<h2>📍 抵達 ${dep} m</h2><div class="depth pop">${name}</div>
-      <p class="dim">你已經下潛得比昨天的自己更深了。</p><button class="pri" data-act="close">繼續下潛</button>`;
+    m.innerHTML = `<div class="label">NEW DEPTH</div><h2>抵達 ${dep} m</h2><div class="depth pop">${name}</div>
+      <p class="dim">比昨天的自己再深一點。</p><button class="pri" data-act="close">繼續下潛</button>`;
     SFX.rank(); return;
   }
   m.innerHTML = `<h2>${esc(it.title)}</h2>${img(CHEST, 9, false, 'shake')}<p class="dim">點一下打開寶箱</p>
@@ -601,11 +637,11 @@ function openChest() {
   document.getElementById('modal').innerHTML = `
     <div><span class="rar" style="background:${R.color}">${R.name}</span></div>
     ${img(cr.px, 9, false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
-    <h2>${cr.name} ${it.isNew ? '<span class="new">NEW!</span>' : `<small>×${it.owned}</small>`}</h2>
+    <h2>${cr.name} ${it.isNew ? '<span class="new">NEW</span>' : `<small>×${it.owned}</small>`}</h2>
     <div class="dim" style="font-size:15px">${cr.fact}</div>
-    <div class="gain"><span style="color:var(--xp)">+${it.xp} XP</span>　<span style="color:var(--coin)">+${it.c + it.dup} 🪙</span></div>
-    ${it.crit ? '<div class="new">⚡ 爆擊！金幣 ×2</div>' : ''}
-    ${it.dup ? `<div class="dim" style="font-size:15px">重複的生物換成 ${it.dup} 🪙</div>` : ''}
+    <div class="gain"><span style="color:var(--xp)">+${it.xp} XP</span>　<span class="coin" style="font-size:17px">+${it.c + it.dup}${COIN}</span></div>
+    ${it.crit ? '<div class="new">爆擊！金幣 ×2</div>' : ''}
+    ${it.dup ? `<div class="dim" style="font-size:14px">重複的生物換成 ${it.dup} 金幣</div>` : ''}
     <button class="pri" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
   SFX.open(cr.r);
 }
@@ -615,14 +651,14 @@ function render() {
   const D = derive(), dep = depthOf(D.xp), ri = rankIdx(dep), nxt = RANKS[ri + 1];
   const lo = RANKS[ri][0] ** 2, hi = nxt ? nxt[0] ** 2 : lo + 1;
   document.getElementById('hud').innerHTML = `
-    <div><div class="depth">↓<b>${dep}</b>m</div><div class="rank">${RANKS[ri][1]}</div></div>
+    <div><div class="depth">${dep}<span>m</span></div><div class="rank">${RANKS[ri][1]}</div></div>
     <div class="hud-m"><div class="bar"><i style="width:${nxt ? Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100)) : 100}%"></i></div>
-      <small>${nxt ? `下潛到 ${nxt[0]}m「${nxt[1]}」還差 ${hi - D.xp} XP` : '你已抵達深淵'}　·　共 ${D.xp} XP</small></div>
-    <div class="row"><span class="coin">🪙 ${D.coins.toLocaleString()}</span>
-      <button class="ghost" data-act="mute" title="音效">${S.mute ? '🔇' : '🔊'}</button></div>`;
+      <small>${nxt ? `距離 ${nxt[0]}m「${nxt[1]}」還差 ${hi - D.xp} XP` : '已抵達最深處'}</small></div>
+    <div class="row"><span class="coin">${D.coins.toLocaleString()}${COIN}</span>
+      <button class="ghost" data-act="mute" title="音效">${S.mute ? '音效 關' : '音效 開'}</button></div>`;
   document.getElementById('banner').innerHTML = FS.handle && !FS.ok
-    ? `<div class="banner row">🔗 存檔檔案需要重新授權才能自動備份。<span class="sp"></span><button data-act="relink">重新連結</button></div>` : '';
-  const tabs = [['today', '🌊 今日'], ['dex', `🐠 圖鑑 ${Object.keys(D.col).length}/${CREATURES.length}`], ['shop', '🛍 商店'], ['log', '📊 紀錄'], ['about', 'ℹ️ 關於']];
+    ? `<div class="banner row">存檔檔案需要重新授權才能自動備份。<span class="sp"></span><button data-act="relink">重新連結</button></div>` : '';
+  const tabs = [['today', '今日'], ['dex', `圖鑑<small>${Object.keys(D.col).length}/${CREATURES.length}</small>`], ['shop', '商店'], ['log', '紀錄'], ['about', '關於']];
   document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}</button>`).join('');
   document.getElementById('main').innerHTML = ({ today, dex, shop, log, about })[UI.tab](D);
 }
@@ -632,56 +668,57 @@ const freqOpts = (h, sel) => (h.kind === 'custom' ? [[0, '每天']] : []).concat
 const targetOpts = sel => [1, 2, 3, 4, 5, 6, 7].map(n => `<option ${sel === n ? 'selected' : ''}>${n}</option>`).join('');
 
 function habitEditor() {
-  return `<section class="px"><div class="row"><b>編輯習慣</b><span class="sp"></span><button class="pri" data-act="habdone">完成</button></div>
-    <small>圖示可以貼任何 emoji（Windows 按 Win＋. 叫出表情符號）。自訂習慣最多 ${CONFIG.maxCustom} 個。</small>
+  return `<section class="px">${sh('編輯習慣', 'HABITS', '<button class="pri" data-act="habdone">完成</button>')}
+    <div class="mini">圖示可以貼任何 emoji（Windows：Win ＋ .）。自訂習慣最多 ${CONFIG.maxCustom} 個。</div>
     ${S.habits.map((h, i) => h.off ? '' : `<div class="erow">
-      <input data-hf="e" data-hi="${i}" value="${esc(h.e)}" style="width:48px;text-align:center" title="圖示">
+      <input data-hf="e" data-hi="${i}" value="${esc(h.e)}" style="width:52px;text-align:center" title="圖示">
       <input class="sp" data-hf="n" data-hi="${i}" value="${esc(h.n)}" placeholder="${h.kind === 'custom' ? '習慣名稱，例如：冥想 10 分鐘' : '習慣名稱'}">
       ${h.kind === 'plan' ? '<span class="dim">每天寫好清單</span>'
         : `<select data-hf="weeks" data-hi="${i}">${freqOpts(h, h.weeks)}</select>
            ${h.weeks ? `<span class="dim">至少</span><select data-hf="target" data-hi="${i}">${targetOpts(h.target)}</select><span class="dim">${countWord(h)}</span>` : ''}`}
-      <button class="ghost" data-act="habdel" data-v="${i}" title="刪除">🗑</button></div>`).join('')}
-    <div class="row"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣（${customCount()}/${CONFIG.maxCustom}）</button>
-      ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${h.id}">＋ 加回 ${esc(h.e)} ${esc(h.n)}</button>`).join('')}</div>
-    <div class="mini">每天的習慣：不連續漏兩天就不會斷。每週／每兩週的習慣：那一週（或那兩週）沒達標就會斷。</div>
-    <div class="grp"><b>一般分類</b> <small class="dim">六件事可以選，但不算連勝，例如：工作、家事</small></div>
+      <button class="ghost" data-act="habdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
+    <div class="row" style="margin-top:8px"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣 ${customCount()}/${CONFIG.maxCustom}</button>
+      ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${h.id}">加回 ${esc(h.e)} ${esc(h.n)}</button>`).join('')}</div>
+    <div class="mini">每天的習慣漏兩天才斷；每週／每兩週的習慣沒達標就斷。</div>
+    <div class="sub">一般分類・不算連勝</div>
     ${S.gcats.map((c, i) => c.off ? '' : `<div class="erow">
-      <input data-gf="e" data-gi="${i}" value="${esc(c.e)}" style="width:48px;text-align:center" title="圖示">
-      <input class="sp" data-gf="n" data-gi="${i}" value="${esc(c.n)}" placeholder="分類名稱">
-      ${c.id === 'other' ? '<span class="dim">（固定）</span>' : `<button class="ghost" data-act="gcatdel" data-v="${i}" title="刪除">🗑</button>`}</div>`).join('')}
-    <div class="row"><button data-act="gcatadd" ${gcats().length >= 6 ? 'disabled' : ''}>＋ 新增分類</button></div></section>`;
+      <input data-gf="e" data-gi="${i}" value="${esc(c.e)}" style="width:52px;text-align:center" title="圖示">
+      <input class="sp" data-gf="n" data-gi="${i}" value="${esc(c.n)}" placeholder="分類名稱，例如：工作">
+      ${c.id === 'other' ? '<span class="dim">固定</span>' : `<button class="ghost" data-act="gcatdel" data-v="${i}" title="刪除">✕</button>`}</div>`).join('')}
+    <div class="row" style="margin-top:8px"><button data-act="gcatadd" ${gcats().length >= 6 ? 'disabled' : ''}>＋ 新增分類</button></div></section>`;
 }
 
 function today(D) {
   const st = streaks(D), td = dayKey(), d = viewDay(), P = getPlan(d);
   const claimed = D.claimed.has('plan:' + d), doneN = filled(P).filter(x => x.done).length;
-  // 每張卡：名稱＋🔥連勝數／目標與目前進度／連勝說明
+  // 每張卡：名稱＋連勝數／目標與進度／進度條
   const chips = activeHabits().map(h => {
-    const s = st[h.id], fire = s.n ? `<span class="streak">🔥 ${s.n}</span>` : '';
+    const s = st[h.id];
+    const badge = unit => s.n ? `<span class="streak">${s.n}<small>${unit}</small></span>` : '';
     if (h.weeks) {
       const p = periodKey(td, h.weeks), cnt = perCount(D, h, p);
-      return `<div class="${periodDone(D, h, p) ? 'on' : ''}"><div class="row"><b>${esc(h.e)} ${esc(h.n)}</b><span class="sp"></span>${fire}</div>
-        <div class="dim">目標：${h.weeks === 1 ? '每週' : '每兩週'} ${h.target} ${countWord(h)}（${periodWord(h)} ${cnt}/${h.target}）</div>
-        <div class="dim">${s.n ? `連續 ${s.n} ${h.weeks === 1 ? '週' : '次'}達標` : '還沒開始連勝'}${h.kind === 'vocus' ? `・累計 ${D.articles} 篇` : ''}</div></div>`;
+      return `<div class="hab ${periodDone(D, h, p) ? 'on' : ''}"><div class="row"><span class="hn">${esc(h.e)} ${esc(h.n)}</span><span class="sp"></span>${badge(h.weeks === 1 ? '週' : '次')}</div>
+        <div class="dim">${h.weeks === 1 ? '每週' : '每兩週'} ${h.target} ${countWord(h)}・${periodWord(h)} ${cnt}/${h.target}${h.kind === 'vocus' ? `<br>累計 ${D.articles} 篇` : ''}</div>
+        <div class="meter"><i style="width:${Math.min(100, cnt / h.target * 100)}%"></i></div></div>`;
     }
-    return `<div class="${dayDone(D, td, h.id) ? 'on' : ''}"><div class="row"><b>${esc(h.e)} ${esc(h.n)}</b><span class="sp"></span>${fire}</div>
-      <div class="dim">${s.n ? `連續 ${s.n} 天` : '還沒開始連勝'}</div>
-      <div class="dim">習慣化 ${Math.min(s.n, CONFIG.habitDays)}/${CONFIG.habitDays} 天</div></div>`;
+    return `<div class="hab ${dayDone(D, td, h.id) ? 'on' : ''}"><div class="row"><span class="hn">${esc(h.e)} ${esc(h.n)}</span><span class="sp"></span>${badge('天')}</div>
+      <div class="dim">${s.n ? `連續 ${s.n} 天・習慣化 ${Math.min(s.n, CONFIG.habitDays)}/${CONFIG.habitDays}` : '還沒開始連勝'}</div>
+      <div class="meter"><i style="width:${Math.min(100, s.n / CONFIG.habitDays * 100)}%"></i></div></div>`;
   }).join('');
-  const risky = activeHabits().filter(h => st[h.id].risk).map(h => `${h.e} ${h.n}`);
+  const risky = activeHabits().filter(h => st[h.id].risk).map(h => h.n);
   const pWarn = activeHabits().filter(h => h.weeks && st[h.id].n > 0 && !periodDone(D, h, periodKey(td, h.weeks))).map(h => {
     const p = periodKey(td, h.weeks), left = Math.round((parseKey(addDays(p, 7 * h.weeks)) - parseKey(td)) / 864e5);
-    return `<div class="warn">${esc(h.e)} ${esc(h.n)}：${periodWord(h)}還剩 ${left} 天，再 ${h.target - perCount(D, h, p)} ${countWord(h)}就能延續連勝</div>`;
+    return `<div class="warn">${esc(h.n)}：${periodWord(h)}還剩 ${left} 天，還差 ${h.target - perCount(D, h, p)} ${countWord(h)}。</div>`;
   }).join('');
   const V = habit('vocus');
-  const setup = S.vocusSet || !V ? '' : `<section class="px"><b>✍️ 先設定你的 Vocus 發文節奏</b>
-      <div class="mini">不用每天發文。選一個你做得到的節奏，連勝就照這個算（之後可以按「✎ 編輯習慣」修改）。</div>
-      <div class="row">每 <select id="vW"><option value="1">1 週</option><option value="2">2 週</option></select>
+  const setup = S.vocusSet || !V ? '' : `<section class="px">${sh('Vocus 發文節奏', 'SETUP')}
+      <div class="mini">不用每天發。選一個做得到的節奏，之後可以在「習慣・編輯」修改。</div>
+      <div class="row" style="margin-top:8px">每 <select id="vW"><option value="1">1 週</option><option value="2">2 週</option></select>
         至少 <select id="vT">${targetOpts(1)}</select> 篇
         <button class="pri" data-act="vcfg">確定</button></div></section>`;
-  const hint = UI.pday < 0 ? '補登昨天：只能在隔天補勾，不會開寶箱，但能保住連續天數。'
-    : UI.pday > 0 ? '睡前寫好明天的重要事項最有效（最多六件，不用湊滿）。寫好就能開寶箱，明天再打勾。'
-    : `最多六件、不用湊滿，照重要性排序。前 ${CONFIG.rewardRows} 件打勾會開寶箱。`;
+  const hint = UI.pday < 0 ? '補登昨天：只算連勝，不開寶箱。'
+    : UI.pday > 0 ? '先寫好明天的清單，寫好就能開寶箱。'
+    : `照重要性排序，前 ${CONFIG.rewardRows} 件完成會開寶箱。`;
   const cats = catList();
   const rows = P.map((it, i) => {
     const c = catOf(it.cat);
@@ -693,45 +730,45 @@ function today(D) {
         <input type="number" min="0" step="0.1" data-ex="dist" data-i="${i}" value="${esc(e.dist)}" placeholder="km">
         <input type="number" min="0" step="1" data-ex="min" data-i="${i}" value="${esc(e.min)}" placeholder="分鐘">
         <span class="dim" id="pace${i}">${paceText(e)}</span>
-        <input class="note" data-ex="note" data-i="${i}" value="${esc(e.note)}" placeholder="備註（例：河堤間歇 4×800、自由式）"></div>`;
+        <input class="note" data-ex="note" data-i="${i}" value="${esc(e.note)}" placeholder="備註，例如：河堤間歇 4×800"></div>`;
     }
     if (it.cat === 'vocus' && it.done && habit('vocus')) {
       const p = it.pub || {};
       ex = `<div class="row exrow"><label class="row" style="gap:6px;cursor:pointer">
-          <input type="checkbox" data-act="pub" data-v="${i}" ${p.on ? 'checked' : ''}>📰 這次發布了文章</label>
+          <input type="checkbox" data-act="pub" data-v="${i}" ${p.on ? 'checked' : ''}>這次發布了文章</label>
         ${p.on ? `<input class="note" data-pub="title" data-i="${i}" value="${esc(p.title)}" placeholder="文章標題（可留空）">` : ''}</div>`;
     }
-    const divider = i === CONFIG.rewardRows ? `<div class="mini" style="border-top:2px dashed #1d3d66;padding-top:6px;margin-top:10px">以下只做紀錄：打勾會算進習慣和連續天數，但不開寶箱</div>` : '';
+    const divider = i === CONFIG.rewardRows ? '<div class="divider">以下只做紀錄，不開寶箱</div>' : '';
     return `${divider}<div class="prow ${it.done ? 'done' : ''}">
       <input type="checkbox" data-act="pdone" data-v="${i}" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
-      <b>${i + 1}</b>
+      <span class="no">${i + 1}</span>
       <select data-pf="cat" data-i="${i}">${cats.map(x => `<option value="${x.id}" ${c.id === x.id ? 'selected' : ''}>${esc(x.e)} ${esc(x.n)}</option>`).join('')}</select>
       <input class="ptext" data-pf="text" data-i="${i}" value="${esc(it.text)}" placeholder="${esc(placeholder(c))}"></div>${ex}`;
   }).join('');
   const T = S.timer && S.timer.segs ? S.timer : null, seg = T && T.segs[T.si], pm = pomoMin();
   const todayPomo = S.logs.filter(l => l.k === 'pomo' && l.d === td).length;
-  const segLine = segs => segs.map((x, i) => `<span class="${T && i < T.si ? 'past' : T && i === T.si ? 'now' : ''}">${x.m === 'break' ? '☕' : '🍅'} ${x.min}</span>`).join('<span class="dim">›</span>');
+  const segLine = segs => segs.map((x, i) => `<span class="${T && i < T.si ? 'past' : T && i === T.si ? 'now' : ''}">${x.m === 'break' ? '休息' : '專注'} ${x.min}</span>`).join('<span>›</span>');
   const timer = T ? `<section class="px timer">
-      <div>${seg.m === 'break' ? '☕ 休息中' : '🍅 專注中'}（第 ${T.si + 1}/${T.segs.length} 段）</div>
+      <div class="label">${seg.m === 'break' ? 'BREAK' : 'FOCUS'}・${T.si + 1}/${T.segs.length}</div>
+      <div>${seg.m === 'break' ? '休息中' : '專注中'}</div>
       <div class="clock" id="tclock">--:--</div><div class="bar c"><i id="tbar" style="width:0"></i></div>
       <div class="segs">${segLine(T.segs)}</div>
-      <small>${seg.m === 'break' ? '起來走走、喝口水，讓眼睛離開螢幕。休息完會自動開始下一段。' : '關掉這個頁面也沒關係，時間到再打開就會自動結算。'}</small><br>
-      ${seg.m === 'break' ? '<button class="ghost" data-act="skipbreak">跳過休息</button>' : ''}<button class="ghost" data-act="cancel">結束工作階段</button></section>`
-    : `<section class="px"><div class="row"><b>🍅 番茄鐘</b><span class="sp"></span><small class="dim">今天完成 ${todayPomo} 段專注</small></div>
+      <small>${seg.m === 'break' ? '起來走走、喝口水，休息完會自動開始下一段。' : '關掉頁面也沒關係，回來時會自動結算。'}</small><br>
+      ${seg.m === 'break' ? '<button class="ghost" data-act="skipbreak">跳過休息</button>' : ''}<button class="ghost" data-act="cancel">結束</button></section>`
+    : `<section class="px">${sh('番茄鐘', 'FOCUS', `<small class="dim">今天 ${todayPomo} 段</small>`)}
       <div class="row">${[25, 45, 60, 90].map(m => `<button class="${pm === m ? 'sel' : ''}" data-act="pomoset" data-v="${m}">${m} 分</button>`).join('')}
-        <input type="number" id="pomoMin" min="5" max="120" step="5" value="${pm}" style="width:70px" title="自訂總長度（分鐘）"><span class="dim">分</span>
-        <span class="sp"></span><button class="pri" data-act="start">▶ 開始專注</button></div>
+        <input type="number" id="pomoMin" min="5" max="120" step="5" value="${pm}" style="width:72px" title="自訂總長度（分鐘）"><span class="dim">分</span>
+        <span class="sp"></span><button class="pri" data-act="start">開始專注</button></div>
       <div class="segs" id="pomoPlan">${segLine(sessionPlan(pm))}</div>
-      <div class="mini">選的是整段總長度，中間會自動安排休息（每段專注 ${CONFIG.pomodoroMin} 分）。每段專注滿 ${CONFIG.pomoRewardMin} 分鐘開一個寶箱。</div></section>`;
-  const habits = UI.habEdit ? habitEditor() : `<section class="px"><div class="habits">${chips}</div>
-      ${risky.length ? `<div class="warn">⚠️ 昨天漏了 ${esc(risky.join('、'))}，今天做到就不會斷（規則：不連續漏兩天）</div>` : ''}${pWarn}
-      <div class="row" style="justify-content:flex-end"><button class="ghost" data-act="habedit">✎ 編輯習慣</button></div></section>`;
+      <div class="mini">選整段總長度，中間自動安排休息。每段專注滿 ${CONFIG.pomoRewardMin} 分鐘開一個寶箱。</div></section>`;
+  const habits = UI.habEdit ? habitEditor() : `<section class="px">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
+      <div class="habits">${chips}</div>
+      ${risky.length ? `<div class="warn">昨天漏了 ${esc(risky.join('、'))}，今天做到就不會斷。</div>` : ''}${pWarn}</section>`;
   return `${setup}${habits}${timer}
-    <section class="px"><div class="row"><b>📝 最重要的六件事</b><span class="sp"></span>
-      ${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</div>
-      <div class="mini">${d}　${hint}</div>
+    <section class="px">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
+      <div class="mini" style="margin-bottom:6px">${d}・${hint}</div>
       ${rows}
-      <div class="row">${UI.pday < 0 ? '' : claimed ? '<span class="done-tag">✓ 清單已寫好</span>' : '<button class="pri" data-act="plansave">寫好了，開寶箱</button>'}
+      <div class="row" style="margin-top:10px">${UI.pday < 0 ? '' : claimed ? '<span class="done-tag">✓ 清單已寫好</span>' : '<button class="pri" data-act="plansave">寫好了</button>'}
         <span class="sp"></span><small>完成 ${doneN}/${filled(P).length}</small></div></section>`;
 }
 
@@ -741,13 +778,12 @@ function paceText(e) {
   const swim = e.type === '游泳', sec = Math.round(e.min * 60 / (swim ? e.dist * 10 : e.dist));
   return `配速 ${Math.floor(sec / 60)}'${pad(sec % 60)}"${swim ? '/100m' : '/km'}`;
 }
-const exText = e => [e.type, e.dist ? `${e.dist} km` : '', e.min ? `${e.min} 分` : '', paceText(e), e.note].filter(Boolean).join('・');
 function allExercise() {
   const out = [];
   for (const [d, P] of Object.entries(S.plans)) for (const it of P)
     if (it.done && it.cat === 'exercise') out.push({ d, text: it.text, ...(it.ex || {}) });
   for (const l of S.logs) if (l.k === 'exercise') out.push({ d: l.d, type: l.tag, dist: l.dist, min: l.min, note: l.note });
-  return out.sort((a, b) => b.d.localeCompare(a.d));
+  return out;
 }
 // input=true 時多一個輸入框，按確定回傳輸入的文字，按取消回傳 false
 function ask(msg, yes = '確定', no = '取消', input = false) {
@@ -763,26 +799,28 @@ function ask(msg, yes = '確定', no = '取消', input = false) {
 
 function dex(D) {
   const total = CONFIG.rarityRates.reduce((a, b) => a + b, 0);
-  return `<section class="px"><div class="row"><b>水下生物圖鑑</b><span class="sp"></span>
-    <span class="dim">已收集 ${Object.keys(D.col).length} / ${CREATURES.length}</span></div>
-    <small>每完成一件事就開一個寶箱。點已收集的生物看介紹。</small>
-    ${RARITY.map((R, r) => `<div class="grp"><span class="rar" style="background:${R.color}">${R.name}</span>
+  return `<section class="px">${sh('水下生物圖鑑', 'COLLECTION', `<span class="dim">${Object.keys(D.col).length} / ${CREATURES.length}</span>`)}
+    <div class="mini">完成事情就會開寶箱。點已收集的生物看介紹。</div>
+    ${RARITY.map((R, r) => `<div class="grp row"><span class="rar" style="background:${R.color}">${R.name}</span>
       <small>掉落率 ${(CONFIG.rarityRates[r] / total * 100).toFixed(1).replace('.0', '')}%</small></div>
       <div class="dex">${CREATURES.filter(c => c.r === r).map(c => {
         const n = D.col[c.id] || 0;
         return n ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${img(c.px, 5)}<div class="nm">${c.name}</div><small>×${n}</small></div>`
-          : `<div class="cell no" style="--rc:#1d3d66">${img(c.px, 5, true)}<div class="nm dim">？？？</div><small>&nbsp;</small></div>`;
+          : `<div class="cell no">${img(c.px, 5, true)}<div class="nm dim">？？？</div><small>&nbsp;</small></div>`;
       }).join('')}</div>`).join('')}</section>`;
 }
 
 // 商店項目由使用者自己設定，存在 S.shop；沒設定過就用 CONFIG.shop 當預設
-const shopItems = () => S.shop || CONFIG.shop;
+const shopItems = () => (S.shop || CONFIG.shop).filter(x => String(x.name || '').trim())
+  .map(x => ({ ...x, price: Math.max(1, Math.round(+x.price) || 1) }));
 function finishShop() {
-  S.shop = S.shop.filter(x => x.name.trim()).map(x => ({ ...x, price: Math.max(1, Math.round(+x.price) || 1) }));
+  S.shop = S.shop.filter(x => x.name.trim()).map(x => ({ ...x, icon: String(x.icon).trim() || '🎁', price: Math.max(1, Math.round(+x.price) || 1) }));
   UI.shopEdit = false; save();
 }
 function finishHabits() {
   for (const c of S.gcats) if (!c.n.trim()) { if (c.id === 'other') c.n = '其他'; else c.off = true; }
+  for (const c of S.gcats) if (!String(c.e).trim()) c.e = '🔖';
+  for (const h of S.habits) if (!String(h.e).trim()) h.e = '⭐';
   for (const h of S.habits) if (!h.n.trim()) {
     if (h.kind === 'custom') h.off = true;
     else h.n = DEFAULT_HABITS.find(x => x.id === h.id).n;
@@ -791,45 +829,33 @@ function finishHabits() {
 }
 function shop(D) {
   const hist = S.logs.filter(l => l.k === 'redeem').slice(-8).reverse();
-  if (UI.shopEdit) return `<section class="px shop"><div class="row"><b>編輯獎勵商店</b><span class="sp"></span>
-      <button class="pri" data-act="shopdone">完成</button></div>
-    <small>設定你真的想要的獎勵。參考：每天前三件都完成的話，大約能賺 60–90 🪙。</small>
+  if (UI.shopEdit) return `<section class="px shop">${sh('編輯獎勵', 'REWARDS', '<button class="pri" data-act="shopdone">完成</button>')}
+    <div class="mini">設定你真的想要的獎勵。參考：每天前三件都完成，大約能賺 60–90 金幣。</div>
     ${S.shop.map((it, i) => `<div class="it">
-      <input data-sf="icon" data-si="${i}" value="${esc(it.icon)}" style="width:48px;text-align:center" title="圖示（可貼 emoji）">
+      <input data-sf="icon" data-si="${i}" value="${esc(it.icon)}" style="width:52px;text-align:center" title="圖示（可貼 emoji）">
       <input class="sp" data-sf="name" data-si="${i}" value="${esc(it.name)}" placeholder="獎勵名稱，例如：吃甜點（100 元內）">
-      <input type="number" min="1" data-sf="price" data-si="${i}" value="${it.price}" style="width:90px"><span class="coin">🪙</span>
-      <button class="ghost" data-act="shopdel" data-v="${i}" title="刪除">🗑</button></div>`).join('')}
-    <div class="row"><button data-act="shopadd">＋ 新增獎勵</button></div></section>`;
+      <input type="number" min="1" data-sf="price" data-si="${i}" value="${it.price}" style="width:90px">${COIN}
+      <button class="ghost" data-act="shopdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
+    <div class="row" style="margin-top:8px"><button data-act="shopadd">＋ 新增獎勵</button></div></section>`;
   // 用最近 14 天的平均收入估計「還要努力幾天」；有收入的日子不到 5 天時用 CONFIG.coinsPerDay
   const since = addDays(dayKey(), -13), recent = S.logs.filter(l => l.d >= since && l.c > 0 && l.k !== 'welcome');
   const activeDays = new Set(recent.map(l => l.d)).size;
   const rate = activeDays >= 5 ? Math.max(10, Math.round(recent.reduce((a, l) => a + l.c, 0) / 14)) : CONFIG.coinsPerDay;
   const daysFor = p => Math.max(1, Math.ceil(p / rate));
-  const left = it => it.price <= D.coins ? 0 : daysFor(it.price - D.coins);   // 分組照「從現在起還要幾天」，跟顯示的天數一致
   const items = [...shopItems()].sort((a, b) => a.price - b.price), next = items.find(it => it.price > D.coins);
-  const tiers = [
-    ['☕ 小獎勵', it => left(it) <= 3],
-    ['🍰 中獎勵', it => left(it) > 3 && left(it) <= 14],
-    ['🎁 大獎勵', it => left(it) > 14],
-  ];
-  return `<section class="px shop"><div class="row"><b>獎勵商店</b><small class="dim">（你可以自行設定想要的獎勵）</small><span class="sp"></span>
-      <span class="coin">🪙 ${D.coins.toLocaleString()}</span><button class="ghost" data-act="shopedit">✎ 編輯</button></div>
-    <div class="mini">${activeDays >= 5 ? `最近 14 天平均每天賺 ${rate} 🪙` : `先用每天約 ${rate} 🪙 估算，累積一週後改用你的實際速度`}。兌換之後就真的去享受——這是你賺來的。</div>
-    ${next ? `<div class="goal"><div class="row"><span>🎯 下一個目標：${esc(next.icon)} ${esc(next.name)}</span><span class="sp"></span>
-      <span class="coin">${D.coins}/${next.price}</span></div>
+  return `<section class="px shop">${sh('獎勵商店', 'REWARDS', '<button class="ghost" data-act="shopedit">編輯</button>')}
+    <div class="mini">你可以自行設定想要的獎勵。${activeDays >= 5 ? `最近 14 天平均每天賺 ${rate} 金幣。` : `目前以每天約 ${rate} 金幣估算。`}</div>
+    ${next ? `<div class="goal"><div class="label">NEXT GOAL</div>
+      <div class="row"><span>${esc(next.icon)} ${esc(next.name)}</span><span class="sp"></span><span class="coin" style="font-size:16px">${D.coins} / ${next.price}${COIN}</span></div>
       <div class="bar c"><i style="width:${Math.max(0, D.coins / next.price * 100)}%"></i></div>
-      <div class="mini">再努力大約 ${daysFor(next.price - D.coins)} 天</div></div>` : ''}
-    ${items.length ? '' : '<div class="dim" style="margin-top:8px">還沒有獎勵，按「✎ 編輯」新增。</div>'}
-    ${tiers.map(([title, fit]) => {
-      const g = items.filter(fit);
-      return g.length ? `<div class="grp"><b>${title}</b></div>
-        ${g.map(it => `<div class="it"><span class="ic">${esc(it.icon)}</span><span class="sp">${esc(it.name)}</span>
-          <span class="price">${it.price} 🪙</span>
-          ${D.coins >= it.price ? `<button class="pri" data-act="redeem" data-v="${it.id}">兌換</button>`
-            : `<span class="dim need">約 ${left(it)} 天</span>`}</div>`).join('')}` : '';
-    }).join('')}
+      <div class="mini">大約還要 ${daysFor(next.price - D.coins)} 天</div></div>` : ''}
+    ${items.length ? '' : '<div class="dim" style="margin-top:8px">還沒有獎勵，按「編輯」新增。</div>'}
+    ${items.map(it => `<div class="it"><span class="ic">${esc(it.icon)}</span><span class="sp">${esc(it.name)}</span>
+      <span class="price">${it.price}${COIN}</span>
+      ${D.coins >= it.price ? `<button class="pri" data-act="redeem" data-v="${it.id}">兌換</button>`
+        : `<span class="dim need">約 ${daysFor(it.price - D.coins)} 天</span>`}</div>`).join('')}
   </section>
-  <section class="px"><b>兌換紀錄</b>${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(l.name)}</span><span class="sp"></span><span class="coin">${l.c} 🪙</span></div>`).join('') : '<div class="dim">還沒有兌換過</div>'}</section>`;
+  <section class="px">${sh('兌換紀錄', 'HISTORY')}${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(l.name)}</span><span class="sp"></span><span class="price">${l.c}${COIN}</span></div>`).join('') : '<div class="dim">還沒有兌換過。</div>'}</section>`;
 }
 
 function log(D) {
@@ -838,55 +864,44 @@ function log(D) {
   for (let k = start; k <= td; k = addDays(k, 1)) {
     const x = D.days[k] || {}, done = H.filter(h => x[h.id]), n = done.length;
     const lv = n === 0 ? 0 : n >= H.length ? 4 : Math.min(3, Math.ceil(n / H.length * 3));
-    cells += `<i class="l${lv}${k === td ? ' today' : ''}" title="${k}　${done.map(h => h.e + ' ' + h.n).join(' ') || '—'}"></i>`;
+    cells += `<i class="l${lv}${k === td ? ' today' : ''}" title="${k}　${esc(done.map(h => h.e + ' ' + h.n).join(' ')) || '—'}"></i>`;
   }
   const daysOf = k => Object.values(D.days).filter(x => x[k]).length;
-  const exs = allExercise(), runs = exs.filter(e => e.type === '跑步' && e.dist > 0);
-  const runKm = runs.reduce((a, e) => a + +e.dist, 0);
-  const pomos = S.logs.filter(l => l.k === 'pomo').length;
-  const pomoHours = S.logs.filter(l => l.k === 'pomo').reduce((a, l) => a + (l.min || CONFIG.pomodoroMin), 0) / 60;
-  const arts = [];
-  for (const [d, P] of Object.entries(S.plans)) for (const it of P)
-    if (it.done && it.cat === 'vocus' && it.pub && it.pub.on) arts.push({ d, title: it.pub.title || it.text });
-  for (const l of S.logs) if (l.k === 'article') arts.push({ d: l.d, title: l.title });
-  arts.sort((a, b) => b.d.localeCompare(a.d)).splice(10);
-  return `<section class="px"><b>最近 18 週</b>
-    <div class="heat" style="margin-top:8px">${cells}</div>
-    <small class="legend">完成的習慣比例：<i style="background:#10284a"></i>無 <i style="background:#1f5a8a"></i> <i style="background:#2f8fc0"></i> <i style="background:#73eff7"></i> <i style="background:#e8ffff"></i>全部</small></section>
-  <section class="px"><b>累積</b><div class="stat" style="margin-top:8px">
-    ${H.map(h => h.kind === 'vocus' ? `<div><small>${esc(h.e)} ${esc(h.n)} 文章</small><b>${D.articles}</b><small>篇</small></div>`
+  const runs = allExercise().filter(e => e.type === '跑步' && e.dist > 0), runKm = runs.reduce((a, e) => a + +e.dist, 0);
+  const pomos = S.logs.filter(l => l.k === 'pomo');
+  const pomoHours = pomos.reduce((a, l) => a + (l.min || CONFIG.pomodoroMin), 0) / 60;
+  return `<section class="px">${sh('最近 18 週', 'ACTIVITY')}
+    <div class="heat">${cells}</div>
+    <small class="legend">少 <i style="background:#0f2a4d"></i><i style="background:#1f5a8a"></i><i style="background:#2f8fc0"></i><i style="background:#73eff7"></i><i style="background:#e8ffff"></i> 多</small></section>
+  <section class="px">${sh('累積', 'TOTALS')}<div class="stat">
+    ${H.map(h => h.kind === 'vocus' ? `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${D.articles}</b><small>篇文章</small></div>`
       : `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`).join('')}
-    <div><small>🍅 番茄鐘</small><b>${pomos}</b><small>共 ${pomoHours.toFixed(1)} 小時</small></div>
-    <div><small>🏃 跑步總距離</small><b>${runKm.toFixed(1)} km</b><small>${runs.length} 次</small></div>
+    <div><small>番茄鐘</small><b>${pomos.length}</b><small>段・${pomoHours.toFixed(1)} 小時</small></div>
+    <div><small>跑步總距離</small><b>${runKm.toFixed(1)}</b><small>km・${runs.length} 次</small></div>
   </div></section>
-  <section class="px"><b>✍️ 文章紀錄</b>
-    ${arts.length ? arts.map(l => `<div class="mini">${l.d}　${esc(l.title || '（無標題）')}</div>`).join('') : '<div class="dim">在六件事裡把 ✍️ Vocus 那一項打勾，再勾「📰 這次發布了文章」就會記在這裡。</div>'}</section>
-  <section class="px"><b>運動紀錄</b>
-    ${exs.length ? exs.slice(0, 15).map(e => `<div class="mini">${e.d.slice(5)}　${esc(exText(e) || e.text || '運動')}</div>`).join('') : '<div class="dim">打勾 🏃 運動那一項之後，就能填距離、時間和備註。</div>'}</section>
-  <section class="px"><b>存檔</b>
-    <div class="mini">✓ 每次操作都自動存在你這個瀏覽器裡，不會上傳到任何地方，別人也看不到。</div>
-    <div class="mini">⚠️ 換手機、換瀏覽器或清除瀏覽資料，紀錄就會不見。請定期按「下載備份」；手機建議「加入主畫面」再使用。</div>
-    <div class="mini">${FS.ok ? `✓ 同步寫入檔案「${FS.handle.name}」${FS.last ? '，最後寫入 ' + FS.last : ''}` : ('showSaveFilePicker' in window ? '電腦版可以連結一個存檔檔案（放在雲端硬碟資料夾，例如 Google Drive、OneDrive），每次操作都會自動備份。' : '')}</div>
-    <div class="row">${'showSaveFilePicker' in window ? `<button data-act="linknew">建立存檔檔案</button><button data-act="linkopen">開啟既有存檔</button>` : ''}
+  <section class="px">${sh('存檔', 'BACKUP')}
+    <div class="mini">紀錄只存在這個瀏覽器，不會上傳。換裝置或清除瀏覽資料就會消失，請定期下載備份。</div>
+    ${FS.ok ? `<div class="mini">✓ 同步寫入檔案「${esc(FS.handle.name)}」${FS.last ? '，最後寫入 ' + FS.last : ''}</div>` : ''}
+    <div class="row" style="margin-top:8px">${'showSaveFilePicker' in window ? `<button data-act="linknew">建立存檔檔案</button><button data-act="linkopen">開啟既有存檔</button>` : ''}
       <button data-act="export">下載備份</button><button data-act="import">從備份還原</button></div></section>`;
 }
 
 // 關於頁：作者的 Vocus 沙龍與潛水文章
 const ABOUT_LINKS = [
-  { icon: '🐸', title: 'Frog Journey｜兩棲類的冒險生活', sub: '我的 Vocus 沙龍：登山、潛水、旅居的第一手紀錄', url: 'https://vocus.cc/salon/frog-journey' },
-  { icon: '🦈', title: '潛水日誌 #1｜印尼・Nusa Penida・Manta Point：5 隻鬼蝠魟從頭頂飛過', sub: '圖鑑裡的鬼蝠魟，就是從這裡來的', url: 'https://vocus.cc/article/6a8ec287fd897800012e765a' },
-  { icon: '🐡', title: '潛水日誌 #2｜印尼・Nusa Penida・Crystal Bay：沒看到翻車魚！', sub: '想抽到翻車魚？先看看我在海裡等了多久', url: 'https://vocus.cc/article/6ad986a9fd89780001033212' },
-  { icon: '🤿', title: 'OW 潛水考照心得｜課程都在學什麼？我的完整考照紀錄', sub: '從零開始學潛水的完整紀錄', url: 'https://vocus.cc/article/6a45ddadfd89780001dff50b' },
+  { title: 'Frog Journey｜兩棲類的冒險生活', sub: 'Vocus 沙龍：登山、潛水、旅居的第一手紀錄', url: 'https://vocus.cc/salon/frog-journey' },
+  { title: '潛水日誌 #1｜印尼・Nusa Penida・Manta Point：5 隻鬼蝠魟從頭頂飛過', sub: '圖鑑裡的鬼蝠魟，就是從這裡來的', url: 'https://vocus.cc/article/6a8ec287fd897800012e765a' },
+  { title: '潛水日誌 #2｜印尼・Nusa Penida・Crystal Bay：沒看到翻車魚！', sub: '想抽到翻車魚？先看看我在海裡等了多久', url: 'https://vocus.cc/article/6ad986a9fd89780001033212' },
+  { title: 'OW 潛水考照心得｜課程都在學什麼？我的完整考照紀錄', sub: '從零開始學潛水的紀錄', url: 'https://vocus.cc/article/6a45ddadfd89780001dff50b' },
 ];
 function about() {
-  return `<section class="px"><b>關於習慣深潛</b>
-    <p>嗨，我是 Harry，一個會潛水、也在努力每週寫文章的研究生。這個遊戲是我為了讓自己堅持寫作、運動和做研究而做的：每天寫下最重要的事，完成就開寶箱，收集我在海裡真的遇過（或還在等）的生物。</p>
+  return `<section class="px">${sh('關於習慣深潛', 'ABOUT')}
+    <p>嗨，我是 Harry，喜歡潛水，也在努力每週寫文章。這個遊戲是我為了讓自己持續寫作和運動而做的：每天寫下最重要的事，完成就開寶箱，收集我在海裡遇過（或還在等）的生物。</p>
     <p class="dim">往下潛的深度、圖鑑裡的鬼蝠魟和翻車魚，都來自我的潛水經驗。希望它也能陪你一點一點往下潛。</p></section>
-  <section class="px"><b>來看看我的文章</b>
+  <section class="px">${sh('我的文章', 'READ')}
     ${ABOUT_LINKS.map(l => `<a class="link" href="${l.url}" target="_blank" rel="noopener">
-      <span class="ic">${l.icon}</span><span class="sp"><b>${esc(l.title)}</b><br><small class="dim">${esc(l.sub)}</small></span><span class="dim">↗</span></a>`).join('')}</section>
-  <section class="px"><b>資料與隱私</b>
-    <div class="mini">你的紀錄只存在你自己的瀏覽器裡，不會上傳到任何伺服器，我也看不到。記得定期到「📊 紀錄」下載備份。</div>
+      <span class="sp"><b>${esc(l.title)}</b><br><small>${esc(l.sub)}</small></span><span class="dim">↗</span></a>`).join('')}</section>
+  <section class="px">${sh('資料與隱私', 'PRIVACY')}
+    <div class="mini">你的紀錄只存在你自己的瀏覽器裡，不會上傳到任何伺服器，我也看不到。記得定期到「紀錄」下載備份。</div>
     <div class="mini">本工具為個人作品，與方格子 vocus 官方無關。</div></section>`;
 }
 
@@ -980,11 +995,11 @@ document.addEventListener('click', async e => {
     case 'plansave': {
       const d = viewDay();
       if (!filled(getPlan(d)).length) { toast('至少寫下一件重要的事'); break; }
-      ac(); reward(() => grant('plan', null, { key: 'plan:' + d, d, title: '📝 今天的重要事項寫好了！' })); break;
+      ac(); reward(() => grant('plan', null, { key: 'plan:' + d, d, title: '今天的清單寫好了！' })); break;
     }
     case 'redeem': {
       const it = shopItems().find(x => x.id === v);
-      if (derive().coins < it.price || !(await ask(`用 ${it.price} 🪙 兌換「${it.name}」？`, '兌換'))) break;
+      if (derive().coins < it.price || !(await ask(`用 ${it.price} 金幣兌換「${it.name}」？`, '兌換'))) break;
       S.logs.push({ id: rid(), t: Date.now(), d: dayKey(), k: 'redeem', name: it.name, c: -it.price });
       save(); render(); SFX.buy(); toast(`${it.icon} 兌換成功，去享受吧！`); break;
     }
@@ -1017,7 +1032,7 @@ document.addEventListener('input', e => {
     if (m >= 5 && m <= 120) {
       S.pomoMin = m; save();
       const p = document.getElementById('pomoPlan');
-      if (p) p.innerHTML = sessionPlan(m).map(x => `<span>${x.m === 'break' ? '☕' : '🍅'} ${x.min}</span>`).join('<span class="dim">›</span>');
+      if (p) p.innerHTML = sessionPlan(m).map(x => `<span>${x.m === 'break' ? '休息' : '專注'} ${x.min}</span>`).join('<span>›</span>');
     }
     return;
   }
@@ -1050,6 +1065,12 @@ document.getElementById('importFile').addEventListener('change', async e => {
       S = migrate(Object.assign(blank(), j)); save(); render(); toast('已還原');
     }
   } catch (err) { toast('這不是有效的備份檔'); }
+});
+
+document.addEventListener('keydown', e => {
+  if (document.getElementById('askov').classList.contains('hidden') || !ask.res) return;
+  if (e.key === 'Enter') { e.preventDefault(); ask.res(true); }
+  if (e.key === 'Escape') { e.preventDefault(); ask.res(false); }
 });
 
 /* ========= 啟動 ========= */
