@@ -11,7 +11,9 @@
 
 ## 資料與隱私
 
-所有資料只存在你自己的瀏覽器（localStorage），不會上傳到任何伺服器。換裝置或清除瀏覽資料會遺失紀錄，請定期在「紀錄」頁備份。
+預設所有資料只存在你自己的瀏覽器（localStorage），不會上傳到任何伺服器。換裝置或清除瀏覽資料會遺失紀錄，請定期在「紀錄」頁備份。?
+?
+也可以選擇用 Google 登入，紀錄會同步到 Firebase（Firestore），換裝置也能接續。只取用名稱和 email；資料庫規則（`firestore.rules`）限制每個人只能讀寫自己的資料；登入後可隨時刪除雲端資料和帳號。沒登入的人不會載入任何 Firebase 程式。
 
 本工具為個人作品，與方格子 vocus 官方無關。
 
@@ -32,4 +34,7 @@
 | `js/core.js` | 日期、存檔與資料轉換、狀態推導、音效 |
 | `js/game.js` | 寶箱與獎勵、番茄鐘、彈窗 |
 | `js/views.js` | 各個頁面的畫面 |
+| `js/firebase-config.js` | Firebase 網頁設定（公開資訊，安全靠資料庫規則） |
+| `js/sync.js` | 選擇性的 Google 登入與雲端同步 |
 | `js/main.js` | 按鈕與輸入事件、啟動 |
+| `firestore.rules` | Firestore 安全規則：只能讀寫自己的資料 |

@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0b2546">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="習慣深潛">
-<!-- 不載入任何外部資源；所有資料只存在使用者自己的瀏覽器（localStorage），不會上傳。 -->
+<!-- 資料存在使用者自己的瀏覽器（localStorage）。只有選擇用 Google 登入的人，才會載入 Firebase 並同步到雲端（js/sync.js）。 -->
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -34,6 +34,8 @@
 <script src="js/core.js"></script>
 <script src="js/game.js"></script>
 <script src="js/views.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/sync.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
