@@ -70,6 +70,18 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--ok);box-shadow:no
 .bar i{display:block;height:100%;background:var(--xp)}
 .bar.c i{background:var(--coin)}
 .coin{color:var(--coin);font-size:20px;font-weight:bold}
+.hud-r{text-align:right}
+.hud .label{font-size:13px;letter-spacing:.12em;color:var(--dim);margin-bottom:2px}
+.coin.big{font-size:26px;line-height:1.1}
+.coin.big .cn{width:16px;height:16px;margin-left:6px;vertical-align:0;box-shadow:inset -3px -3px 0 var(--coin-d),inset 3px 3px 0 #fff0c0}
+/* 像素開關 */
+.switch{display:inline-flex;align-items:center;gap:8px;margin-top:6px;font-size:14px;color:var(--dim);cursor:pointer}
+.toggle{width:44px;height:22px;padding:0;margin:0;position:relative;background:#071a33;
+  box-shadow:0 -2px 0 var(--edge-hi),0 2px 0 var(--edge-hi),-2px 0 0 var(--edge-hi),2px 0 0 var(--edge-hi)}
+.toggle i{position:absolute;top:4px;left:4px;width:14px;height:14px;background:var(--faint);transition:left .12s steps(3)}
+.toggle.on{background:#1e5a3a;box-shadow:0 -2px 0 var(--ok),0 2px 0 var(--ok),-2px 0 0 var(--ok),2px 0 0 var(--ok)}
+.toggle.on i{left:26px;background:var(--ok)}
+.toggle:hover{background:#0b2546}.toggle.on:hover{background:#246b45}
 nav{display:flex;flex-wrap:wrap;margin:0 3px 20px;box-shadow:inset 0 -2px 0 var(--edge)}
 nav button{box-shadow:none;margin:0;padding:8px 14px;color:var(--dim);font-size:16px}
 nav button small{font-size:13px;color:var(--faint);margin-left:4px}
@@ -651,11 +663,11 @@ function render() {
   const D = derive(), dep = depthOf(D.xp), ri = rankIdx(dep), nxt = RANKS[ri + 1];
   const lo = RANKS[ri][0] ** 2, hi = nxt ? nxt[0] ** 2 : lo + 1;
   document.getElementById('hud').innerHTML = `
-    <div><div class="depth">${dep}<span>m</span></div><div class="rank">${RANKS[ri][1]}</div></div>
+    <div><div class="label">深度</div><div class="depth">${dep}<span>m</span></div><div class="rank">${RANKS[ri][1]}</div></div>
     <div class="hud-m"><div class="bar"><i style="width:${nxt ? Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100)) : 100}%"></i></div>
       <small>${nxt ? `距離 ${nxt[0]}m「${nxt[1]}」還差 ${hi - D.xp} XP` : '已抵達最深處'}</small></div>
-    <div class="row"><span class="coin">${D.coins.toLocaleString()}${COIN}</span>
-      <button class="ghost" data-act="mute" title="音效">${S.mute ? '音效 關' : '音效 開'}</button></div>`;
+    <div class="hud-r"><div class="label">金幣</div><div class="coin big">${D.coins.toLocaleString()}${COIN}</div>
+      <label class="switch" title="音效開關"><span>音效</span><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button></label></div>`;
   document.getElementById('banner').innerHTML = FS.handle && !FS.ok
     ? `<div class="banner row">存檔檔案需要重新授權才能自動備份。<span class="sp"></span><button data-act="relink">重新連結</button></div>` : '';
   const tabs = [['today', '今日'], ['dex', `圖鑑<small>${Object.keys(D.col).length}/${CREATURES.length}</small>`], ['shop', '商店'], ['log', '紀錄'], ['about', '關於']];
@@ -960,7 +972,10 @@ document.addEventListener('click', async e => {
     }
     case 'openchest': openChest(); break;
     case 'close': UI.opened = false; nextChest(); break;
-    case 'mute': S.mute = !S.mute; save(); render(); break;
+    case 'mute':
+      S.mute = !S.mute; save(); render();
+      if (!S.mute) { ac(); SFX.tap(); }   // 打開時響一聲，確認有聲音
+      toast(S.mute ? '音效已關閉' : '音效已開啟'); break;
     case 'fact': { const c = CR[v]; toast(`${c.name}：${c.fact}`); break; }
     case 'pdone': {
       const d = viewDay(), it = getPlan(d)[v], c = catOf(it.cat);
