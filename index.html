@@ -670,8 +670,7 @@ function today(D) {
       <div class="mini">${d}　${hint}</div>
       ${rows}
       <div class="row">${UI.pday < 0 ? '' : claimed ? '<span class="done-tag">✓ 清單已寫好</span>' : '<button class="pri" data-act="plansave">寫好了，開寶箱</button>'}
-        <span class="sp"></span><small>完成 ${doneN}/${filled(P).length}</small>
-        ${UI.pday < 0 ? '' : '<button class="ghost" data-act="cal" title="把這天的清單加成 Google 日曆整天活動">📅 加到 Google 日曆</button>'}</div></section>`;
+        <span class="sp"></span><small>完成 ${doneN}/${filled(P).length}</small></div></section>`;
 }
 
 // 跑步算每公里配速，游泳算每 100 公尺
@@ -688,14 +687,6 @@ function allExercise() {
   for (const l of S.logs) if (l.k === 'exercise') out.push({ d: l.d, type: l.tag, dist: l.dist, min: l.min, note: l.note });
   return out.sort((a, b) => b.d.localeCompare(a.d));
 }
-function gcalURL(d, P) {
-  const ymd = k => k.replace(/-/g, '');
-  const list = filled(P).map((x, i) => `${i + 1}. ${catOf(x.cat).e} ${x.text}`).join('\n');
-  return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
-    + `&text=${encodeURIComponent('📝 最重要的六件事')}&dates=${ymd(d)}/${ymd(addDays(d, 1))}`
-    + `&details=${encodeURIComponent(list)}`;
-}
-
 // input=true 時多一個輸入框，按確定回傳輸入的文字，按取消回傳 false
 function ask(msg, yes = '確定', no = '取消', input = false) {
   const inp = document.getElementById('askin');
@@ -874,11 +865,6 @@ document.addEventListener('click', async e => {
       const d = viewDay();
       if (!filled(getPlan(d)).length) { toast('至少寫下一件重要的事'); break; }
       ac(); reward(() => grant('plan', null, { key: 'plan:' + d, d, title: '📝 今天的重要事項寫好了！' })); break;
-    }
-    case 'cal': {
-      const d = viewDay(), P = getPlan(d);
-      if (!filled(P).length) { toast('先寫下要做的事'); break; }
-      window.open(gcalURL(d, P), '_blank', 'noopener'); break;
     }
     case 'redeem': {
       const it = shopItems().find(x => x.id === v);
