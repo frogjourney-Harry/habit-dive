@@ -18,7 +18,7 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{color:var(--ink);background:#051226;min-height:100vh;
-  font:15px/1.55 "Cascadia Mono",Consolas,"Microsoft JhengHei UI","Microsoft JhengHei",monospace}
+  font:17px/1.6 "Cascadia Mono",Consolas,"Microsoft JhengHei UI","Microsoft JhengHei",monospace}
 body::before{content:"";position:fixed;inset:0;z-index:-2;background:linear-gradient(180deg,
   #1a4f80 0 12%,#15406c 12% 28%,#103258 28% 46%,#0b2546 46% 66%,#081a35 66% 84%,#051226 84%)}
 .bubbles i{position:fixed;bottom:-12px;width:6px;height:6px;background:rgba(115,239,247,.3);z-index:-1;animation:rise linear infinite}
@@ -50,7 +50,7 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--ok);box-shadow:no
 .hud{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
 .depth{font-size:28px;line-height:1;color:var(--xp)}
 .depth b{color:var(--xp)}
-.rank{color:var(--dim);font-size:13px}
+.rank{color:var(--dim);font-size:15px}
 .hud-m{flex:1;min-width:180px}
 .bar{height:12px;background:#08182f;box-shadow:inset 0 0 0 2px #1d3d66;margin:4px 0}
 .bar i{display:block;height:100%;background:var(--xp)}
@@ -61,15 +61,15 @@ nav{display:flex;flex-wrap:wrap;margin:0 0 12px}
 
 /* 今日 */
 .habits{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-.habits > div{background:#123259;padding:6px 8px;font-size:13px}
-.habits b{font-size:14px}
+.habits > div{background:#123259;padding:6px 8px;font-size:15px}
+.habits b{font-size:16px}
 .goal{background:#123259;padding:8px 10px;margin:10px 0}
-.need{text-align:right;font-size:13px;white-space:nowrap}
+.need{text-align:right;font-size:15px;white-space:nowrap}
 .habits .on{box-shadow:inset 0 0 0 2px var(--ok)}
 .streak{color:var(--warn)}
-.warn{color:var(--warn);font-size:13px;margin-top:8px}
+.warn{color:var(--warn);font-size:15px;margin-top:8px}
 .done-tag{color:var(--ok)}
-.mini{font-size:12px;color:var(--dim);margin-top:4px}
+.mini{font-size:14px;color:var(--dim);margin-top:4px}
 .erow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:2px dashed #1d3d66;flex-wrap:wrap}
 .erow input.sp{flex:1 1 100px;min-width:0}
 .prow{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
@@ -78,8 +78,8 @@ nav{display:flex;flex-wrap:wrap;margin:0 0 12px}
 .prow b{width:14px;text-align:center}
 .timer{text-align:center;box-shadow:0 -4px 0 var(--coin),0 4px 0 var(--coin),-4px 0 0 var(--coin),4px 0 0 var(--coin),0 9px 0 rgba(0,0,0,.35)}
 .clock{font-size:56px;line-height:1.1;color:var(--coin);letter-spacing:4px}
-.pomo{color:var(--warn);font-size:13px;white-space:nowrap}
-.exrow{margin:-2px 0 10px 52px;font-size:13px}
+.pomo{color:var(--warn);font-size:15px;white-space:nowrap}
+.exrow{margin:-2px 0 10px 52px;font-size:15px}
 .exrow input{width:72px}
 .exrow .note{flex:1;min-width:140px;width:auto}
 @media (max-width:520px){.exrow{margin-left:0}}
@@ -94,7 +94,7 @@ nav{display:flex;flex-wrap:wrap;margin:0 0 12px}
 @keyframes shake{0%{transform:translateX(-4px) rotate(-4deg)}100%{transform:translateX(4px) rotate(4deg)}}
 .pop{animation:pop .4s steps(5)}
 @keyframes pop{from{transform:scale(.2)}to{transform:scale(1)}}
-.rar{display:inline-block;padding:1px 8px;color:#1a1c2c;font-size:13px}
+.rar{display:inline-block;padding:1px 8px;color:#1a1c2c;font-size:15px}
 .glow3{filter:drop-shadow(0 0 10px var(--r3))}
 .glow4{filter:drop-shadow(0 0 14px var(--r4));animation:pop .4s steps(5),gold 1s steps(2) infinite .4s}
 @keyframes gold{50%{filter:drop-shadow(0 0 24px #fff3b0)}}
@@ -105,7 +105,7 @@ nav{display:flex;flex-wrap:wrap;margin:0 0 12px}
 .dex{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px}
 .dex .cell{background:#123259;padding:8px 4px;text-align:center;cursor:pointer;box-shadow:0 0 0 3px var(--rc)}
 .dex .cell.no{background:#0a1d36;cursor:default;opacity:.8}
-.dex .nm{font-size:13px}
+.dex .nm{font-size:15px}
 .grp{margin:14px 0 8px}
 
 /* 商店 */
@@ -563,10 +563,10 @@ function openChest() {
     <div><span class="rar" style="background:${R.color}">${R.name}</span></div>
     ${img(cr.px, 9, false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
     <h2>${cr.name} ${it.isNew ? '<span class="new">NEW!</span>' : `<small>×${it.owned}</small>`}</h2>
-    <div class="dim" style="font-size:13px">${cr.fact}</div>
+    <div class="dim" style="font-size:15px">${cr.fact}</div>
     <div class="gain"><span style="color:var(--xp)">+${it.xp} XP</span>　<span style="color:var(--coin)">+${it.c + it.dup} 🪙</span></div>
     ${it.crit ? '<div class="new">⚡ 爆擊！金幣 ×2</div>' : ''}
-    ${it.dup ? `<div class="dim" style="font-size:13px">重複的生物換成 ${it.dup} 🪙</div>` : ''}
+    ${it.dup ? `<div class="dim" style="font-size:15px">重複的生物換成 ${it.dup} 🪙</div>` : ''}
     <button class="pri" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
   SFX.open(cr.r);
 }
