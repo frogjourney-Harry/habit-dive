@@ -1044,7 +1044,7 @@ function dex(D) {
 }
 
 /* ========= 水族箱小遊戲 ========= */
-// 你養的生物會在這裡游；點水面撒飼料，吃到的那一隻會長大；點生物看名字和型態
+// 你養的生物會在這裡游；點水面撒飼料，吃到的那一隻會長大
 // 每種生物的體型（相對大小）與游速，照真實生物的感覺；第三個值＝在海底爬
 const TANK_SPECIES = {
   clown: [1, .45], damsel: [.9, .6], butterfly: [1, .4], star: [1, .05, 1], hermit: [1, .18, 1], urchin: [1, .04, 1],
@@ -1089,7 +1089,7 @@ function tank(D) {
     <canvas id="tank" class="tank"></canvas>
     <div class="row" style="margin-top:8px"><span class="dim" id="feedInfo">${tankFeedText()}</span><span class="sp"></span>
       <button data-act="buyfeed">買飼料 ${FEED.pack} 顆・${FEED.price}${COIN}</button></div>
-    <div class="mini">點水面撒飼料，吃到的那一隻會長大（幼體 → 成體 → 特殊型態）。點生物可以看名字和型態。</div></section>`;
+    <div class="mini">點水面撒飼料，吃到的那一隻會長大（幼體 → 成體 → 特殊型態）。想知道誰是誰，到圖鑑看。</div></section>`;
 }
 function tankStart() {
   cancelAnimationFrame(TANK.raf);
@@ -1099,7 +1099,7 @@ function tankStart() {
   const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
   const floorY = H - 16;
   const prev = new Map((TANK.fish || []).map(f => [f.key, f]));   // 重畫（例如買飼料）時，每一隻留在原位
-  TANK.food = TANK.food || []; TANK.tip = null; TANK.bub = TANK.bub || [];
+  TANK.food = TANK.food || []; TANK.bub = TANK.bub || [];
   // 外觀和體型跟著型態走：物種大小 × 自訂大小 × 型態大小
   const look = f => {
     const st = stageOf(fedOf(f.key));
@@ -1123,11 +1123,8 @@ function tankStart() {
   }
   TANK.fish.sort((a, b) => b.w * b.h - a.w * a.h);   // 大的畫在後面，小的在前面
   const weeds = Array.from({ length: Math.max(3, Math.floor(W / 60)) }, (_, i) => ({ x: 12 + i * (W - 24) / Math.max(1, Math.floor(W / 60) - 1), h: 18 + (i * 7) % 20 }));
-  const tipFor = f => `${f.c.name}${f.many ? ` ${f.no} 號` : ''}・${stageName(f.c, f.st)}・吃了 ${fedOf(f.key)} 顆`;
   cv.onclick = e => {
     const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width, py = (e.clientY - r.top) * H / r.height;
-    const hit = [...TANK.fish].reverse().find(f => px >= f.x && px <= f.x + f.w && py >= f.y && py <= f.y + f.h);
-    if (hit) { TANK.tip = { f: hit, until: performance.now() + 2200 }; SFX.tap(); return; }
     if (py >= floorY - 4) return;
     if (!useFeed()) { toast('飼料用完了，明天會再送 3 顆，也可以用金幣買'); return; }
     TANK.food.push({ x: px, y: py, vy: .25 }); ac(); SFX.tap();
@@ -1189,12 +1186,6 @@ function tankStart() {
       x.restore();
     }
     if (!TANK.fish.length) { x.fillStyle = '#eaf2ff'; x.font = '10px monospace'; x.textAlign = 'center'; x.fillText('水族箱是空的', W / 2, H / 2); }
-    if (TANK.tip && now < TANK.tip.until && TANK.fish.includes(TANK.tip.f)) {
-      const f = TANK.tip.f, text = tipFor(f);
-      x.font = '10px "Microsoft JhengHei",monospace'; const tw = x.measureText(text).width + 8;
-      const tx = Math.max(2, Math.min(W - tw - 2, f.x + f.w / 2 - tw / 2)), ty = Math.max(2, f.y - 16);
-      x.fillStyle = '#0d2442'; x.fillRect(tx, ty, tw, 13); x.fillStyle = '#ffcd75'; x.textAlign = 'left'; x.fillText(text, tx + 4, ty + 10);
-    }
     TANK.raf = requestAnimationFrame(frame);
   };
   TANK.raf = requestAnimationFrame(frame);
@@ -1271,16 +1262,6 @@ function log(D) {
   let curRun = 0; for (let k = active(td) ? td : addDays(td, -1); active(k); k = addDays(k, -1)) curRun++;
   let best = 0, run = 0, prevDay = null;
   for (const k of allDays) { run = prevDay && addDays(prevDay, 1) === k ? run + 1 : 1; best = Math.max(best, run); prevDay = k; }
-  // 月曆：一列一週，從第一次使用那週開始，最多顯示最近 12 週；顏色越亮代表當天完成越多習慣
-  let start = weekKey(allDays[0] || td); const limit = addDays(weekKey(td), -7 * 11); if (start < limit) start = limit;
-  let cells = '<span></span>' + ['一', '二', '三', '四', '五', '六', '日'].map(w => `<span class="wd">${w}</span>`).join('');
-  for (let k = start; k <= addDays(weekKey(td), 6); k = addDays(k, 1)) {
-    if (k === weekKey(k)) cells += `<span class="wk">${+k.slice(5, 7)}/${+k.slice(8)}</span>`;
-    if (k > td) { cells += '<i class="blank"></i>'; continue; }
-    const x = D.days[k] || {}, done = H.filter(h => x[h.id]), n = done.length;
-    const l = n === 0 ? 0 : n >= H.length ? 4 : Math.min(3, Math.ceil(n / H.length * 3));
-    cells += `<i class="l${l}${k === td ? ' today' : ''}" title="${k}　${esc(done.map(h => h.e + ' ' + h.n).join(' ')) || '—'}"></i>`;
-  }
   const daysOf = k => Object.values(D.days).filter(x => x[k]).length;
   const rec = recentEntries();
   const runs = rec.filter(r => r.id === 'exercise' && r.e.type === '跑步' && r.e.dist > 0), runKm = runs.reduce((a, r) => a + +r.e.dist, 0);
@@ -1291,10 +1272,8 @@ function log(D) {
     <div class="mini">升到 Lv.${lv + 1} 還差 ${hi - D.xp} XP${nxt ? `・Lv.${nxt[0]} 成為「${nxt[1]}」` : ''}</div></section>
   <section class="px">${sh('打卡紀錄', 'ACTIVITY')}
     <div class="streakbox"><div><small>目前連續</small><b>${curRun}</b><small>天</small></div>
-      <div><small>最長連續</small><b>${best}</b><small>天</small></div><div><small>總共打卡</small><b>${allDays.length}</b><small>天</small></div></div>
-    <div class="cal">${cells}</div>
-    <small class="legend">少 <i style="background:#0f2a4d"></i><i style="background:#1f5a8a"></i><i style="background:#2f8fc0"></i><i style="background:#73eff7"></i><i style="background:#e8ffff"></i> 多</small></section>
-  <section class="px">${sh('最近紀錄', 'RECENT')}
+      <div><small>最長連續</small><b>${best}</b><small>天</small></div><div><small>總共打卡</small><b>${allDays.length}</b><small>天</small></div></div></section>
+  <section class="px">${sh('最近習慣紀錄', 'RECENT HABIT')}
     ${rec.length ? rec.slice(0, 12).map(r => `<div class="entry"><span class="dim" style="flex:none">${r.d.slice(5).replace('-', '/')}</span><span class="sp">${esc(entryText(r))}</span></div>`).join('')
       : '<div class="dim">點「今日」的習慣卡片打卡，就會記在這裡。</div>'}</section>
   <section class="px">${sh('累積', 'TOTALS')}<div class="stat">
