@@ -410,6 +410,7 @@ function migrate(s) {
     }
     it.cat = 'other'; delete it.ex; delete it.pub;
   }
+  if (s.fed) for (const k of Object.keys(s.fed)) if (!k.includes('#')) { s.fed[k + '#0'] = (s.fed[k + '#0'] || 0) + s.fed[k]; delete s.fed[k]; }
   if (!s.gcats) {
     s.gcats = CONFIG.generalCats.map(c => ({ ...c }));
     if (Object.values(s.plans).some(P => P.some(it => it.cat === 'digital')))
@@ -797,7 +798,7 @@ function renderSheet() {
     el.innerHTML = `<div class="row"><span class="rar" style="background:${R.color}">${R.name}</span><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
       ${img(c.px, Math.max(4, Math.min(10, Math.floor(150 / Math.max(...c.px.map(r => r.length))))), false, 'pop')}
       <h2>${c.name} <small>×${n}</small></h2>
-      <div class="mini">水族箱 Lv.${growLv(fedOf(c.id))}・吃了 ${fedOf(c.id)} 顆飼料</div><p class="dim">${c.fact}</p>`;
+      <div class="mini">${Array.from({ length: Math.min(3, n) }, (_, k) => `${Math.min(3, n) > 1 ? `${k + 1} 號 ` : '水族箱 '}Lv.${growLv(fedOf(`${c.id}#${k}`))}・吃了 ${fedOf(`${c.id}#${k}`)} 顆`).join('<br>')}</div><p class="dim">${c.fact}</p>`;
     return;
   }
   el.style.textAlign = '';
@@ -866,7 +867,11 @@ const TANK_SPECIES = {
 const FEED = { free: 3, pack: 10, price: 30 };            // 每天免費 3 顆；商店 30 金幣買 10 顆
 const GROW = [0, 5, 15, 30, 50];                           // 吃到幾顆升到 Lv.2、3、4、5
 const growLv = n => GROW.filter(t => n >= t).length;
-const fedOf = id => (S.fed && S.fed[id]) || 0;
+const fedOf = key => (S.fed && S.fed[key]) || 0;
+// 水族箱設定：S.tankCfg[物種] = { n: 放幾隻（0–3）, size: 0.6／1／1.3 }
+const SIZES = [[.6, '小'], [1, '標準'], [1.3, '大']];
+const tankCount = (id, owned) => Math.min(3, owned, S.tankCfg && S.tankCfg[id] && S.tankCfg[id].n !== undefined ? S.tankCfg[id].n : 3);
+const tankSize = id => (S.tankCfg && S.tankCfg[id] && S.tankCfg[id].size) || 1;
 const freeLeft = () => S.feedDay && S.feedDay.d === dayKey() ? Math.max(0, FEED.free - S.feedDay.used) : FEED.free;
 const feedLeft = () => freeLeft() + (S.feed || 0);
 function useFeed() {
@@ -889,13 +894,25 @@ function tankFeedText() {
   const f = freeLeft(), b = S.feed || 0;
   return `飼料：今天免費 ${f}/${FEED.free}${b ? `・另有 ${b} 顆` : ''}`;
 }
+function tankEditor(D) {
+  const owned = CREATURES.filter(c => D.col[c.id]);
+  return `<section class="px">${sh('水族箱設定', 'AQUARIUM', '<button class="pri" data-act="tankdone">完成</button>')}
+    <div class="mini">決定每種生物要放幾隻、多大。設成 0 隻就不會出現在水族箱。</div>
+    ${owned.map(c => {
+      const max = Math.min(3, D.col[c.id]), cur = tankCount(c.id, D.col[c.id]);
+      return `<div class="erow">${img(c.px, 2)}<span class="sp">${c.name}</span>
+        <select data-tf="n" data-tv="${c.id}">${Array.from({ length: max + 1 }, (_, k) => `<option value="${k}" ${cur === k ? 'selected' : ''}>${k} 隻</option>`).join('')}</select>
+        <select data-tf="size" data-tv="${c.id}">${SIZES.map(([v, l]) => `<option value="${v}" ${tankSize(c.id) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
+    }).join('') || '<div class="dim">還沒有生物。</div>'}</section>`;
+}
 function tank(D) {
+  if (UI.tankEdit) return tankEditor(D);
   const n = Object.keys(D.col).length;
-  return `<section class="px">${sh('水族箱', 'AQUARIUM', `<span class="dim">${n} 種生物</span>`)}
+  return `<section class="px">${sh('水族箱', 'AQUARIUM', `<span class="dim">${n} 種生物</span><button class="ghost" data-act="tankedit">設定</button>`)}
     <canvas id="tank" class="tank"></canvas>
     <div class="row" style="margin-top:8px"><span class="dim" id="feedInfo">${tankFeedText()}</span><span class="sp"></span>
       <button data-act="buyfeed">買飼料 ${FEED.pack} 顆・${FEED.price}${COIN}</button></div>
-    <div class="mini">點水面撒飼料，生物吃了會長大。點生物可以看名字和等級。重複抽到的生物會多一隻（每種最多 3 隻）。</div></section>`;
+    <div class="mini">點水面撒飼料，吃到的那一隻會長大。點生物可以看名字和等級。重複抽到的生物會多一隻（每種最多 3 隻），可以在「設定」調整數量和大小。</div></section>`;
 }
 function tankStart() {
   cancelAnimationFrame(TANK.raf);
@@ -905,16 +922,16 @@ function tankStart() {
   const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
   const col = derive().col, floorY = H - 16;
   TANK.food = []; TANK.tip = null; TANK.bub = [];
-  // 體型＝物種大小 ×（1 + 每升一級多 15%）
+  // 體型＝物種大小 × 自訂大小 ×（1 + 每升一級多 15%）；每一隻各自計算
   const sizeOf = f => {
-    const sc = TANK_SPECIES[f.c.id][0] * (1 + .15 * (growLv(fedOf(f.c.id)) - 1));
+    const sc = TANK_SPECIES[f.c.id][0] * tankSize(f.c.id) * (1 + .15 * (growLv(fedOf(f.key)) - 1));
     f.w = Math.round(f.s.width * sc); f.h = Math.round(f.s.height * sc);
   };
   TANK.fish = [];
   for (const c of CREATURES) {
-    const copies = Math.min(3, col[c.id] || 0), [, speed, ground] = TANK_SPECIES[c.id];
+    const copies = tankCount(c.id, col[c.id] || 0), [, speed, ground] = TANK_SPECIES[c.id];
     for (let k = 0; k < copies; k++) {
-      const f = { c, s: spriteCanvas(c), ground: !!ground, ph: Math.random() * 6, rest: 0,
+      const f = { c, key: `${c.id}#${k}`, no: k + 1, many: copies > 1, s: spriteCanvas(c), ground: !!ground, ph: Math.random() * 6, rest: 0,
         vx: speed * (.8 + Math.random() * .4) * (Math.random() < .5 ? -1 : 1) };
       sizeOf(f);
       f.x = Math.random() * Math.max(1, W - f.w);
@@ -925,7 +942,7 @@ function tankStart() {
   // 大的畫在後面，小的在前面
   TANK.fish.sort((a, b) => b.w * b.h - a.w * a.h);
   const weeds = Array.from({ length: Math.max(3, Math.floor(W / 60)) }, (_, i) => ({ x: 12 + i * (W - 24) / Math.max(1, Math.floor(W / 60) - 1), h: 18 + (i * 7) % 20 }));
-  const tipFor = f => { const n = fedOf(f.c.id); return `${f.c.name} Lv.${growLv(n)}・吃了 ${n} 顆`; };
+  const tipFor = f => { const n = fedOf(f.key); return `${f.c.name}${f.many ? ` ${f.no} 號` : ''} Lv.${growLv(n)}・吃了 ${n} 顆`; };
   cv.onclick = e => {
     const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width, py = (e.clientY - r.top) * H / r.height;
     const hit = [...TANK.fish].reverse().find(f => px >= f.x && px <= f.x + f.w && py >= f.y && py <= f.y + f.h);
@@ -969,11 +986,11 @@ function tankStart() {
         if (!f.ground) { const dy = food.y - (f.y + f.h / 2); f.baseY += Math.sign(dy) * Math.min(Math.abs(dy), sp * .8); }
         if (eats(f, food)) {
           TANK.food.splice(TANK.food.indexOf(food), 1); SFX.eat();
-          const before = growLv(fedOf(f.c.id));
-          S.fed = S.fed || {}; S.fed[f.c.id] = fedOf(f.c.id) + 1; save();
-          if (growLv(fedOf(f.c.id)) > before) {
-            TANK.fish.filter(g => g.c.id === f.c.id).forEach(g => { const cx = g.x + g.w / 2, by = g.y + g.h; sizeOf(g); g.x = cx - g.w / 2; if (g.ground) g.y = floorY - g.h + 2; else g.baseY = by - g.h; });
-            SFX.rank(); toast(`${f.c.name} 長大了！Lv.${growLv(fedOf(f.c.id))}`);
+          const before = growLv(fedOf(f.key));
+          S.fed = S.fed || {}; S.fed[f.key] = fedOf(f.key) + 1; save();
+          if (growLv(fedOf(f.key)) > before) {   // 只有吃到的這一隻長大
+            const cx = f.x + f.w / 2, by = f.y + f.h; sizeOf(f); f.x = cx - f.w / 2; if (f.ground) f.y = floorY - f.h + 2; else f.baseY = by - f.h;
+            SFX.rank(); toast(`${f.c.name}${f.many ? ` ${f.no} 號` : ''}長大了！Lv.${growLv(fedOf(f.key))}`);
           }
         }
       } else if (f.ground) {
@@ -1147,7 +1164,7 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const v = b.dataset.v;
   switch (b.dataset.act) {
-    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tab = v; render(); window.scrollTo(0, 0); break;
+    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.tab = v; render(); window.scrollTo(0, 0); break;
     case 'pday': UI.pday = +v; render(); break;
     case 'iabok': UI.iabOk = true; render(); break;
     case 'start': startTimer(); break;
@@ -1250,6 +1267,8 @@ document.addEventListener('click', async e => {
       save(); render(); SFX.buy(); toast(`${it.icon} 兌換成功，去享受吧！`); break;
     }
     case 'export': exportBackup(); break;
+    case 'tankedit': UI.tankEdit = true; render(); break;
+    case 'tankdone': UI.tankEdit = false; render(); toast('水族箱已更新'); break;
     case 'buyfeed': {
       if (derive().coins < FEED.price) { toast(`金幣不夠，飼料要 ${FEED.price} 金幣`); break; }
       S.logs.push({ id: rid(), t: Date.now(), d: dayKey(), k: 'redeem', name: `飼料 ${FEED.pack} 顆`, c: -FEED.price });
@@ -1284,6 +1303,11 @@ document.addEventListener('input', e => {
     return;
   }
   if (el.dataset.sf) { S.shop[el.dataset.si][el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); return; }
+  if (el.dataset.tf) {
+    S.tankCfg = S.tankCfg || {};
+    const c = S.tankCfg[el.dataset.tv] || (S.tankCfg[el.dataset.tv] = {});
+    c[el.dataset.tf] = +el.value; save(); return;
+  }
   if (el.dataset.gf) { S.gcats[el.dataset.gi][el.dataset.gf] = el.value; save(); return; }
   if (el.dataset.hf) {
     const h = S.habits[el.dataset.hi], f = el.dataset.hf;
