@@ -82,7 +82,14 @@ function migrate(s) {
     s.catsFilled = true;
   }
   if (s.timer && (s.timer.k || !(s.timer.start > 0) || (s.timer.segs && !(s.timer.segs[s.timer.si] && s.timer.segs[s.timer.si].min > 0)))) delete s.timer;
-  s.v = 5;
+  // v6：生物只從商店寶箱來。舊制度（打卡、新手寶箱）送的生物收回，金幣和 XP 保留；圖鑑跟著重來
+  if (s.v < 6) {
+    const gone = new Set();
+    for (const l of s.logs) if (l.drop && l.k !== 'chest') { gone.add(l.id); delete l.drop; }
+    for (const o of [s.fed, s.released, s.outTank]) if (o) for (const id of gone) delete o[id];
+    s.seen = {};
+  }
+  s.v = 6;
   return s;
 }
 function load() {
