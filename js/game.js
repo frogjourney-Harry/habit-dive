@@ -4,7 +4,7 @@ const UI = { tab: 'today', pday: 0, opened: false, sheet: null };
 const Q = [];
 const viewDay = () => addDays(dayKey(), UI.pday);
 const BONUS = {
-  welcome: '歡迎下水！新手寶箱',
+  welcome: '歡迎下水！送你一隻小丑魚',
   top3: '前三件事都完成了！',
   pubchest: '今天發布了文章！',
   period: '習慣達標！',
@@ -32,18 +32,19 @@ function grant(kind, tag, o = {}) {
     if (Math.random() < CONFIG.coins.critChance) { crit = true; c *= 2; }
   }
   const log = { id: rid(), t: Date.now(), d: o.d || dayKey(), k: kind, tag: tag || undefined, xp, c, key: o.key, crit: crit || undefined, ...o.extra };
-  if (kind === 'welcome') return dropCreature(log, chestOf('c0').rates, BONUS.welcome);
+  if (kind === 'welcome') return dropCreature(log, null, BONUS.welcome, 0, CR.clown);   // 新手禮物：一隻小丑魚
   log.pend = true;
   S.logs.push(log);
   GAIN.n++; GAIN.title = GAIN.title || o.title || BONUS[kind] || '';
   return log;
 }
 // 在 log 上抽一隻生物（log.id 就是這隻的身分），排進開箱彈窗；超過上限時接著問要放生哪一隻
-function dropCreature(log, rates, title, tint = 0) {
-  const D = derive(), cr = rollCreature(rates), isNew = !D.col[cr.id], dup = isNew ? 0 : CONFIG.dupCoins[cr.r];
+// fixed：直接給這一隻（新手的小丑魚），不抽
+function dropCreature(log, rates, title, tint = 0, fixed = null) {
+  const D = derive(), cr = fixed || rollCreature(rates), isNew = !D.col[cr.id], dup = isNew ? 0 : CONFIG.dupCoins[cr.r];
   log.drop = cr.id; log.c = (log.c || 0) + dup;
   S.logs.push(log);
-  Q.push({ title, cr, isNew, xp: log.xp || 0, c: log.c - dup, dup, tint });
+  Q.push({ title, cr, isNew, xp: log.xp || 0, c: log.c - dup, dup, tint, direct: !!fixed });
   if (pets(cr.id).length > MAX_PETS) Q.push({ release: cr.id, newId: log.id });
   return log;
 }
@@ -188,7 +189,9 @@ function nextChest() {
       <button class="pri" data-act="close">繼續</button>`;
     SFX.rank(); return;
   }
-  // 寶箱（新手寶箱、商店買的生物寶箱）
+  // 新手的小丑魚直接出現，不用開箱
+  if (it.direct) { openChest(); return; }
+  // 商店買的生物寶箱
   m.innerHTML = `<h2>${esc(it.title)}</h2><div style="filter:${CHEST_TINT[it.tint || 0]}">${img(CHEST, 9, false, 'shake')}</div><p class="dim">點一下打開寶箱</p>
     <button class="pri" data-act="openchest">開啟</button>`;
   SFX.shake();
@@ -202,7 +205,7 @@ function openChest() {
     SFX.open(0); return;
   }
   const R = RARITY[cr.r];
-  document.getElementById('modal').innerHTML = `
+  document.getElementById('modal').innerHTML = `${it.direct ? `<h2>${esc(it.title)}</h2>` : ''}
     <div><span class="rar" style="background:${R.color}">${R.name}</span></div>
     ${stageImg(cr, 1, Math.min(10, Math.floor(160 / stageCanvas(cr, 1).width)), false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
     <h2>${cr.name} <small>幼體</small> ${it.isNew ? '<span class="new">NEW</span>' : ''}</h2>

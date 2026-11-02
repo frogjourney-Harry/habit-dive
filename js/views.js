@@ -12,9 +12,10 @@ function render() {
   renderStat(D);
   document.getElementById('banner').innerHTML = IN_APP && !UI.iabOk
     ? `<div class="banner row"><span class="sp">你正在 App 內建的瀏覽器裡開啟，這裡的紀錄跟 Chrome、Safari 是分開的。建議用右上角選單「用瀏覽器開啟」。</span><button class="ghost" data-act="iabok">知道了</button></div>` : '';
-  const tabs = [['today', '今日'], ['dex', '圖鑑'], ['tank', '水族箱'], ['shop', '商店'], ['log', '紀錄'], ['about', '關於']];
-  document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}</button>`).join('');
-  document.getElementById('main').innerHTML = ({ today, dex, tank, shop, log, about })[UI.tab](D);
+  const tabs = [['today', '今日'], ['quest', '任務'], ['tank', '水族箱'], ['shop', '商店'], ['log', '紀錄'], ['about', '關於']];
+  const pendN = dailyTasks(D).filter(t => t.pend.length).length;
+  document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? '<i class="dot"></i>' : ''}</button>`).join('');
+  document.getElementById('main').innerHTML = ({ today, quest: quests, tank, shop, log, about })[UI.tab](D);
   if (UI.tab === 'tank') tankStart();
 }
 
@@ -63,18 +64,23 @@ function dailyTasks(D) {
   return T;
 }
 function quests(D) {
-  const T = dailyTasks(D), pend = T.flatMap(t => t.pend), doneN = T.filter(t => t.full && !t.pend.length).length;
+  const T = dailyTasks(D), pend = T.flatMap(t => t.pend), pc = pend.reduce((a, l) => a + (l.c || 0), 0);
+  const daily = T.filter(t => !t.week), week = T.filter(t => t.week), done = daily.filter(t => t.full).length;
   const row = t => {
     const st = t.pend.length ? 'pend' : t.full ? 'got' : 'todo';
-    const bar = t.of ? `<span class="qbar"><i style="width:${t.n / t.of * 100}%"></i></span><small>${t.n}/${t.of}</small>` : '';
-    const right = t.pend.length ? `<button class="pri" data-act="claim" data-v="${t.id}">領取</button>`
-      : t.logs.length ? `<small class="dim">已領 +${t.c}${COIN}</small>` : '';
-    return `<div class="quest ${st}"><span class="qk">${t.full || t.pend.length ? '✓' : ''}</span><span class="sp">${esc(t.name)}</span>${bar}${right}</div>`;
+    const right = st === 'pend' ? `<button class="pri" data-act="claim" data-v="${t.id}">領取 +${t.pend.reduce((a, l) => a + (l.c || 0), 0)}${COIN}</button>`
+      : st === 'got' ? `<span class="coin">+${t.c}${COIN}</span>` : '';
+    return `<div class="qc ${st}"><i class="qbox"></i>
+      <div class="sp"><div class="qn">${esc(t.name)}</div>${t.of && !t.full ? `<div class="qprog"><div class="qbar"><i style="width:${t.n / t.of * 100}%"></i></div><small>${t.n} / ${t.of}</small></div>` : ''}</div>
+      ${right}</div>`;
   };
-  const daily = T.filter(t => !t.week), week = T.filter(t => t.week);
-  return `<section class="px">${sh('每日任務', 'DAILY', pend.length > 1 ? `<button class="pri" data-act="claim" data-v="all">全部領取</button>` : `<small class="dim">${doneN}/${T.length}</small>`)}
-    ${daily.map(row).join('')}${week.length ? `<div class="divider">本期</div>${week.map(row).join('')}` : ''}
-    <div class="mini">完成的任務按「領取」拿金幣和 XP；忘了領，隔天會自動入帳。</div></section>`;
+  return `<section class="px qhead"><div class="row"><div class="sp"><div class="label">DAILY QUESTS</div>
+      <div class="qsum">今天完成 <b>${done}</b> / ${daily.length}</div></div>
+      ${pend.length ? `<button class="pri" data-act="claim" data-v="all">全部領取 +${pc}${COIN}</button>` : ''}</div>
+      <div class="bar c"><i style="width:${done / daily.length * 100}%"></i></div></section>
+    <section class="px">${sh('今日任務', 'TODAY')}${daily.map(row).join('')}</section>
+    ${week.length ? `<section class="px">${sh('本期目標', 'GOALS')}${week.map(row).join('')}</section>` : ''}
+    <div class="mini" style="margin:0 6px">忘了領也沒關係，隔天會自動入帳。</div>`;
 }
 
 function today(D) {
@@ -133,7 +139,7 @@ function today(D) {
   const habits = UI.habEdit ? habitEditor() : `<section class="px">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
       <div class="habits">${chips}</div>
       ${risky.length ? `<div class="warn">昨天漏了 ${esc(risky.join('、'))}，今天做到就不會斷。</div>` : ''}</section>`;
-  return `${setup}${quests(D)}${habits}
+  return `${setup}${habits}
     <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
       <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}・${hint}</div>
       ${UI.pday >= 0 ? favBar : ''}${rows}
@@ -272,7 +278,7 @@ function stageImg(c, s, scale, sil = false, cls = '') {
 }
 
 function dex(D) {
-  return `<section class="px">${sh('水下生物圖鑑', 'COLLECTION', `<span class="dim">${Object.keys(D.col).length} / ${CREATURES.length}</span>`)}
+  return `<section class="px">${sh('水下生物圖鑑', 'COLLECTION', `<span class="dim">${Object.keys(D.col).length} / ${CREATURES.length}</span><button data-act="tankview" data-v="">返回水族箱</button>`)}
     <div class="mini">生物從商店的寶箱抽到。點已收集的生物看介紹和成長型態。</div>
     ${RARITY.map((R, r) => `<div class="grp row"><span class="rar" style="background:${R.color}">${R.name}</span></div>
       <div class="dex">${CREATURES.filter(c => c.r === r).map(c => D.col[c.id]
@@ -337,12 +343,13 @@ function tankEditor(D) {
 }
 function tank(D) {
   if (UI.tankEdit) return tankEditor(D);
+  if (UI.tankView === 'dex') return dex(D);
   const n = CREATURES.filter(c => pets(c.id).some(p => inTank(p.id))).length;
-  return `<section class="px">${sh('水族箱', 'AQUARIUM', `<span class="dim">${n} 種生物</span><button class="ghost" data-act="tankedit">設定</button>`)}
+  return `<section class="px">${sh('水族箱', 'AQUARIUM', `<span class="dim">${n} 種生物</span><button data-act="tankview" data-v="dex">圖鑑</button><button data-act="tankedit">設定</button>`)}
     <canvas id="tank" class="tank"></canvas>
     <div class="row" style="margin-top:8px"><span class="dim" id="feedInfo">${tankFeedText()}</span><span class="sp"></span>
       <button data-act="buyfeed">買飼料 ${FEED.pack} 顆・${FEED.price}${COIN}</button></div>
-    <div class="mini">點水面撒飼料，吃到的那一隻會長大（幼體 → 成體 → 特殊型態）。想知道誰是誰，到圖鑑看。</div></section>`;
+    <div class="mini">點水面撒飼料，吃到的那一隻會長大（幼體 → 成體 → 特殊型態）。</div></section>`;
 }
 function tankStart() {
   cancelAnimationFrame(TANK.raf);

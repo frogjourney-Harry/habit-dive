@@ -21,7 +21,7 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const v = b.dataset.v;
   switch (b.dataset.act) {
-    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.swap = null; UI.tab = v; render(); window.scrollTo(0, 0); break;
+    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.tankView = ''; UI.swap = null; UI.tab = v; render(); window.scrollTo(0, 0); break;
     case 'pday': UI.pday = +v; UI.swap = null; render(); break;
     // 六件事換順序：先點一個編號，再點另一個編號，兩件交換
     case 'swap': {
@@ -148,6 +148,7 @@ document.addEventListener('click', async e => {
     case 'prerestore': cloudRestorePre(); break;
     case 'predrop': cloudDropPre(); break;
     case 'tankedit': UI.tankEdit = true; render(); break;
+    case 'tankview': UI.tankView = v; render(); window.scrollTo(0, 0); break;
     case 'intank': S.outTank = S.outTank || {}; if (b.checked) delete S.outTank[v]; else S.outTank[v] = true; save(); break;
     case 'release': {
       const lg = S.logs.find(l => l.id === v), c = lg && CR[lg.drop]; if (!c) break;
