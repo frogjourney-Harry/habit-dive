@@ -149,7 +149,9 @@ function renderSheet() {
   el.style.textAlign = '';
   const h = habit(UI.sheet.id); if (!h) { UI.sheet = null; renderSheet(); return; }
   const D = derive(), s = streaks(D)[h.id], day = UI.sheet.day, d = addDays(dayKey(), day), list = dayChecks(d, h.id);
-  const goal = h.weeks ? `${h.weeks === 1 ? '每週' : '每兩週'} ${h.target} ${countWord(h)}・${periodWord(h)} ${perCount(D, h, periodKey(dayKey(), h.weeks))}/${h.target}` : '每天';
+  // 這一期的日期範圍，例如「本週（11/2–11/8）」
+  const p0 = h.weeks && periodKey(dayKey(), h.weeks), md = k => k.slice(5).replace('-', '/').replace(/^0/, '').replace('/0', '/');
+  const goal = h.weeks ? `${h.weeks === 1 ? '每週' : '每兩週'} ${h.target} ${countWord(h)}・${periodWord(h)}（${md(p0)}–${md(addDays(p0, 7 * h.weeks - 1))}）${perCount(D, h, p0)}/${h.target}` : '每天';
   let body;
   if (h.kind === 'exercise') {
     const type = UI.sheet.exType || ETAGS[0];
