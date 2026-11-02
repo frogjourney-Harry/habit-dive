@@ -89,7 +89,9 @@ function migrate(s) {
     for (const o of [s.fed, s.released, s.outTank]) if (o) for (const id of gone) delete o[id];
     s.seen = {};
   }
-  s.v = 6;
+  // v7：新手禮物改成一隻小丑魚；已經玩過的（新手紀錄上沒有生物）補送
+  if (s.v < 7) { const w = s.logs.find(l => l.k === 'welcome'); if (w && !w.drop) w.drop = 'clown'; }
+  s.v = 7;
   return s;
 }
 function load() {
