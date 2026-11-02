@@ -243,3 +243,47 @@ test('日期工具：跨年、閏日、週與兩週期間', async () => {
   }
   eq(bad.slice(0, 5), [], '800 天的週期計算都正確'); I.destroy();
 });
+
+test('紀錄頁統計：目前連續、最長連續、總共打卡', async () => {
+  // 打卡的日子：今天、昨天、前天（連續 3），然後空一天，再往前 4 天（連續 4，最長）
+  const days = ['2026-11-02', '2026-11-01', '2026-10-31', '2026-10-29', '2026-10-28', '2026-10-27', '2026-10-26'];
+  const checks = Object.fromEntries(days.map(d => [d, { exercise: [{ t: 1, type: '跑步', dist: 3, min: 20 }] }]));
+  const I = await boot({ state: mkState({ checks }) }); await I.dismiss(); await I.tab('log');
+  const t = I.text().replace(/\s+/g, ' ');
+  ok(/目前連續 3 天/.test(t), '目前連續 3 天：' + t.slice(t.indexOf('目前連續'), t.indexOf('目前連續') + 40));
+  ok(/最長連續 4 天/.test(t), '最長連續 4 天（10/26–10/29 被中間隔開）：' + t.slice(t.indexOf('最長連續'), t.indexOf('最長連續') + 40));
+  ok(/總共打卡 7 天/.test(t), '總共 7 天');
+  I.check('統計'); I.destroy();
+  // 今天還沒做：昨天以前的連續照算
+  const J = await boot({ state: mkState({ checks: Object.fromEntries(days.slice(1, 3).map(d => [d, { exercise: [{ t: 1, type: '跑步' }] }])) }) }); await J.dismiss(); await J.tab('log');
+  ok(/目前連續 2 天/.test(J.text().replace(/\s+/g, ' ')), '今天還沒打卡：昨天前天 = 連續 2 天'); J.destroy();
+});
+
+test('習慣：頻率與目標中途修改、自訂習慣每週目標的獎勵', async () => {
+  const I = await boot({ state: mkState() }); await I.dismiss();
+  await I.click('#habits [data-act=habedit]'); await I.click('[data-act=habadd]');
+  const hi = I.S.habits.length - 1; await I.type(`[data-hf=n][data-hi="${hi}"]`, '看書'); await I.type(`[data-hf=weeks][data-hi="${hi}"]`, '1'); await I.type(`[data-hf=target][data-hi="${hi}"]`, '2');
+  await I.click('[data-act=habdone]');
+  ok(I.has('這週') || I.has('本週 0/2'), '卡片顯示每週 0/2：' + I.$('#habits').innerText.replace(/\n/g, ' '));
+  const id = I.S.habits[hi].id;
+  await I.click(['#habits .hab', '看書']); await I.click('[data-act=chk]'); await I.dismiss(); await I.click('#sheet [data-act=sheetclose]').catch(() => {});
+  ok(I.S.logs.some(l => l.key === `hab:${id}:${D0}`), '每次打卡有獎勵');
+  ok(!I.S.logs.some(l => l.key && l.key.startsWith(`per:${id}:`)), '1/2 還沒達標');
+  await I.advance(24 * 3600e3); await I.dismiss(); await I.tab('today');
+  await I.click(['#habits .hab', '看書']); await I.click('[data-act=chk]'); await I.dismiss(); await I.click('#sheet [data-act=sheetclose]').catch(() => {});
+  ok(I.S.logs.some(l => l.key && l.key.startsWith(`per:${id}:`)), '第 2 次達標，拿到週目標獎勵：' + I.S.logs.map(l => l.key).filter(Boolean).join('|').slice(-120));
+  eq(I.S.logs.filter(l => l.key && l.key.startsWith(`per:${id}:`)).length, 1, '只有一份');
+  // 把目標改成 3：已領的達標獎勵不收回、卡片顯示 2/3
+  await I.click('#habits [data-act=habedit]'); await I.type(`[data-hf=target][data-hi="${hi}"]`, '3'); await I.click('[data-act=habdone]');
+  ok(I.S.logs.some(l => l.key && l.key.startsWith(`per:${id}:`)), '已經領走的達標獎勵不會因為改目標被收回'); ok(I.has('2/3'), '顯示 2/3');
+  I.check('習慣目標'); I.destroy();
+});
+
+test('任務頁：進度數字在各種狀態下都對（每日 6 項＋習慣）', async () => {
+  const I = await boot({ state: mkState() }); await I.dismiss(); await I.tab('quest');
+  const read = () => { const m = I.$('#main section .qcnt').innerText.match(/(\d+)\/(\d+)/); return [+m[1], +m[2]]; };
+  eq(read(), [0, 6], '一開始 0/6');
+  await I.tab('today'); await I.plan(['A', 'B', 'C']); await I.saveList(); await I.tab('quest'); eq(read(), [1, 6], '寫好清單 1/6');
+  await I.tab('today'); await I.tick(0); await I.tick(1); await I.tick(2); await I.tab('quest'); eq(read(), [3, 6], 'plan, first three, all three = 3 of 6');
+  I.destroy();
+});
