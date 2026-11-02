@@ -41,7 +41,10 @@ function adopt(cloud) {
   S.cloudUid = CLOUD.user.uid;
   save(false); render();
 }
-// 拉雲端：first＝這台裝置剛登入，兩邊都有紀錄而且不一樣時，讓使用者選要留哪一份
+// 這台裝置登入前的紀錄：登入時一律改用雲端的，原本的另存在這裡，需要時可以還原
+const PRE_KEY = KEY + '.prelogin';
+function preLogin() { try { return JSON.parse(localStorage.getItem(PRE_KEY)); } catch (e) { return null; } }
+// 拉雲端：first＝這台裝置剛登入。兩邊都有紀錄時直接用雲端的（不讓人誤選而蓋掉雲端），這台的另存一份
 async function cloudPull(first) {
   if (!CLOUD.user) return;
   try {
@@ -52,8 +55,8 @@ async function cloudPull(first) {
     if (!hasProgress(S)) { adopt(cloud); toast('已從雲端載入你的紀錄'); }
     else if (!hasProgress(cloud)) await cloudPush();
     else if (first) {
-      const useCloud = await ask(`雲端和這台裝置都有紀錄：\n\n雲端：${summary(cloud)}\n這台裝置：${summary(S)}\n\n要保留哪一份？另一份會被取代。`, '用雲端的', '用這台裝置的');
-      if (useCloud) { adopt(cloud); toast('已改用雲端的紀錄'); } else await cloudPush();
+      try { localStorage.setItem(PRE_KEY, JSON.stringify({ t: Date.now(), s: S })); } catch (e) {}
+      adopt(cloud); toast('已載入雲端的紀錄，這台裝置原本的紀錄另外存了一份');
     }
     else if (cm > lm) adopt(cloud);
     else await cloudPush();
@@ -91,6 +94,15 @@ async function cloudLogout() {
   if (CLOUD.pending) await cloudPush();
   await firebase.auth().signOut(); toast('已登出，紀錄還留在這台裝置');
 }
+// 還原登入前這台裝置的紀錄（會取代雲端上的那一份）
+async function cloudRestorePre() {
+  const p = preLogin(); if (!p) return;
+  if (!(await ask(`改用這台裝置登入前的紀錄？\n\n登入前：${summary(p.s)}\n目前（雲端）：${summary(S)}\n\n雲端的紀錄會被取代。`, '改用登入前的'))) return;
+  S = migrate(Object.assign(blank(), p.s)); S.cloudUid = CLOUD.user.uid;
+  localStorage.removeItem(PRE_KEY);
+  save(); render(); toast('已改用登入前的紀錄');
+}
+function cloudDropPre() { localStorage.removeItem(PRE_KEY); renderCloud(); }
 async function cloudDelete() {
   if (!(await ask('刪除雲端資料和帳號？\n雲端上的紀錄會永久刪除，這台裝置上的紀錄會保留。', '刪除'))) return;
   try {
@@ -110,6 +122,8 @@ function cloudSection() {
   let body;
   if (CLOUD.user) body = `<div class="mini">已登入 ${esc(CLOUD.user.email || '')}</div>
       <div class="mini" id="cloudStatus">${cloudStatusText()}</div>
+      ${preLogin() ? `<div class="mini" style="margin-top:8px">這台裝置登入前的紀錄（${summary(preLogin().s)}）另外存著。</div>
+      <div class="row"><button data-act="prerestore">改用登入前的紀錄</button><button class="ghost" data-act="predrop">不需要，刪掉</button></div>` : ''}
       <div class="row" style="margin-top:6px"><button data-act="logout">登出</button><button class="ghost" data-act="clouddel">刪除雲端資料</button></div>`;
   else if (S.cloudUid && !CLOUD.ready) body = '<div class="mini">連線中…</div>';
   else if (IN_APP) body = '<div class="mini">在 App 內建瀏覽器裡無法用 Google 登入。請用 Chrome 或 Safari 開啟網站後登入，紀錄就能在各裝置同步。</div>';

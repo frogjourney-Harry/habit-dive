@@ -143,6 +143,8 @@ document.addEventListener('click', async e => {
     case 'login': cloudLogin(); break;
     case 'logout': cloudLogout(); break;
     case 'clouddel': cloudDelete(); break;
+    case 'prerestore': cloudRestorePre(); break;
+    case 'predrop': cloudDropPre(); break;
     case 'tankedit': UI.tankEdit = true; render(); break;
     case 'intank': S.outTank = S.outTank || {}; if (b.checked) delete S.outTank[v]; else S.outTank[v] = true; save(); break;
     case 'release': {
