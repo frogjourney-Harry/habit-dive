@@ -42,27 +42,28 @@ function habitEditor() {
 const mdOf = k => k.slice(5).replace('-', '/').replace(/^0/, '').replace('/0', '/');   // 2026-11-02 → 11/2
 // 任務就是會給獎勵的那些事；進度從紀錄算，獎勵是對應的 log（有 pend＝還沒領）
 function dailyTasks(D) {
-  const C = CONFIG.coins, rnd = [C.task, C.task], times = (k, [a, b] = rnd) => [a * k, b * k], fix = n => [n, n];
+  const C = CONFIG.coins, X = CONFIG.xp;
   const d = dayKey(), d1 = addDays(d, 1), byKey = k => S.logs.filter(l => l.key === k), R = CONFIG.rewardRows;
   const checks = S.logs.filter(l => l.k === 'check' && l.d === d);
   const T = [
     // how＝怎麼完成；go＝點了跳到「今日」頁的哪一區
-    { id: 'plan', name: '寫好今天的清單', how: `在「最重要的六件事」寫下至少 ${R} 件，按「寫好了」`, go: 'six', est: rnd, logs: byKey('plan:' + d) },
-    { id: 'plan1', name: '寫好明天的清單（獎勵 ×2）', how: `六件事切到「明天」，寫下至少 ${R} 件，按「寫好了」`, go: 'six:1', est: times(2), logs: byKey('plan:' + d1) },
-    { id: 'rows', name: `完成前 ${R} 件事`, how: `六件事的第 1～${R} 件，每打勾一件就有獎勵`, go: 'six', n: checks.length, of: R, est: times(Math.max(R - checks.length, 0)), logs: checks },
-    { id: 'top3', name: `前 ${R} 件都完成`, how: `第 1～${R} 件全部打勾，再多一份獎勵`, go: 'six', est: fix(C.top3), logs: byKey('top3:' + d) },
-    { id: 'anyhab', name: '完成任一個習慣', how: '「習慣」裡任選一張卡片打卡', go: 'habits', est: rnd, logs: byKey('anyhab:' + d) },
-    { id: 'pomo', name: `專注一段番茄鐘`, how: `番茄鐘專注滿 ${CONFIG.pomoRewardMin} 分鐘`, go: 'pomo', est: rnd, logs: byKey('pomo:' + d) },
+    { id: 'plan', name: '寫好今天的清單', how: `在「最重要的六件事」寫下至少 ${R} 件，按「寫好了」`, go: 'six', est: C.task, ex: X.plan, nx: `寫好今天的清單（至少 ${R} 件）`, logs: byKey('plan:' + d) },
+    { id: 'plan1', name: '寫好明天的清單（獎勵 ×2）', how: `六件事切到「明天」，寫下至少 ${R} 件，按「寫好了」`, go: 'six:1', est: C.task * 2, ex: X.plan * 2, logs: byKey('plan:' + d1) },
+    { id: 'rows', name: `完成前 ${R} 件事`, how: `六件事的第 1～${R} 件，每打勾一件就有獎勵`, go: 'six', n: checks.length, of: R, est: C.task * Math.max(R - checks.length, 0), ex: X.check * Math.max(R - checks.length, 0), logs: checks },
+    { id: 'top3', name: `前 ${R} 件都完成`, how: `第 1～${R} 件全部打勾，再多一份獎勵`, go: 'six', est: C.top3, ex: X.top3, logs: byKey('top3:' + d) },
+    { id: 'anyhab', name: '完成任一個習慣', how: '「習慣」裡任選一張卡片打卡', go: 'habits', est: C.task, ex: X.anyhab, nx: '任選一個習慣打卡', logs: byKey('anyhab:' + d) },
+    { id: 'pomo', name: `專注一段番茄鐘`, how: `番茄鐘專注滿 ${CONFIG.pomoRewardMin} 分鐘`, go: 'pomo', est: C.task, ex: X.pomo, nx: `專注一段番茄鐘（${CONFIG.pomoRewardMin} 分鐘）`, logs: byKey('pomo:' + d) },
   ];
   for (const h of activeHabits()) {
     const dayLogs = x => byKey(h.kind === 'vocus' ? 'art:' + x : `hab:${h.id}:${x}`);
-    if (!h.weeks) { T.push({ id: 'h_' + h.id, hab: true, name: `${h.e} ${h.n} 打卡`, go: 'habits', how: `點「${h.n}」卡片打卡`, est: rnd, logs: dayLogs(d) }); continue; }
+    if (!h.weeks) { T.push({ id: 'h_' + h.id, hab: true, name: `${h.e} ${h.n} 打卡`, go: 'habits', how: `點「${h.n}」卡片打卡`, est: C.task, ex: h.kind === 'exercise' ? X.exercise : X.habit, logs: dayLogs(d) }); continue; }
     // 週期型（例如本週運動 3 天）：每次打卡和達標加碼合成一列，看得出這期的進度
     const p = periodKey(d, h.weeks), days = Array.from({ length: 7 * h.weeks }, (_, i) => addDays(p, i));
     const bonus = h.kind === 'vocus' ? [] : byKey(h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`);
-    const left = Math.max(h.target - perCount(D, h, p), 0), per = h.kind === 'vocus' ? fix(C.pubchest) : rnd;
-    const est = times(left, per); if (!bonus.length && h.kind !== 'vocus') { est[0] += C.period; est[1] += C.period; }
-    T.push({ id: 'p_' + h.id, hab: true, week: true, est, name: `${h.e} ${h.n}・${periodWord(h)} ${h.target} ${countWord(h)}`, go: 'habits',
+    const left = Math.max(h.target - perCount(D, h, p), 0), last = !bonus.length && h.kind !== 'vocus';
+    const est = left * (h.kind === 'vocus' ? C.pubchest : C.task) + (last ? C.period : 0);
+    const ex = left * (h.kind === 'vocus' ? X.pubchest : h.kind === 'exercise' ? X.exercise : X.habit) + (last ? X.period : 0);
+    T.push({ id: 'p_' + h.id, hab: true, week: true, est, ex, name: `${h.e} ${h.n}・${periodWord(h)} ${h.target} ${countWord(h)}`, go: 'habits',
       how: `${periodWord(h)}（${mdOf(p)}–${mdOf(days[days.length - 1])}）${h.kind === 'vocus' ? `發 ${h.target} 篇，每天有發文就有獎勵` : `打卡 ${h.target} 天，每次都有獎勵，達標再加碼`}`,
       n: Math.min(perCount(D, h, p), h.target), of: h.target, logs: [...days.flatMap(dayLogs), ...bonus] });
   }
@@ -76,19 +77,21 @@ function dailyTasks(D) {
 function quests(D) {
   const T = dailyTasks(D), pend = T.flatMap(t => t.pend), pc = pend.reduce((a, l) => a + (l.c || 0), 0);
   // 拆成兩區：每日任務（清單、六件事、番茄鐘）和習慣養成（每天打卡＋本期目標）
-  const daily = T.filter(t => !t.week), done = daily.filter(t => t.full).length;
+  const { daily, done } = questCount(T);
   const base = T.filter(t => !t.hab), hab = T.filter(t => t.hab);
   const row = t => {
     const st = t.pend.length ? 'pend' : t.full ? 'got' : 'todo';
     // 領取按鈕一直都在，完成了才能按
-    const right = st === 'pend' ? `<button class="pri" data-act="claim" data-v="${t.id}">領取 +${t.pend.reduce((a, l) => a + (l.c || 0), 0)}${COIN}</button>`
-      : `<button class="pri" disabled>${st === 'got' ? `已領 +${t.c}` : `領取 +${t.est[0] === t.est[1] ? t.est[0] : t.est.join('–')}`}${COIN}</button>`;
+    const sum = k => t.pend.reduce((a, l) => a + (l[k] || 0), 0);
+    const [c, xp] = st === 'pend' ? [sum('c'), sum('xp')] : st === 'got' ? [t.c, t.xp] : [t.est, t.ex];
+    const inner = `<span>${st === 'got' ? '已領' : '領取'} +${c}${COIN}</span><small>+${xp} XP</small>`;
+    const right = st === 'pend' ? `<button class="pri" data-act="claim" data-v="${t.id}">${inner}</button>` : `<button class="pri" disabled>${inner}</button>`;
     return `<div class="qc ${st}"><i class="qbox"></i>
       <div class="sp" ${st === 'todo' ? `data-act="goto" data-v="${t.go}"` : ''}><div class="qn">${esc(t.name)}</div>${st === 'todo' ? `<small class="qhow">${esc(t.how)} ›</small>` : ''}${t.of && !t.full ? `<div class="qprog"><div class="qbar"><i style="width:${t.n / t.of * 100}%"></i></div><small>${t.n} / ${t.of}</small></div>` : ''}</div>
       ${right}</div>`;
   };
   return `<section class="px qhead"><div class="row"><div class="sp"><div class="label">DAILY QUESTS</div>
-      <div class="qsum">今天完成 <b>${done}</b> / ${daily.length}</div></div>
+      <div class="qsum">每日任務 <b>${done}</b> / ${daily.length}</div></div>
       ${pend.length ? `<button class="pri" data-act="claim" data-v="all">全部領取 +${pc}${COIN}</button>` : ''}</div>
       <div class="bar c"><i style="width:${done / daily.length * 100}%"></i></div></section>
     <section class="px">${sh('每日任務', 'DAILY')}${base.map(row).join('')}</section>
@@ -97,17 +100,21 @@ function quests(D) {
 }
 
 // 首頁最上面一條：今天完成幾項、下一步做什麼（點了直接跳過去）、有幾份獎勵待領
+// 每日任務完成幾項：任務頁和首頁共用，數字才對得起來（本期目標不算）
+function questCount(T) { const daily = T.filter(t => !t.week); return { daily, done: daily.filter(t => t.full).length }; }
 function nextStep(D, P) {
-  const T = dailyTasks(D).filter(t => !t.week && t.id !== 'plan1'), done = T.filter(t => t.full).length;
-  const pc = dailyTasks(D).flatMap(t => t.pend).reduce((a, l) => a + (l.c || 0), 0);
-  const nx = T.find(t => !t.full);
-  let label = '今天的任務都完成了！';
+  const all = dailyTasks(D), { daily: T, done } = questCount(all);
+  const pc = all.flatMap(t => t.pend).reduce((a, l) => a + (l.c || 0), 0);
+  // 下一步：照順序找還沒完成的，「寫明天的清單」留到最後
+  const nx = T.find(t => !t.full && t.id !== 'plan1') || T.find(t => !t.full);
+  let label = '每日任務都完成了！';
   if (nx) {
-    const i = P.slice(0, CONFIG.rewardRows).findIndex(x => x.text.trim() && !x.done);
-    label = nx.id === 'rows' && i >= 0 ? `完成第 ${i + 1} 件「${P[i].text.trim()}」` : nx.name;
+    const R = CONFIG.rewardRows, i = P.slice(0, R).findIndex(x => !x.done);
+    label = nx.id === 'rows' || nx.id === 'top3' ? (i < 0 ? nx.name : P[i].text.trim() ? `打勾第 ${i + 1} 件「${P[i].text.trim()}」` : `在六件事寫下第 ${i + 1} 件要做的事`)
+      : nx.nx || nx.name;
   }
   return `<section class="px nextbar"><div class="row">
-      <div class="sp" ${nx ? `data-act="goto" data-v="${nx.go}"` : ''}><small class="dim">今天 ${done}/${T.length}${nx ? '・下一步' : ''}</small><div class="nx">${esc(label)}${nx ? ' ›' : ''}</div></div>
+      <div class="sp" ${nx ? `data-act="goto" data-v="${nx.go}"` : ''}><small class="dim">每日任務 ${done}/${T.length}${nx ? '・下一步' : ''}</small><div class="nx">${esc(label)}${nx ? ' ›' : ''}</div></div>
       ${pc ? `<button class="pri" data-act="tab" data-v="quest">領取 +${pc}${COIN}</button>` : ''}</div>
     <div class="bar c"><i style="width:${done / T.length * 100}%"></i></div></section>`;
 }
@@ -512,7 +519,7 @@ const chestPool = ch => CREATURES.filter(c => c.r === ch.rates.findIndex(p => p 
 // 寶箱第二行：收集進度；點一下展開能抽到的生物（一次只展開一個）
 function chestOdds(ch, D) {
   const pool = chestPool(ch), got = pool.filter(c => D.col[c.id]).length;
-  return `已收集 ${got}/${pool.length}${ch.feed ? `・${ch.feed}% 開出飼料` : ''} <span class="more">${UI.chestOpen === ch.id ? '收起 ▴' : '看生物 ▾'}</span>`;
+  return `已收集 ${got}/${pool.length}${ch.feed ? `・${ch.feed}% 開出飼料` : ''}`;
 }
 function shop(D) {
   const hist = S.logs.filter(l => l.k === 'redeem').slice(-5).reverse();   // 只留最近 5 筆
@@ -532,7 +539,7 @@ function shop(D) {
   return `<section class="px shop">${sh('生物寶箱', 'CHESTS')}
     <div class="mini">開出的生物會放進水族箱，飼料拿去餵牠們長大。每種最多養 ${MAX_PETS} 隻，抽到重複的另外送金幣。</div>
     ${CONFIG.chests.map((ch, i) => `<div class="it chest"><span class="ic" style="filter:${CHEST_TINT[i]}">${img(CHEST, 2)}</span>
-      <span class="sp" data-act="chestpool" data-v="${ch.id}">${ch.name}<br><small>${chestOdds(ch, D)}</small></span>
+      <span class="sp" data-act="chestpool" data-v="${ch.id}">${ch.name}<span class="more">${UI.chestOpen === ch.id ? '▴' : '▾'}</span><br><small>${chestOdds(ch, D)}</small></span>
       <span class="price">${ch.price}${COIN}</span><button class="pri" data-act="buychest" data-v="${ch.id}" ${D.coins < ch.price ? 'disabled' : ''}>購買</button>
       ${UI.chestOpen !== ch.id ? '' : `<div class="cpool">${chestPool(ch).map(c => `<button class="ghost ${D.col[c.id] ? '' : 'new'}" data-act="fact" data-v="${c.id}" title="${c.name}">${img(c.px, 2)}<small>${c.name}</small></button>`).join('')}</div>`}</div>`).join('')}
     <div class="it chest"><span class="ic">🦐</span><span class="sp">飼料 ${FEED.pack} 顆<br><small>每天另有免費 ${FEED.free} 顆・目前還有 ${feedLeft()} 顆</small></span>
@@ -583,7 +590,10 @@ function log(D) {
   return `<section class="px">${sh('等級', 'LEVEL')}
     <div class="row"><div class="big-lv"><span>Lv.</span>${lv}</div><div><b>${RANKS[ri][1]}</b><div class="mini" style="margin:0">共 ${D.xp} XP</div></div></div>
     <div class="bar"><i style="width:${Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100))}%"></i></div>
-    <div class="mini">升到 Lv.${lv + 1} 還差 ${hi - D.xp} XP${nxt ? `・Lv.${nxt[0]} 成為「${nxt[1]}」` : ''}</div></section>
+    <div class="mini">升到 Lv.${lv + 1} 還差 ${hi - D.xp} XP${nxt ? `・Lv.${nxt[0]} 成為「${nxt[1]}」` : ''}</div>
+    <div class="xphow"><b>經驗值怎麼拿？</b>完成每日任務，跟金幣一起在「任務」頁領取。
+      <div>一般任務 +${CONFIG.xp.check} XP・運動打卡 +${CONFIG.xp.exercise} XP・前 ${CONFIG.rewardRows} 件都完成 +${CONFIG.xp.top3} XP・本期目標達標 +${CONFIG.xp.period} XP</div>
+      <button class="ghost" data-act="tab" data-v="quest">去任務頁 ›</button></div></section>
   <section class="px">${sh('打卡紀錄', 'ACTIVITY')}
     <div class="streakbox"><div><small>目前連續</small><b>${curRun}</b><small>天</small></div>
       <div><small>最長連續</small><b>${best}</b><small>天</small></div><div><small>總共打卡</small><b>${allDays.length}</b><small>天</small></div></div></section>
