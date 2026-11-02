@@ -34,10 +34,10 @@ const hasProgress = s => (s.logs || []).some(l => l.k !== 'welcome') || Object.k
 const summary = s => { const D = deriveOf(s); return `Lv.${levelOf(D.xp)}・${D.coins} 金幣・${(s.logs || []).length} 筆紀錄`; };
 function deriveOf(s) { const keep = S; S = s; try { return derive(); } finally { S = keep; } }
 
-function adopt(cloud) {
+function adopt(cloud, keepTimer = false) {
   const timer = S.timer;
   S = migrate(Object.assign(blank(), cloud));
-  if (!S.timer && timer) S.timer = timer;
+  if (keepTimer && !S.timer && timer) S.timer = timer;
   S.cloudUid = CLOUD.user.uid;
   save(false); render();
 }
@@ -52,11 +52,11 @@ async function cloudPull(first) {
     if (!snap.exists) { await cloudPush(); return; }
     const cloud = JSON.parse(snap.data().data), cm = cloud.mtime || 0, lm = S.mtime || 0;
     if (cm === lm) { CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); return; }
-    if (!hasProgress(S)) { adopt(cloud); toast('已從雲端載入你的紀錄'); }
+    if (!hasProgress(S)) { adopt(cloud, true); toast('已從雲端載入你的紀錄'); }
     else if (!hasProgress(cloud)) await cloudPush();
     else if (first) {
       try { localStorage.setItem(PRE_KEY, JSON.stringify({ t: Date.now(), s: S })); } catch (e) {}
-      adopt(cloud); toast('已載入雲端的紀錄，這台裝置原本的紀錄另外存了一份');
+      adopt(cloud, true); toast('已載入雲端的紀錄，這台裝置原本的紀錄另外存了一份');
     }
     else if (cm > lm) adopt(cloud);
     else await cloudPush();
@@ -138,6 +138,8 @@ function cloudStatusText() {
 // 只重畫雲端區塊（狀態、錯誤訊息），不動整個頁面
 function renderCloud() { const el = document.getElementById('cloudBox'); if (el) el.outerHTML = cloudSection(); }
 
+// 專注中每 30 秒看一下雲端：在別台裝置按了「結束」，這台也會跟著結束
+setInterval(() => { if (CLOUD.user && S.timer && document.visibilityState === 'visible') cloudPull(false); }, 30e3);
 // 切到別的 App 前先把還沒上傳的存上去；切回來時看看別的裝置有沒有更新
 document.addEventListener('visibilitychange', () => {
   if (!CLOUD.user) return;

@@ -99,11 +99,11 @@ function reconcile(allowGrant) {
   for (const h of activeHabits()) {
     const has = dayChecks(d, h.id).length > 0;
     if (h.kind === 'vocus') conds.push(['art:' + d, 'pubchest', has]);
-    else conds.push([`hab:${h.id}:${d}`, 'habit', has, `${h.e} ${h.n} 打卡完成！`, h.kind === 'exercise' ? CONFIG.xp.exercise : CONFIG.xp.habit]);
+    else conds.push([`hab:${h.id}:${d}`, 'habit', has, `${h.n} 打卡完成！`, h.kind === 'exercise' ? CONFIG.xp.exercise : CONFIG.xp.habit]);
     if (h.weeks && h.kind !== 'vocus') {
       const p = periodKey(d, h.weeks);
       conds.push([h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`, 'period',
-        periodDone(derive(), h, p), `${h.e} ${h.n} ${periodWord(h)}達標！`]);
+        periodDone(derive(), h, p), `${h.n} ${periodWord(h)}達標！`]);
     }
   }
   for (const [key, kind, ok, title, xp] of conds) {

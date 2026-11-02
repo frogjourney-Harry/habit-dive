@@ -57,14 +57,14 @@ function dailyTasks(D) {
   ];
   for (const h of activeHabits()) {
     const dayLogs = x => byKey(h.kind === 'vocus' ? 'art:' + x : `hab:${h.id}:${x}`);
-    if (!h.weeks) { T.push({ id: 'h_' + h.id, hab: true, name: `${h.e} ${h.n}`, go: 'habits', est: C.task, ex: h.kind === 'exercise' ? X.exercise : X.habit, logs: dayLogs(d) }); continue; }
+    if (!h.weeks) { T.push({ id: 'h_' + h.id, hab: true, name: h.n, go: 'habits', est: C.task, ex: h.kind === 'exercise' ? X.exercise : X.habit, logs: dayLogs(d) }); continue; }
     // 週期型（例如本週運動 3 天）：每次打卡和達標加碼合成一列，看得出這期的進度
     const p = periodKey(d, h.weeks), days = Array.from({ length: 7 * h.weeks }, (_, i) => addDays(p, i));
     const bonus = h.kind === 'vocus' ? [] : byKey(h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`);
     const left = Math.max(h.target - perCount(D, h, p), 0), last = !bonus.length && h.kind !== 'vocus';
     const est = left * (h.kind === 'vocus' ? C.pubchest : C.task) + (last ? C.period : 0);
     const ex = left * (h.kind === 'vocus' ? X.pubchest : h.kind === 'exercise' ? X.exercise : X.habit) + (last ? X.period : 0);
-    T.push({ id: 'p_' + h.id, hab: true, week: true, est, ex, name: `${h.e} ${h.n}・${periodWord(h)} ${h.target} ${countWord(h)}`, go: 'habits',
+    T.push({ id: 'p_' + h.id, hab: true, week: true, est, ex, name: `${h.n}・${periodWord(h)} ${h.target} ${countWord(h)}`, go: 'habits',
       how: `${mdOf(p)}–${mdOf(days[days.length - 1])}`,
       n: Math.min(perCount(D, h, p), h.target), of: h.target, logs: [...days.flatMap(dayLogs), ...bonus] });
   }
@@ -195,7 +195,7 @@ function renderFocus() {
   const seg = T.segs[T.si], br = seg.m === 'break';
   el.innerHTML = `<div class="fbox">
     <div class="label">${br ? 'BREAK' : 'FOCUS'}・${T.si + 1}/${T.segs.length}</div>
-    <div class="fsprite">${img(CR.clown.px, 4)}</div>
+    <div class="fsprite">${stageImg(CR.clown, 2, 6)}</div>
     <div>${br ? '休息一下，站起來動一動' : '專注中，先把手機放下'}</div>
     <div class="clock" id="tclock">--:--</div><div class="bar c"><i id="tbar" style="width:0"></i></div>
     <div class="segs">${segLine(T, T.segs)}</div>
@@ -272,7 +272,7 @@ function renderSheet() {
   else body = list.length
       ? `<button class="wide" data-act="chk">✓ 已完成，點一下取消</button>`
       : `<button class="pri wide" data-act="chk">完成打卡</button>`;
-  el.innerHTML = `<div class="row"><b style="font-size:18px">${esc(h.e)} ${esc(h.n)}</b><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
+  el.innerHTML = `<div class="row"><b style="font-size:18px">${esc(h.n)}</b><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
     <div class="mini">${goal}${s.n ? `・連續 ${s.n} ${h.weeks ? (h.weeks === 1 ? '週' : '次') : '天'}` : ''}</div>
     <div class="row" style="margin-top:10px"><span class="seg-switch">${[[0, '今天'], [-1, '昨天']].map(([o, n]) => `<button class="${day === o ? 'sel' : ''}" data-act="shday" data-v="${o}">${n}</button>`).join('')}</span>
       <small class="dim">${day < 0 ? '補登只算連勝，沒有獎勵' : ''}</small></div>
@@ -558,7 +558,7 @@ function shop(D) {
       <span class="sp" data-act="chestpool" data-v="${ch.id}">${ch.name}<span class="more">${UI.chestOpen === ch.id ? '▴' : '▾'}</span><br><small>${chestOdds(ch, D)}</small></span>
       <span class="price">${ch.price}${COIN}</span><button class="pri" data-act="buychest" data-v="${ch.id}" ${D.coins < ch.price ? 'disabled' : ''}>購買</button>
       ${UI.chestOpen !== ch.id ? '' : `<div class="cpool">${chestPool(ch).map(c => `<button class="ghost ${D.col[c.id] ? '' : 'new'}" data-act="fact" data-v="${c.id}" title="${c.name}">${img(c.px, 2)}<small>${c.name}</small></button>`).join('')}</div>`}</div>`).join('')}
-    <div class="it chest"><span class="ic">🦐</span><span class="sp">飼料 ${FEED.pack} 顆<br><small>每天另有免費 ${FEED.free} 顆・目前還有 ${feedLeft()} 顆</small></span>
+    <div class="it chest"><span class="ic">${img(SHRIMP, 2)}</span><span class="sp">飼料 ${FEED.pack} 顆<br><small>每天另有免費 ${FEED.free} 顆・目前還有 ${feedLeft()} 顆</small></span>
       <span class="price">${FEED.price}${COIN}</span><button class="pri" data-act="buyfeed" ${D.coins < FEED.price ? 'disabled' : ''}>購買</button></div></section>
   <section class="px shop">${sh('獎勵商店', 'REWARDS', '<button class="ghost" data-act="shopedit">編輯</button>')}
     <div class="mini">你可以自行設定想要的獎勵。${activeDays >= 5 ? `最近 14 天平均每天賺 ${rate} 金幣。` : `目前以每天約 ${rate} 金幣估算。`}</div>
@@ -579,9 +579,9 @@ function recentEntries() {
   return out.sort((a, b) => b.d.localeCompare(a.d) || b.t - a.t);
 }
 function entryText(r) {
-  const h = S.habits.find(x => x.id === r.id) || { e: '•', n: r.id };
+  const h = S.habits.find(x => x.id === r.id) || { n: r.id };
   const body = r.id === 'vocus' ? `發布：${r.e.title || '（無標題）'}` : r.id === 'exercise' ? (exText(r.e) || '運動') : `${h.n} ✓`;
-  return `${h.e} ${body}`;
+  return body;
 }
 
 function log(D) {
@@ -612,8 +612,8 @@ function log(D) {
     ${rec.length ? rec.slice(0, 12).map(r => `<div class="entry"><span class="dim" style="flex:none">${r.d.slice(5).replace('-', '/')}</span><span class="sp">${esc(entryText(r))}</span></div>`).join('')
       : '<div class="dim">點「今日」的習慣卡片打卡，就會記在這裡。</div>'}</section>
   <section class="px">${sh('累積', 'TOTALS')}${(tot => tot ? `<div class="stat">${tot}</div>` : '<div class="dim">完成任務後，累積的數字會出現在這裡。</div>')([
-    ...H.map(h => h.kind === 'vocus' ? D.articles && `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${D.articles}</b><small>篇文章</small></div>`
-      : daysOf(h.id) && `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`),
+    ...H.map(h => h.kind === 'vocus' ? D.articles && `<div><small>${esc(h.n)}</small><b>${D.articles}</b><small>篇文章</small></div>`
+      : daysOf(h.id) && `<div><small>${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`),
     pomos.length && `<div><small>番茄鐘</small><b>${pomos.length}</b><small>段・${pomoHours.toFixed(1)} 小時</small></div>`,
     runs.length && `<div><small>跑步總距離</small><b>${runKm.toFixed(1)}</b><small>km・${runs.length} 次</small></div>`,
   ].filter(Boolean).join(''))}</section>`;

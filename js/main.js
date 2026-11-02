@@ -87,7 +87,7 @@ document.addEventListener('click', async e => {
       S.habits.push({ id: 'h' + rid(), e: '⭐', n: '', kind: 'custom', weeks: 0, target: 1 }); save(); render(); break;
     case 'habdel': {
       const h = S.habits[+v];
-      if (!(await ask(`刪除習慣「${h.e} ${h.n || '（未命名）'}」？\n過去的紀錄會保留，只是不再顯示和計算。`, '刪除'))) break;
+      if (!(await ask(`刪除習慣「${h.n || '（未命名）'}」？\n過去的紀錄會保留，只是不再顯示和計算。`, '刪除'))) break;
       h.off = true; save(); render(); break;
     }
     case 'habrestore': { const h = S.habits.find(x => x.id === v); h.off = false; save(); render(); break; }

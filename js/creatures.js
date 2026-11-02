@@ -20,6 +20,8 @@ function fish(body, stripes = {}, top) {
 const CHEST = ['.kkkkkkkkkk.','kttttttttttk','kttttttttttk','kyyyyyyyyyyk','ktttkyyktttk',
   'ktttkyyktttk','kttttkkttttk','kttttttttttk','kyyyyyyyyyyk','.kkkkkkkkkk.'];
 
+const SHRIMP = ['.......k...','......k....','...kkkkk...','..kooooook.','.kowooooook','.kooooooook','..kkooookk.','....kok.k..','.....k.k...'];
+
 const CREATURES = [
   { id:'clown', name:'小丑魚', r:0, fact:'住在海葵裡，出生時全是雄性。', px: fish('o', {4:'w', 8:'w'}) },
   { id:'damsel', name:'藍魔鬼雀鯛', r:0, fact:'珊瑚礁上最常見的亮藍色小魚。', px: fish('b', {1:'c', 2:'c'}) },
