@@ -84,23 +84,26 @@ function quests(D) {
     // 按鈕一直都在，完成了才能按；金幣和經驗值寫在同一行
     const sum = k => t.pend.reduce((a, l) => a + (l[k] || 0), 0);
     const [c, xp] = st === 'pend' ? [sum('c'), sum('xp')] : st === 'got' ? [t.c, t.xp] : [t.est, t.ex];
-    const inner = `+${c}${COIN}<small>${xp}XP</small>`;
-    const right = st === 'pend' ? `<button class="pri" data-act="claim" data-v="${t.id}" title="領取">${inner}</button>` : `<button class="pri" disabled>${st === 'got' ? '已領' : inner}</button>`;
+    const amt = `+${c}${COIN}<small>+${xp} XP</small>`;
+    const right = st === 'pend' ? `<button class="pri" data-act="claim" data-v="${t.id}">領取 ${amt}</button>`
+      : st === 'got' ? '<span class="qend">已完成</span>' : `<span class="qamt">${amt}</span>`;
     const sub = [st === 'todo' && t.how ? esc(t.how) : '', t.of && !t.full ? `<span class="qbar"><i style="width:${t.n / t.of * 100}%"></i></span>${t.n}/${t.of}` : ''].filter(Boolean).join('・');
     return `<div class="qc ${st}"><i class="qbox"></i>
       <div class="sp" ${st === 'todo' ? `data-act="goto" data-v="${t.go}"` : ''}><div class="qn">${esc(t.name)}</div>${sub ? `<small class="qhow">${sub}</small>` : ''}</div>
       ${right}</div>`;
   };
-  return `<section class="px">${sh('每日任務', `${done} / ${daily.length}`, pend.length ? `<button class="pri" data-act="claim" data-v="all">全部領取 +${pc}${COIN}</button>` : '')}
+  const hd = hab.filter(t => t.full).length;
+  return `<section class="px">${sh('每日任務', 'DAILY', `<span class="qcnt">${done}/${daily.length}</span>`)}
+      ${pend.length ? `<button class="pri qall" data-act="claim" data-v="all">全部領取 +${pc}${COIN}</button>` : ''}
       <div class="bar c qtop"><i style="width:${done / daily.length * 100}%"></i></div>${base.map(row).join('')}</section>
-    ${hab.length ? `<section class="px">${sh('習慣養成', 'HABITS')}${hab.map(row).join('')}</section>` : ''}`;
+    ${hab.length ? `<section class="px">${sh('習慣養成', 'HABITS', `<span class="qcnt">${hd}/${hab.length}</span>`)}${hab.map(row).join('')}</section>` : ''}`;
 }
 
 // 首頁最上面一條：今天完成幾項、下一步做什麼（點了直接跳過去）、有幾份獎勵待領
-// 每日任務完成幾項：任務頁和首頁共用，數字才對得起來（本期目標不算）
-function questCount(T) { const daily = T.filter(t => !t.week); return { daily, done: daily.filter(t => t.full).length }; }
+// 每日任務完成幾項：只算「每日任務」那一區，任務頁和首頁共用
+function questCount(T) { const daily = T.filter(t => !t.hab); return { daily, done: daily.filter(t => t.full).length }; }
 function nextStep(D, P) {
-  const all = dailyTasks(D), { daily: T, done } = questCount(all);
+  const all = dailyTasks(D), { daily, done } = questCount(all), T = all.filter(t => !t.week);
   const pc = all.flatMap(t => t.pend).reduce((a, l) => a + (l.c || 0), 0);
   // 下一步：照順序找還沒完成的，「寫明天的清單」留到最後
   const nx = T.find(t => !t.full && t.id !== 'plan1') || T.find(t => !t.full);
@@ -111,9 +114,9 @@ function nextStep(D, P) {
       : nx.nx || nx.name;
   }
   return `<section class="px nextbar"><div class="row">
-      <div class="sp" ${nx ? `data-act="goto" data-v="${nx.go}"` : ''}><small class="dim">每日任務 ${done}/${T.length}${nx ? '・下一步' : ''}</small><div class="nx">${esc(label)}${nx ? ' ›' : ''}</div></div>
+      <div class="sp" ${nx ? `data-act="goto" data-v="${nx.go}"` : ''}><small class="dim">每日任務 ${done}/${daily.length}${nx ? '・下一步' : ''}</small><div class="nx">${esc(label)}${nx ? ' ›' : ''}</div></div>
       ${pc ? `<button class="pri" data-act="tab" data-v="quest">領取 +${pc}${COIN}</button>` : ''}</div>
-    <div class="bar c"><i style="width:${done / T.length * 100}%"></i></div></section>`;
+    <div class="bar c"><i style="width:${done / daily.length * 100}%"></i></div></section>`;
 }
 function today(D) {
   const st = streaks(D), td = dayKey(), d = viewDay(), P = getPlan(d);
@@ -588,9 +591,7 @@ function log(D) {
     <div class="row"><div class="big-lv"><span>Lv.</span>${lv}</div><div><b>${RANKS[ri][1]}</b><div class="mini" style="margin:0">共 ${D.xp} XP</div></div></div>
     <div class="bar"><i style="width:${Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100))}%"></i></div>
     <div class="mini">升到 Lv.${lv + 1} 還差 ${hi - D.xp} XP${nxt ? `・Lv.${nxt[0]} 成為「${nxt[1]}」` : ''}</div>
-    <div class="xphow"><b>經驗值怎麼拿？</b>完成每日任務，跟金幣一起在「任務」頁領取。
-      <div>一般任務 +${CONFIG.xp.check} XP・運動打卡 +${CONFIG.xp.exercise} XP・前 ${CONFIG.rewardRows} 件都完成 +${CONFIG.xp.top3} XP・本期目標達標 +${CONFIG.xp.period} XP</div>
-      <button class="ghost" data-act="tab" data-v="quest">去任務頁 ›</button></div></section>
+    <div class="mini xphow" data-act="tab" data-v="quest">經驗值靠完成任務拿，每項寫在「任務」頁 ›</div></section>
   <section class="px">${sh('打卡紀錄', 'ACTIVITY')}
     <div class="streakbox"><div><small>目前連續</small><b>${curRun}</b><small>天</small></div>
       <div><small>最長連續</small><b>${best}</b><small>天</small></div><div><small>總共打卡</small><b>${allDays.length}</b><small>天</small></div></div></section>

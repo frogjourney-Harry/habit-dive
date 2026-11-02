@@ -288,9 +288,13 @@ nav .badge{display:inline-block;min-width:16px;height:16px;margin-left:4px;paddi
 .nextbar .bar{margin-top:8px}
 .addrow{width:100%;margin:6px 0 0;padding:6px;color:var(--dim)}
 .nextbar .sp{min-width:0}
-.xphow{margin-top:10px;padding:10px;background:var(--panel2);font-size:13px;color:var(--dim)}
-.xphow b{display:block;color:var(--ink);margin-bottom:4px}
-.xphow div{margin:4px 0 6px}
-.xphow button{margin:0;padding:4px 10px}
+.xphow{cursor:pointer}
+.xphow:hover{color:var(--xp)}
 .qsum{white-space:nowrap}
 .qtop{margin:-4px 0 4px}
+.qcnt{font-size:14px;color:var(--dim)}
+.qall{width:100%;margin:0 0 8px}
+.qamt{flex:none;font-size:13px;color:var(--coin);white-space:nowrap;opacity:.8}
+.qamt small,.qc button small{font-size:12px;color:var(--xp);margin-left:5px}
+.qc button small{color:#0b2546;opacity:.7}
+.qend{flex:none;font-size:13px;color:var(--ok);padding:0 4px}
