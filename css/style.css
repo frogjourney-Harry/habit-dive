@@ -274,3 +274,5 @@ nav .dot{display:inline-block;width:7px;height:7px;margin-left:5px;vertical-alig
 .cpool small{font-size:11px;color:var(--dim);white-space:nowrap}
 .cpool .new img{opacity:.4}
 @media (max-width:520px){.cpool{margin-left:0}}
+.shop [data-act="chestpool"]{cursor:pointer}
+.shop .more{color:var(--xp);margin-left:4px;white-space:nowrap}

@@ -490,9 +490,11 @@ function finishHabits() {
 // 五種寶箱照稀有度上色：灰、綠、藍、紫、金
 const CHEST_TINT = ['grayscale(1) brightness(1.15)', 'hue-rotate(80deg)', 'hue-rotate(170deg)', 'hue-rotate(230deg) saturate(1.3)', 'saturate(1.5) brightness(1.15)'];
 // 寶箱說明：開出哪個稀有度、有幾種可能，例如「普通生物 6 種隨機一種・25% 開出飼料」
-function chestOdds(ch) {
-  const r = ch.rates.findIndex(p => p > 0), n = CREATURES.filter(c => c.r === r).length;
-  return `${RARITY[r].name}生物 ${n} 種${n > 1 ? '隨機一種' : ''}${ch.feed ? `・${ch.feed}% 開出飼料` : ''}`;
+const chestPool = ch => CREATURES.filter(c => c.r === ch.rates.findIndex(p => p > 0));
+// 寶箱第二行：收集進度；點一下展開能抽到的生物（一次只展開一個）
+function chestOdds(ch, D) {
+  const pool = chestPool(ch), got = pool.filter(c => D.col[c.id]).length;
+  return `已收集 ${got}/${pool.length}${ch.feed ? `・${ch.feed}% 開出飼料` : ''} <span class="more">${UI.chestOpen === ch.id ? '收起 ▴' : '看生物 ▾'}</span>`;
 }
 function shop(D) {
   const hist = S.logs.filter(l => l.k === 'redeem').slice(-5).reverse();   // 只留最近 5 筆
@@ -512,9 +514,9 @@ function shop(D) {
   return `<section class="px shop">${sh('生物寶箱', 'CHESTS')}
     <div class="mini">開出的生物會放進水族箱，飼料拿去餵牠們長大。每種最多養 ${MAX_PETS} 隻，抽到重複的另外送金幣。</div>
     ${CONFIG.chests.map((ch, i) => `<div class="it chest"><span class="ic" style="filter:${CHEST_TINT[i]}">${img(CHEST, 2)}</span>
-      <span class="sp">${ch.name}<br><small>${chestOdds(ch)}</small></span>
+      <span class="sp" data-act="chestpool" data-v="${ch.id}">${ch.name}<br><small>${chestOdds(ch, D)}</small></span>
       <span class="price">${ch.price}${COIN}</span><button class="pri" data-act="buychest" data-v="${ch.id}" ${D.coins < ch.price ? 'disabled' : ''}>購買</button>
-      <div class="cpool">${CREATURES.filter(c => c.r === ch.rates.findIndex(p => p > 0)).map(c => `<button class="ghost ${D.col[c.id] ? '' : 'new'}" data-act="fact" data-v="${c.id}" title="${c.name}">${img(c.px, 2)}<small>${c.name}</small></button>`).join('')}</div></div>`).join('')}
+      ${UI.chestOpen !== ch.id ? '' : `<div class="cpool">${chestPool(ch).map(c => `<button class="ghost ${D.col[c.id] ? '' : 'new'}" data-act="fact" data-v="${c.id}" title="${c.name}">${img(c.px, 2)}<small>${c.name}</small></button>`).join('')}</div>`}</div>`).join('')}
     <div class="it chest"><span class="ic">🦐</span><span class="sp">飼料 ${FEED.pack} 顆<br><small>每天另有免費 ${FEED.free} 顆・目前還有 ${feedLeft()} 顆</small></span>
       <span class="price">${FEED.price}${COIN}</span><button class="pri" data-act="buyfeed" ${D.coins < FEED.price ? 'disabled' : ''}>購買</button></div></section>
   <section class="px shop">${sh('獎勵商店', 'REWARDS', '<button class="ghost" data-act="shopedit">編輯</button>')}
