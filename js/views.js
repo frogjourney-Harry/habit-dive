@@ -12,7 +12,7 @@ function render() {
   renderStat(D);
   document.getElementById('banner').innerHTML = IN_APP && !UI.iabOk
     ? `<div class="banner row"><span class="sp">你正在 App 內建的瀏覽器裡開啟，這裡的紀錄跟 Chrome、Safari 是分開的。建議用右上角選單「用瀏覽器開啟」。</span><button class="ghost" data-act="iabok">知道了</button></div>` : '';
-  const tabs = [['today', '今日'], ['quest', '任務'], ['tank', '水族箱'], ['shop', '商店'], ['log', '紀錄'], ['about', '關於']];
+  const tabs = [['today', '今日'], ['quest', '任務'], ['tank', '水族箱'], ['shop', '商店'], ['log', '紀錄'], ['about', '更多']];
   const pendN = dailyTasks(D).filter(t => t.pend.length).length;
   document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? `<i class="badge">${pendN}</i>` : ''}</button>`).join('');
   document.getElementById('main').innerHTML = ({ today, quest: quests, tank, shop, log, about })[UI.tab](D);
@@ -120,7 +120,7 @@ function nextStep(D, P) {
 }
 function today(D) {
   const st = streaks(D), td = dayKey(), d = viewDay(), P = getPlan(d);
-  const claimed = D.claimed.has('plan:' + d), doneN = filled(P).filter(x => x.done).length;
+  const claimed = D.claimed.has('plan:' + d);
   const chips = activeHabits().map(h => {
     const s = st[h.id], badge = s.n ? `<span class="streak">${s.n}<small>${h.weeks ? (h.weeks === 1 ? '週' : '次') : '天'}</small></span>` : '';
     let on, sub;
@@ -141,9 +141,9 @@ function today(D) {
       <div class="row" style="margin-top:8px">每 <select id="vW"><option value="1">1 週</option><option value="2">2 週</option></select>
         至少 <select id="vT">${targetOpts(1)}</select> 篇
         <button class="pri" data-act="vcfg">確定</button></div></section>`;
-  const hint = UI.pday < 0 ? '補登昨天：只算完成，沒有獎勵。'
-    : UI.pday > 0 ? `先寫好明天的清單（至少 ${CONFIG.rewardRows} 件），獎勵 ×2。`
-    : `前 ${CONFIG.rewardRows} 件完成有金幣。點編號可以換順序，點 ☆ 存成常用。`;
+  const hint = UI.pday < 0 ? '補登昨天：只算完成，沒有獎勵'
+    : UI.pday > 0 ? `先寫好明天的（至少 ${CONFIG.rewardRows} 件），獎勵 ×2`
+    : `前 ${CONFIG.rewardRows} 件有獎勵`;
   const favs = S.favs || [];
   // 常用：點一下填進第一個空格，不用每天重打
   const favBar = favs.length ? `<div class="favs"><small class="dim">常用</small>${favs.map((t, i) => `<span class="fav"><button class="ghost" data-act="usefav" data-v="${i}">${esc(t)}</button><button class="ghost x" data-act="delfav" data-v="${i}" title="從常用移除">×</button></span>`).join('')}</div>` : '';
@@ -159,6 +159,7 @@ function today(D) {
       <button class="ghost star" data-act="fav" data-v="${i}" title="${starred ? '從常用移除' : '存成常用'}">${starred ? '★' : '☆'}</button></div>`;
   }).join('');
   const T = S.timer && S.timer.segs ? S.timer : null, seg = T && T.segs[T.si], pm = pomoMin();
+  const PRESETS = [25, 45, 60, 90], custom = UI.pomoCustom || !PRESETS.includes(pm);
   const todayPomo = S.logs.filter(l => l.k === 'pomo' && l.d === td).length;
   const segLine = segs => segs.map((x, i) => `<span class="${T && i < T.si ? 'past' : T && i === T.si ? 'now' : ''}">${x.m === 'break' ? '休息' : '專注'} ${x.min}</span>`).join('<span>›</span>');
   const timer = T ? `<section class="px timer">
@@ -168,8 +169,9 @@ function today(D) {
       <div class="segs">${segLine(T.segs)}</div>
       ${seg.m === 'break' ? '<button class="ghost" data-act="skipbreak">跳過休息</button>' : ''}<button class="ghost" data-act="cancel">結束</button></section>`
     : `<section class="px" id="pomo">${sh('番茄鐘', 'FOCUS', `<small class="dim">今天 ${todayPomo} 段</small>`)}
-      <div class="pomo-set"><div class="presets">${[25, 45, 60, 90].map(m => `<button class="${pm === m ? 'sel' : ''}" data-act="pomoset" data-v="${m}">${m} 分</button>`).join('')}</div>
-        <div class="pomo-go"><input type="number" id="pomoMin" min="5" max="120" step="5" value="${pm}" title="自訂總長度（分鐘）"><span class="dim">分</span>
+      <div class="pomo-set"><div class="presets">${PRESETS.map(m => `<button class="${pm === m && !custom ? 'sel' : ''}" data-act="pomoset" data-v="${m}">${m} 分</button>`).join('')}
+          <button class="${custom ? 'sel' : ''}" data-act="pomocustom">${custom ? `${pm} 分` : '自訂'}</button></div>
+        <div class="pomo-go">${custom ? `<input type="number" id="pomoMin" min="5" max="120" step="5" value="${pm}" title="總長度（分鐘）"><span class="dim">分</span>` : ''}
         <button class="pri" data-act="start">開始專注</button></div></div>
       <div class="segs" id="pomoPlan">${segLine(sessionPlan(pm))}</div>
       <div class="mini">每天第一段專注滿 ${CONFIG.pomoRewardMin} 分鐘有獎勵。</div></section>`;
@@ -179,10 +181,10 @@ function today(D) {
   return `${UI.pday === 0 ? nextStep(D, P) : ''}${setup}${habits}
     <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
       <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}・${hint}</div>
+      ${UI.pday >= 0 && !S.tipSix ? `<div class="tip row"><span class="sp">小技巧：點編號可以換順序，點 ☆ 存成常用。</span><button class="ghost" data-act="tipsix">知道了</button></div>` : ''}
       ${UI.pday >= 0 ? favBar : ''}${rows}
       ${shown < P.length && UI.pday >= 0 ? `<button class="ghost addrow" data-act="addrow">＋ 再加一件${shown === CONFIG.rewardRows ? '（只做紀錄）' : ''}</button>` : ''}
-      <div class="row" style="margin-top:8px">${UI.pday < 0 ? '' : claimed ? '' : '<button class="pri" data-act="plansave">寫好了</button>'}
-        <span class="sp"></span><small>完成 ${doneN}/${filled(P).length}</small></div></section>
+      ${UI.pday < 0 || claimed ? '' : '<div class="row" style="margin-top:8px"><button class="pri" data-act="plansave">寫好了</button></div>'}</section>
     ${timer}`;
 }
 
@@ -603,12 +605,7 @@ function log(D) {
       : `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`).join('')}
     <div><small>番茄鐘</small><b>${pomos.length}</b><small>段・${pomoHours.toFixed(1)} 小時</small></div>
     <div><small>跑步總距離</small><b>${runKm.toFixed(1)}</b><small>km・${runs.length} 次</small></div>
-  </div></section>
-  ${cloudSection()}
-  <section class="px">${sh('設定與備份', 'SETTINGS')}
-    <label class="switch"><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button><span>音效</span></label>
-    <div class="mini" style="margin-top:12px">${CLOUD.user ? '紀錄已同步到雲端。也可以另外下載一份備份檔。' : '紀錄只存在這個瀏覽器。換手機、換瀏覽器或清除瀏覽資料就會消失，請定期備份。'}</div>
-    <div class="row" style="margin-top:6px"><button data-act="export">備份</button><button data-act="import">還原</button></div></section>`;
+  </div></section>`;
 }
 
 // 關於頁
@@ -619,8 +616,14 @@ const ABOUT_LINKS = [
   { title: '潛水日誌 #2｜印尼・Nusa Penida・Crystal Bay：沒看到翻車魚！', sub: '想抽到翻車魚？先看看我在海裡等了多久', url: 'https://vocus.cc/article/6ad986a9fd89780001033212' },
   { title: 'OW 潛水考照心得｜課程都在學什麼？我的完整考照紀錄', sub: '從零開始學潛水的紀錄', url: 'https://vocus.cc/article/6a45ddadfd89780001dff50b' },
 ];
+// 「更多」：設定、雲端同步在最上面，下面是關於和沙龍
 function about() {
-  return `<section class="px">${sh('關於習慣深潛', 'ABOUT')}
+  return `${cloudSection()}
+  <section class="px">${sh('設定與備份', 'SETTINGS')}
+    <label class="switch"><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button><span>音效</span></label>
+    <div class="mini" style="margin-top:12px">${CLOUD.user ? '紀錄已同步到雲端。也可以另外下載一份備份檔。' : '紀錄只存在這個瀏覽器。換手機、換瀏覽器或清除瀏覽資料就會消失，請定期備份。'}</div>
+    <div class="row" style="margin-top:6px"><button data-act="export">備份</button><button data-act="import">還原</button></div></section>
+  <section class="px">${sh('關於習慣深潛', 'ABOUT')}
     <p>嗨，我是 Harry，喜歡潛水，也在努力每週寫文章。這個遊戲是我為了讓自己持續寫作和運動而做的：每天寫下最重要的事，完成就賺金幣，用金幣開寶箱，收集我在海裡遇過（或還在等）的生物。</p>
     <p class="dim">從浮潛客一路升到潛水教練的稱號、圖鑑裡的鬼蝠魟和翻車魚，都來自我的潛水經驗。希望它也能陪你一點一點往前進。</p></section>
   <section class="px">${sh('我的沙龍', 'SALON')}

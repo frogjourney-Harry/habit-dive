@@ -43,7 +43,9 @@ document.addEventListener('click', async e => {
       if (T && T.segs[T.si].m === 'break') { T.start = Date.now() - T.segs[T.si].min * 60e3; tick(); }
       break;
     }
-    case 'pomoset': S.pomoMin = +v; save(); render(); break;
+    case 'tipsix': S.tipSix = true; save(); render(); break;
+    case 'pomocustom': UI.pomoCustom = true; render(); document.getElementById('pomoMin')?.focus(); break;
+    case 'pomoset': S.pomoMin = +v; UI.pomoCustom = false; save(); render(); break;
     case 'cancel':
       if (await ask('結束這段工作階段？\n目前這段專注不會有獎勵，已完成的段落會保留。', '結束', '繼續')) { S.timer = null; save(); render(); tick(); }
       break;
