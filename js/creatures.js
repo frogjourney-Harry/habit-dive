@@ -32,7 +32,7 @@ const CREATURES = [
   { id:'turtle', name:'綠蠵龜', alias:'海龜', r:1, fact:'休息時可以閉氣好幾個小時。', px: ['......kkkkkk','....kkGgGgGgkk','...kGgGgGgGgGgk','..kGgGgGgGgGgGgk..kk','..kyyyyyyyyyyyyykggk','.kkkkkkkkkkkkkkkgkgk','kgk.......kgggkkggk','.k.......kgggk.kk','........kgggk','.........kkk'] },
   { id:'octopus', name:'章魚', r:1, fact:'三顆心臟、藍色的血。', px: ['...kkkkk...','..krrrrrk..','.krrrrrrrk.','.krwkrwkrk.','.krrrrrrrk.','..krrrrrk..','.krkrkrkrk.','kr.kr.kr.rk','k..k..k...k'] },
   { id:'nudi', name:'海蛞蝓', alias:'海兔', r:1, fact:'微距攝影的最愛，配色一隻比一隻浮誇。', px: ['..o.o...o.o.o','.kPPPkkkkPPPk','kPPwPPPPPPPPk','kPPPPPwPPPPPk','.kyyyyyyyyyk.','..kkkkkkkkk..'] },
-  { id:'lion', name:'獅子魚', r:1, fact:'很美，但背鰭有毒，看就好。', px: ['...r.r.r.r','...r.r.r.r.r','...r.r.r.r.r','..kkkkkkkkkk','.kkrwrwrwrwrkk','krkrwrwrwrwrrrk','krrrwrwrwrwrryk','krkrwrwrwrwrrrkk','.kkrwrwrwrwrkk','..rkkkkkkkkkr','.r.r.r.r.r.r','r..r..r..r'] },
+  { id:'lion', name:'獅子魚', r:1, fact:'很美，但背鰭有毒，看就好。', px: fish('r', {3:'w', 5:'w', 7:'w', 9:'w'}, '...r.r.r.r...') },
   { id:'puffer', name:'河豚', r:1, fact:'受到威脅時會吸水膨脹成一顆球。', px: ['..k..k..k..','...kkkkk...','..kyyyyyk..','.kyyyyykyk.','kkyyyyyyyyk','kyywwwwwyyk','.kwwwwwwwk.','..kkkkkkk..'] },
   { id:'cuttle', name:'烏賊', r:1, fact:'能在一瞬間改變膚色與紋路。', px: ['..kkkkkkkkkkk','.kwwwwwwwwwwwk','kwssswsssswsskk','kssswssswsssswwk','kswssssswssssswkk.s.s','ksssswssswsssskkssss','kswssssswsssskkss.s.s','.kwwwwwwwwwwwk','..kkkkkkkkkkk'] },
   { id:'seahorse', name:'海馬', r:2, fact:'由爸爸懷孕、生下寶寶。', px: ['..kkk...','.kyyyk..','.kykyyyk','..kyykk.','..kyyk..','.kyyyk..','kyyyyk..','kyyyk...','.kyyk...','..kyk...','.kyk....','.kk.....'] },
@@ -69,7 +69,7 @@ const JUV = {
   seahorse: ['.kk..', 'kyyk.', 'kykyk', '.kyk.', '.kyk.', 'kyk..', '.k...'],
   shark: ['.......kk.......','......kSk.......','k....kSSSkkkk...','kwkkkSSSSSSSSkk.','.kSSSSSSSSSSSkSk','kwkkwwwwwwwwwwk.','k...kkkSkkkSk...'],
   moray: ['.........kkkk.','.kkkkkkkkgwkgk','kgggygggygggwk','.kkkkkkkkkkkk.'],
-  jelly: ['.c.c.c.', 'ccccccc', '.ccwcc.', 'ccccccc', '.c.c.c.'],      // 碟狀幼體
+  jelly: ['..kkk..', '.kccck.', 'kcwccck', 'kkkkkkk', '.c.c.c.', 'c..c.c.', '.c..c.c'],
   manta: ['.....kk......', '....knnnk....', '...knnnnwk.k.', '..knnnnnnnkk.', 'kkknnnnnnnnk.', '..knnnnnnnkk.', '...knnnnwk.k.', '....knnnk....', '.....kk......'],
   mola: ['....k....', '...ksk...', '.kkssskk.', 'kssssskwk', 'ksssssssk', '.kkssskk.', '...ksk...', '....k....'],   // 小翻車魚：上下兩片鰭、圓圓的身體
   dolphin: ['.....k......','....kbk.....','k..kbbbkkk..','kbkbbbbbbbkkk','k..kwwwwwwbbbk','....kkkkkkkk'],
@@ -97,7 +97,7 @@ const SPECIES_PAL = {
 const MORPH = {
   clown: { n: '黑色小丑魚', map: { o: '#34343f' } },                      // 眼斑雙鋸魚的黑色型（達爾文小丑）
   damsel: { n: '黃尾雀鯛', map: { c: '#ffd23f' } },                       // 近親 Chrysiptera parasema：藍身黃尾
-  butterfly: { n: '浣熊蝴蝶魚', map: { y: '#f6a623' } },                  // 近親 Chaetodon lunula：橘黃色
+  butterfly: { n: '浣熊蝴蝶魚', map: { y: '#f6a623', r: '#c4561e' }, px: ['......kkkkk', '....kkyrywykk', '...kyyryywykyyk', '..kyyryyywykyyyk', '.kyyryyyywkkkyyk', 'kkyryyyrywkwkyyk', 'kykyyyryywkkkyyyykk', 'kykkkryyywkkyyyyykk', 'kkykryyyywkkyyyk', '.kyryyyrywkkyyk', '..kyyyryywkkyk', '...kkryyywkkk', '.....kkkkk'] },                  // 近親 Chaetodon lunula：橘黃色
   star: { n: '藍指海星', map: { o: '#2f6fd6', y: '#2f6fd6' } },           // Linckia laevigata：整隻寶藍色
   hermit: { n: '藍腿寄居蟹', map: { r: '#2f6fd6' } },                     // Clibanarius tricolor
   urchin: { n: '火焰海膽', map: { P: '#ff5a3c', k: '#b0302a' } },         // Asthenosoma varium：紅色身體和刺
@@ -116,6 +116,8 @@ const MORPH = {
   dolphin: { n: '中華白海豚', map: { b: '#f2b6c6', w: '#fde6ee' } },      // 台灣西海岸的粉紅色海豚
   whaleshark: { n: '白化鯨鯊', map: { n: '#dfe6ea', w: '#ffffff' } },     // 罕見的白化個體
 };
+// 黑色獅子魚全身暗色，黑眼睛會被吃掉，改成黃色的眼睛
+MORPH.lion.px = CR.lion.px.map((r, j) => j === 4 ? r.slice(0, 10) + 'y' + r.slice(11) : r);
 const stageName = (c, s) => s === 1 ? '幼體' : s === 2 ? '成體' : MORPH[c.id].n;
 
 
