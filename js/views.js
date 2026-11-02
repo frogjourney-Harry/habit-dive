@@ -349,6 +349,7 @@ const TANK_SPECIES = {
   seahorse: [1, .1], shark: [1.6, .7], moray: [1.3, .3], jelly: [1.3, .08], manta: [1.7, .35], mola: [1.8, .15],
   dolphin: [1.2, .9], whaleshark: [2.6, .2],
 };
+const SWIM = .5;   // 游動速度倍率（水族箱每格 3 像素，原本的速度看起來太快）
 const STAGE_SCALE = [1, 1, 1.1];   // 幼體圖本身就比較小
 const FEED = { free: 3, pack: 10, price: 30 };            // 每天免費 3 顆；商店 30 金幣買 10 顆
 // 水族箱設定：哪幾隻放進去記在 S.outTank
@@ -427,7 +428,7 @@ function tankStart() {
     P.forEach((p, i) => {
       if (!inTank(p.id)) return;
       const f = { c, key: p.id, no: i + 1, many: P.length > 1, ground: !!ground, ph: Math.random() * 6, rest: 0,
-        vx: speed * (.8 + Math.random() * .4) * (Math.random() < .5 ? -1 : 1) };
+        vx: speed * SWIM * (.8 + Math.random() * .4) * (Math.random() < .5 ? -1 : 1) };
       look(f);
       const q = prev.get(f.key);
       if (q) { f.vx = q.vx; f.ph = q.ph; f.rest = q.rest; f.x = Math.min(q.x, Math.max(0, W - f.w)); f.baseY = ground ? floorY - f.h + 2 : Math.min(q.baseY, floorY - f.h + 2); f.y = ground ? f.baseY : q.y; }

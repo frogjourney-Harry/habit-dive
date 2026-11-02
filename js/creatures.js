@@ -1,7 +1,7 @@
 // 生物：像素圖、圖鑑資料、三種成長型態（幼體 JUV／成體／特殊型態 MORPH）與每種生物的實際顏色。
 /* ========= 像素圖 ========= */
 const PAL = { k:'#1a1c2c', w:'#f4f4f4', o:'#ef7d57', y:'#ffcd75', b:'#41a6f6', n:'#3b5dc9', c:'#73eff7',
-  g:'#38b764', G:'#257179', P:'#b267e6', r:'#e43b44', s:'#94b0c2', S:'#566c86', t:'#a0703c' };
+  g:'#38b764', G:'#257179', P:'#b267e6', r:'#e43b44', s:'#94b0c2', S:'#566c86', t:'#a0703c', K:'#2a2016' };
 const FISH = [
   '.....kkkk....',
   '...kkAAAAkk..',
@@ -25,7 +25,7 @@ const SHRIMP = ['k.k.............','.k.k............','..kkkkkkk.......','..kwko
 const CREATURES = [
   { id:'clown', name:'小丑魚', r:0, fact:'住在海葵裡，出生時全是雄性。', px: fish('o', {4:'w', 8:'w'}) },
   { id:'damsel', name:'藍魔鬼雀鯛', r:0, fact:'珊瑚礁上最常見的亮藍色小魚。', px: fish('b', {1:'c', 2:'c'}) },
-  { id:'butterfly', name:'蝴蝶魚', r:0, fact:'多半成對生活，在礁石間一起覓食。', px: ['.........kkkkk', '.......kkyyyyykk', '......kyykkyyykyyk', 'kkk..kyyykkyyykyyyk', 'kyk.kyyyyyyyykyyyyk', 'kykkkyyyyyyyywyyyyk', 'kyyyyyyyyyyyykyyyyyykk', 'kyyyyyyyyyyyykyyyyyykk', 'kykkkyyyyyyyykyyyyk', 'kyk.kyyyyyyyykyyyk', 'kkk..kyyyyyyykyyk', '......kkyyyyykkk', '........kkkkk'] },
+  { id:'butterfly', name:'蝴蝶魚', r:0, fact:'多半成對生活，在礁石間一起覓食。', px: ['........kkkkkkk', '......kkyyyyyyykk', '.....kyyyyyyyyyyyk', '....kyyyykkyyyyyykk', 'kkk.kyyyykkyyyyyykyk', 'kyykkyyyyyyyyyyyywyyk', 'kyyyyyyyyyyyyyyyykyyykk', 'kyyyyyyyyyyyyyyyykyyykk', 'kyykkyyyyyyyyyyyykyyk', 'kkk.kyyyyyyyyyyyykyk', '....kyyyyyyyyyyyykk', '.....kyyyyyyyyyyyk', '......kkyyyyyyykk', '........kkkkkkk'] },
   { id:'star', name:'海星', r:0, fact:'沒有腦，斷掉的腕還能再長回來。', px: ['......k......','.....kok.....','.....kok.....','....koook....','kkkkkoyokkkkk','kooooyyyooook','.kkooyyyookk.','...koooook...','..kooo.oook..','..koo...ook..','.koo.....ook.','.kk.......kk.'] },
   { id:'hermit', name:'寄居蟹', r:0, fact:'長大就要換更大的殼——跟習慣一樣。', px: ['............kk','...........ktk','..........kttk','.........kkkkk','........kttttk','.......kwttttk','......kkkkkkkk','.....kttttttttk','.k.k.ktttttttttk','.r.r.kkkkkkkkkkk','krrrrrrkttttttk','kwrrrrrrkkkkkk','krrkrrrrrk','.kk.krkrkrk','....k.k.k.k'] },
   { id:'urchin', name:'海膽', r:0, fact:'下水時最該注意別踩到的傢伙。', px: ['k....k....k','.k...k...k.','..k.kPk.k..','...kPPPk...','kkkPPPPPkkk','...kPPPk...','..k.kPk.k..','.k...k...k.','k....k....k'] },
@@ -40,7 +40,7 @@ const CREATURES = [
   { id:'moray', name:'裸胸鯙', alias:'錢鰻、海鱔', r:2, fact:'嘴巴一開一合是在呼吸，不是要咬你。', px: ['.............kkkkk..','..........kkkgggggk.','.kkkkkkkkkgggywkgggk','kgggygggyggggggggwwk','kggggggggggggggkk.kk','.kkygggyggggggggwwk.','...kkkkkkkkkkkkkkk..'] },
   { id:'jelly', name:'水母', r:2, fact:'沒有腦也沒有心臟，已在海裡活了五億年。', px: ['...kkkkk...','..kcccccck.','.kcwcccccck','kccccccccck','kkkkkkkkkkk','.c.c.c.c.c.','.c..c.c..c.','..c.c..c.c.','..c..c.c...','.c...c..c..'] },
   { id:'manta', name:'鬼蝠魟', alias:'魔鬼魚', r:3, fact:'Nusa Penida Manta Point 的明星，翼展可達 7 公尺。', px: ['.........kk..........', '........knnk.........', '........knnnk........', '.......knnnnnkk......', '......knnnnnnnnk.....', '......knnnnnnwnnk.kk.', '.....knnnnnnnnnnnkk..', 'kkkkknnnnnnnnnnnnnnk.', '.....knnnnnnnnnnnkk..', '......knnnnnnwnnk.kk.', '......knnnnnnnnk.....', '.......knnnnnkk......', '........knnnk........', '........knnk.........', '.........kk..........'] },
-  { id:'mola', name:'翻車魚', r:3, fact:'Crystal Bay 的夢幻魚種，世界最重的硬骨魚。', px: ['.....k.........','....ksk........','...kssk........','...ksskkkkk....','..kkssssssskk..','.ksssssssssssk.','kssssssssssskwk','.ksssssssssssk.','.kssssssssssssk','kkssssssssssssk','.ksssssssssssk.','..kksssssssskk.','...ksskkkkk....','...kssk........','....ksk........','.....k.........'] },
+  { id:'mola', name:'翻車魚', r:3, fact:'Crystal Bay 的夢幻魚種，世界最重的硬骨魚。', px: ['.....k.........', '....kSk........', '...kSSk........', '...kSSkkkkk....', '..kkSSSSSSSkk..', '.kSSSSsSSSsSSk.', 'ksSsSsSsssSskwk', '.ksscsssssscsk.', '.kssssscssSssk', 'kkcscscscscscsk', '.kccccwccSccwck.', '..kkcccccwccckk.', '...kSSkkkkk....', '...kSSk........', '....kSk........', '.....k.........'] },
   { id:'dolphin', name:'海豚', r:3, fact:'睡覺時只讓半邊大腦休息。', px: ['..........kk','.........kbk','........kbbk','.....kkkbbbbkkkk','...kkbbbbbbbbbbbkk','k.kbbbbbbbbbbbbbbbk','kkbbbbbbbbbbbbbbbkbk','kbkbbbbbbbbbbbbbbbbbkkkk','k..kwwwwwwwwwwwwwwwwbbbbk','....kkkkwwwkkkkkkkkkkkk','.........kwk','..........k'] },
   { id:'whaleshark', name:'鯨鯊', r:4, fact:'世界上最大的魚，卻只吃浮游生物。', px: ['........kk........','.......knk........','k....kkknnkkkk....','kk.kknwnnnwnnnnkk.','knkknnnnwnnnnwnknk','knnnnwnnnnwnnnnnnk','kkkkwwwwwwwwwwwwk.','k...kkkkknkkkkkk..','.........k........'] },
 ];
@@ -91,13 +91,14 @@ const SPECIES_PAL = {
   manta: { n: '#555e6e', w: '#f4f4f4' },                     // 鬼蝠魟：深灰黑色背部、白色肩斑（太黑會看不到）
   shark: { S: '#7d7f86' },
   dolphin: { b: '#7d8a99' },                                 // 海豚：灰色
+  mola: { S: '#6d7a8a', s: '#9fb0c2', c: '#c9d6e3', w: '#eef3f8' },   // 翻車魚：背部深灰、肚子淡，身上有斑點
   whaleshark: { n: '#4a5d78' },                              // 鯨鯊：灰藍色帶白點
 };
 // 特殊型態：真實存在、比較少見的色型或近親物種，名字＋要換掉的顏色（可帶專屬的圖 px）
 const MORPH = {
   clown: { n: '黑色小丑魚', map: { o: '#34343f' } },                      // 眼斑雙鋸魚的黑色型（達爾文小丑）
   damsel: { n: '黃尾雀鯛', map: { c: '#ffd23f' } },                       // 近親 Chrysiptera parasema：藍身黃尾
-  butterfly: { n: '浣熊蝴蝶魚', map: { y: '#f6a623', r: '#c4561e' }, px: ['.........kkkkk', '.......kkyrywykk', '......kyyryywykyyk', 'kkk..kyyryyywykyyyk', 'kyk.kyyryyyywkkkyyk', 'kykkkyryyyrywkwkyyk', 'kyyyyyyyyryywkkkyyyykk', 'kyyyyykkryyywkkyyyyykk', 'kykkkykryyyywkkyyyk', 'kyk.kyryyyrywkkyyk', 'kkk..kyyyryywkkyk', '......kkryyywkkk', '........kkkkk'] },                  // 近親 Chaetodon lunula：橘黃色
+  butterfly: { n: '浣熊蝴蝶魚', map: { y: '#ffc61a', K: '#2a2016', r: '#5a3a1a' }, px: ['........kkkkkkk', '......kkKKKKKKKkk', '.....kyyKKKKKKKywk', '....kyyyKKKKKKyywkk', 'kkk.kyyyKKKKKyyywkkk', 'kyykkyyyKKKyyyyywkkyk', 'kyyyyyryyryyryyrykwyykk', 'kyyyyryyryyryyryykkyykk', 'kyykkyyryyryyryyykkyk', 'kkk.kyryyryyryyrykkk', '....kryyryyryyryyyk', '.....kyryyryyryyyk', '......kkyyyyyyykk', '........kkkkkkk'] },                  // 近親 Chaetodon lunula：橘黃色
   star: { n: '藍指海星', map: { o: '#2f6fd6', y: '#2f6fd6' } },           // Linckia laevigata：整隻寶藍色
   hermit: { n: '藍腿寄居蟹', map: { r: '#2f6fd6' } },                     // Clibanarius tricolor
   urchin: { n: '火焰海膽', map: { P: '#ff5a3c', k: '#b0302a' } },         // Asthenosoma varium：紅色身體和刺
@@ -112,7 +113,7 @@ const MORPH = {
   moray: { n: '黃邊裸胸鯙', map: { g: '#b59a3a' } },                      // Gymnothorax flavimarginatus：黃褐色
   jelly: { n: '紫紋海刺水母', map: { c: '#c9a6e6' } },                    // Chrysaora colorata
   manta: { n: '黑化鬼蝠魟', map: { n: '#33373f', w: '#33373f' } },        // 黑色型：全身更黑、背上沒有白色肩斑
-  mola: { n: '長翻車魚', map: { s: '#c3d3e6' } },                         // 近親 Ranzania laevis，銀色
+  mola: { n: '長翻車魚', map: { S: '#8fa3b8', s: '#c3d3e6', c: '#dfe8f1' } },                         // 近親 Ranzania laevis，銀色
   dolphin: { n: '中華白海豚', map: { b: '#f2b6c6', w: '#fde6ee' } },      // 台灣西海岸的粉紅色海豚
   whaleshark: { n: '白化鯨鯊', map: { n: '#dfe6ea', w: '#ffffff' } },     // 罕見的白化個體
 };
