@@ -42,23 +42,26 @@ function habitEditor() {
 const mdOf = k => k.slice(5).replace('-', '/').replace(/^0/, '').replace('/0', '/');   // 2026-11-02 → 11/2
 // 任務就是會給獎勵的那些事；進度從紀錄算，獎勵是對應的 log（有 pend＝還沒領）
 function dailyTasks(D) {
+  const C = CONFIG.coins, rnd = [C.base, C.base + C.rand], times = (k, [a, b] = rnd) => [a * k, b * k], fix = n => [n, n];
   const d = dayKey(), d1 = addDays(d, 1), byKey = k => S.logs.filter(l => l.key === k), R = CONFIG.rewardRows;
   const checks = S.logs.filter(l => l.k === 'check' && l.d === d);
   const T = [
     // how＝怎麼完成；go＝點了跳到「今日」頁的哪一區
-    { id: 'plan', name: '寫好今天的清單', how: `在「最重要的六件事」寫下至少 ${R} 件，按「寫好了」`, go: 'six', logs: byKey('plan:' + d) },
-    { id: 'plan1', name: '寫好明天的清單（獎勵 ×2）', how: `六件事切到「明天」，寫下至少 ${R} 件，按「寫好了」`, go: 'six:1', logs: byKey('plan:' + d1) },
-    { id: 'rows', name: `完成前 ${R} 件事`, how: `六件事的第 1～${R} 件，每打勾一件就有獎勵`, go: 'six', n: checks.length, of: R, logs: checks },
-    { id: 'top3', name: `前 ${R} 件都完成`, how: `第 1～${R} 件全部打勾，再多一份獎勵`, go: 'six', logs: byKey('top3:' + d) },
-    { id: 'pomo', name: `專注一段番茄鐘`, how: `番茄鐘專注滿 ${CONFIG.pomoRewardMin} 分鐘`, go: 'pomo', logs: byKey('pomo:' + d) },
+    { id: 'plan', name: '寫好今天的清單', how: `在「最重要的六件事」寫下至少 ${R} 件，按「寫好了」`, go: 'six', est: rnd, logs: byKey('plan:' + d) },
+    { id: 'plan1', name: '寫好明天的清單（獎勵 ×2）', how: `六件事切到「明天」，寫下至少 ${R} 件，按「寫好了」`, go: 'six:1', est: times(2), logs: byKey('plan:' + d1) },
+    { id: 'rows', name: `完成前 ${R} 件事`, how: `六件事的第 1～${R} 件，每打勾一件就有獎勵`, go: 'six', n: checks.length, of: R, est: times(Math.max(R - checks.length, 0)), logs: checks },
+    { id: 'top3', name: `前 ${R} 件都完成`, how: `第 1～${R} 件全部打勾，再多一份獎勵`, go: 'six', est: fix(C.top3), logs: byKey('top3:' + d) },
+    { id: 'pomo', name: `專注一段番茄鐘`, how: `番茄鐘專注滿 ${CONFIG.pomoRewardMin} 分鐘`, go: 'pomo', est: rnd, logs: byKey('pomo:' + d) },
   ];
   for (const h of activeHabits()) {
     const dayLogs = x => byKey(h.kind === 'vocus' ? 'art:' + x : `hab:${h.id}:${x}`);
-    if (!h.weeks) { T.push({ id: 'h_' + h.id, hab: true, name: `${h.e} ${h.n} 打卡`, go: 'habits', how: `點「${h.n}」卡片打卡`, logs: dayLogs(d) }); continue; }
+    if (!h.weeks) { T.push({ id: 'h_' + h.id, hab: true, name: `${h.e} ${h.n} 打卡`, go: 'habits', how: `點「${h.n}」卡片打卡`, est: rnd, logs: dayLogs(d) }); continue; }
     // 週期型（例如本週運動 3 天）：每次打卡和達標加碼合成一列，看得出這期的進度
     const p = periodKey(d, h.weeks), days = Array.from({ length: 7 * h.weeks }, (_, i) => addDays(p, i));
     const bonus = h.kind === 'vocus' ? [] : byKey(h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`);
-    T.push({ id: 'p_' + h.id, hab: true, week: true, name: `${h.e} ${h.n}・${periodWord(h)} ${h.target} ${countWord(h)}`, go: 'habits',
+    const left = Math.max(h.target - perCount(D, h, p), 0), per = h.kind === 'vocus' ? fix(C.pubchest) : rnd;
+    const est = times(left, per); if (!bonus.length && h.kind !== 'vocus') { est[0] += C.period; est[1] += C.period; }
+    T.push({ id: 'p_' + h.id, hab: true, week: true, est, name: `${h.e} ${h.n}・${periodWord(h)} ${h.target} ${countWord(h)}`, go: 'habits',
       how: `${periodWord(h)}（${mdOf(p)}–${mdOf(days[days.length - 1])}）${h.kind === 'vocus' ? `發 ${h.target} 篇，每天有發文就有獎勵` : `打卡 ${h.target} 天，每次都有獎勵，達標再加碼`}`,
       n: Math.min(perCount(D, h, p), h.target), of: h.target, logs: [...days.flatMap(dayLogs), ...bonus] });
   }
@@ -78,7 +81,7 @@ function quests(D) {
     const st = t.pend.length ? 'pend' : t.full ? 'got' : 'todo';
     // 領取按鈕一直都在，完成了才能按
     const right = st === 'pend' ? `<button class="pri" data-act="claim" data-v="${t.id}">領取 +${t.pend.reduce((a, l) => a + (l.c || 0), 0)}${COIN}</button>`
-      : `<button class="pri" disabled>${st === 'got' ? `已領 +${t.c}${COIN}` : '領取'}</button>`;
+      : `<button class="pri" disabled>${st === 'got' ? `已領 +${t.c}` : `領取 +${t.est[0] === t.est[1] ? t.est[0] : t.est.join('–')}`}${COIN}</button>`;
     return `<div class="qc ${st}"><i class="qbox"></i>
       <div class="sp" ${st === 'todo' ? `data-act="goto" data-v="${t.go}"` : ''}><div class="qn">${esc(t.name)}</div>${st === 'todo' ? `<small class="qhow">${esc(t.how)} ›</small>` : ''}${t.of && !t.full ? `<div class="qprog"><div class="qbar"><i style="width:${t.n / t.of * 100}%"></i></div><small>${t.n} / ${t.of}</small></div>` : ''}</div>
       ${right}</div>`;
@@ -89,7 +92,7 @@ function quests(D) {
       <div class="bar c"><i style="width:${done / daily.length * 100}%"></i></div></section>
     <section class="px">${sh('每日任務', 'DAILY')}${base.map(row).join('')}</section>
     ${hab.length ? `<section class="px">${sh('習慣養成', 'HABITS')}${hab.map(row).join('')}</section>` : ''}
-    <div class="mini" style="margin:0 6px">忘了領也沒關係，隔天會自動入帳。</div>`;
+    <div class="mini" style="margin:0 6px">還沒完成的任務寫的是可以領到的金幣（${CONFIG.coins.base}–${CONFIG.coins.base + CONFIG.coins.rand} 是隨機的，偶爾會爆擊 ×2）。忘了領也沒關係，隔天會自動入帳。</div>`;
 }
 
 function today(D) {
@@ -575,6 +578,8 @@ function log(D) {
   ${cloudSection()}
   <section class="px">${sh('設定與備份', 'SETTINGS')}
     <label class="switch"><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button><span>音效</span></label>
+    <label class="switch" style="margin-left:18px"><button class="toggle ${bgmOn() ? 'on' : ''}" data-act="bgm" role="switch" aria-checked="${bgmOn()}" aria-label="背景音"><i></i></button><span>背景音</span></label>
+    <div class="mini" style="margin-top:6px">背景音是水下的浪聲和氣泡，只在這台裝置開啟。</div>
     <div class="mini" style="margin-top:12px">${CLOUD.user ? '紀錄已同步到雲端。也可以另外下載一份備份檔。' : '紀錄只存在這個瀏覽器。換手機、換瀏覽器或清除瀏覽資料就會消失，請定期備份。'}</div>
     <div class="row" style="margin-top:6px"><button data-act="export">備份</button><button data-act="import">還原</button></div></section>`;
 }

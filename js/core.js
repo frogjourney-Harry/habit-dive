@@ -205,3 +205,51 @@ const SFX = {
   eat: () => tone(880, 0, .06, 'triangle', .04),
 };
 
+// 背景音：即時合成的水下環境聲（低沉的浪＋偶爾冒泡），不用音樂檔。預設關閉；開關只記在這台裝置
+const BGM_KEY = KEY + '.bgm', BGM = { nodes: null, timer: 0 };
+function bgmOn() { try { return localStorage.getItem(BGM_KEY) === '1'; } catch (e) { return false; } }
+function bgmSet(on) { try { localStorage.setItem(BGM_KEY, on ? '1' : '0'); } catch (e) {} on ? bgmStart() : bgmStop(); }
+function bgmStart() {
+  if (BGM.nodes || !bgmOn() || document.hidden) return;
+  try {
+    const a = ac(), len = a.sampleRate * 6, buf = a.createBuffer(1, len, a.sampleRate), ch = buf.getChannelData(0), edge = a.sampleRate / 4;
+    let last = 0;
+    for (let i = 0; i < len; i++) {   // 棕噪音，頭尾淡入淡出，循環時才不會喀一聲
+      last = (last + .02 * (Math.random() * 2 - 1)) / 1.02;
+      ch[i] = last * 3.5 * Math.min(1, i / edge, (len - i) / edge);
+    }
+    const src = a.createBufferSource(), lp = a.createBiquadFilter(), g = a.createGain();
+    src.buffer = buf; src.loop = true; lp.type = 'lowpass'; lp.frequency.value = 420; g.gain.value = 0;
+    // 兩個很慢的振盪器：音量和濾波一起起伏，聽起來像一波一波的浪
+    const lfo = a.createOscillator(), lv = a.createGain(), lf = a.createGain();
+    lfo.frequency.value = .08; lv.gain.value = .05; lf.gain.value = 160;
+    lfo.connect(lv).connect(g.gain); lfo.connect(lf).connect(lp.frequency);
+    src.connect(lp).connect(g).connect(a.destination);
+    g.gain.setTargetAtTime(.13, a.currentTime, 1.5);
+    src.start(); lfo.start();
+    BGM.nodes = { src, lfo, g };
+    bgmBubbles();
+  } catch (e) {}
+}
+function bgmBubbles() {
+  BGM.timer = setTimeout(() => {
+    if (!BGM.nodes) return;
+    const a = ac(), n = 1 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < n; i++) {
+      const t = a.currentTime + i * (.07 + Math.random() * .12), o = a.createOscillator(), g = a.createGain(), f = 280 + Math.random() * 380;
+      o.type = 'sine'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 2.6, t + .07);
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.025, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + .09);
+      o.connect(g).connect(a.destination); o.start(t); o.stop(t + .12);
+    }
+    bgmBubbles();
+  }, 2500 + Math.random() * 6000);
+}
+function bgmStop() {
+  clearTimeout(BGM.timer);
+  const N = BGM.nodes; if (!N) return; BGM.nodes = null;
+  try { N.g.gain.setTargetAtTime(0, AC.currentTime, .3); setTimeout(() => { N.src.stop(); N.lfo.stop(); }, 1500); } catch (e) {}
+}
+// 瀏覽器要等使用者點過畫面才准出聲；切到別的 App 時停，回來再接著放
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, bgmStart, { passive: true }));
+document.addEventListener('visibilitychange', () => document.hidden ? bgmStop() : bgmStart());
+

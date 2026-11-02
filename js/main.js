@@ -101,6 +101,7 @@ document.addEventListener('click', async e => {
       S.mute = !S.mute; save(); render();
       if (!S.mute) { ac(); SFX.tap(); }
       toast(S.mute ? '音效已關閉' : '音效已開啟'); break;
+    case 'bgm': bgmSet(!bgmOn()); render(); toast(bgmOn() ? '背景音已開啟' : '背景音已關閉'); break;
     case 'fact': UI.sheet = { creature: v }; renderSheet(); break;
     case 'pdone': {
       const d = viewDay(), it = getPlan(d)[v], c = catOf(it.cat);
