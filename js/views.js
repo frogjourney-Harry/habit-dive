@@ -385,7 +385,7 @@ function tank(D) {
   if (UI.tankEdit) return tankEditor(D);
   if (UI.tankView === 'dex') return dex(D);
   const n = CREATURES.filter(c => pets(c.id).some(p => inTank(p.id))).length;
-  return `<section class="px">${sh('水族箱', 'AQUARIUM', `<span class="dim">${n} 種生物</span><button data-act="tankview" data-v="dex">圖鑑</button><button data-act="tankedit">設定</button>`)}
+  return `<section class="px">${sh('水族箱', 'AQUARIUM', `<small class="dim">${n} 種</small><button class="sm" data-act="tankview" data-v="dex">圖鑑</button><button class="sm" data-act="tankedit">設定</button>`)}
     <canvas id="tank" class="tank"></canvas>
     <div class="row" style="margin-top:8px"><span class="dim" id="feedInfo">${tankFeedText()}</span><span class="sp"></span>
       <button data-act="buyfeed">買飼料 ${FEED.pack} 顆・${FEED.price}${COIN}</button></div>
@@ -526,7 +526,7 @@ function chestOdds(ch, D) {
 function shop(D) {
   const hist = S.logs.filter(l => l.k === 'redeem').slice(-5).reverse();   // 只留最近 5 筆
   if (UI.shopEdit) return `<section class="px shop">${sh('編輯獎勵', 'REWARDS', '<button class="pri" data-act="shopdone">完成</button>')}
-    <div class="mini">設定你真的想要的獎勵。參考：每天大約能賺 60–90 金幣。</div>
+    <div class="mini">設定你真的想要的獎勵。參考：每天大約能賺 ${CONFIG.coinsPerDay} 金幣。</div>
     ${S.shop.map((it, i) => `<div class="it">
       <input data-sf="icon" data-si="${i}" value="${esc(it.icon)}" style="width:52px;text-align:center" title="圖示（可貼 emoji）">
       <input class="sp" data-sf="name" data-si="${i}" value="${esc(it.name)}" placeholder="獎勵名稱，例如：吃甜點（100 元內）">
@@ -548,15 +548,12 @@ function shop(D) {
       <span class="price">${FEED.price}${COIN}</span><button class="pri" data-act="buyfeed" ${D.coins < FEED.price ? 'disabled' : ''}>購買</button></div></section>
   <section class="px shop">${sh('獎勵商店', 'REWARDS', '<button class="ghost" data-act="shopedit">編輯</button>')}
     <div class="mini">你可以自行設定想要的獎勵。${activeDays >= 5 ? `最近 14 天平均每天賺 ${rate} 金幣。` : `目前以每天約 ${rate} 金幣估算。`}</div>
-    ${next ? `<div class="goal"><div class="label">NEXT GOAL</div>
-      <div class="row"><span>${esc(next.icon)} ${esc(next.name)}</span><span class="sp"></span><span class="coin">${D.coins} / ${next.price}${COIN}</span></div>
-      <div class="bar c"><i style="width:${Math.max(0, D.coins / next.price * 100)}%"></i></div>
-      <div class="mini">大約還要 ${daysFor(next.price - D.coins)} 天</div></div>` : ''}
     ${items.length ? '' : '<div class="dim" style="margin-top:8px">還沒有獎勵，按「編輯」新增。</div>'}
-    ${items.map(it => `<div class="it"><span class="ic">${esc(it.icon)}</span><span class="sp">${esc(it.name)}</span>
+    ${items.map(it => `<div class="it ${it === next ? 'next' : ''}"><span class="ic">${esc(it.icon)}</span><span class="sp">${esc(it.name)}</span>
       <span class="price">${it.price}${COIN}</span>
       ${D.coins >= it.price ? `<button class="pri" data-act="redeem" data-v="${it.id}">兌換</button>`
-        : `<span class="dim need">約 ${daysFor(it.price - D.coins)} 天</span>`}</div>`).join('')}
+        : `<span class="dim need">約 ${daysFor(it.price - D.coins)} 天</span>`}
+      ${it === next ? `<div class="nextbar2"><small>下一個目標・${D.coins} / ${it.price}</small><div class="bar c"><i style="width:${Math.max(0, D.coins / it.price * 100)}%"></i></div></div>` : ''}</div>`).join('')}
   </section>
   <section class="px">${sh('兌換紀錄', 'HISTORY', '<small class="dim">近五筆</small>')}${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(l.name)}</span><span class="sp"></span><span class="price">${l.c}${COIN}</span></div>`).join('') : '<div class="dim">還沒有兌換過。</div>'}</section>`;
 }
@@ -600,12 +597,12 @@ function log(D) {
   <section class="px">${sh('最近習慣紀錄', 'RECENT HABIT')}
     ${rec.length ? rec.slice(0, 12).map(r => `<div class="entry"><span class="dim" style="flex:none">${r.d.slice(5).replace('-', '/')}</span><span class="sp">${esc(entryText(r))}</span></div>`).join('')
       : '<div class="dim">點「今日」的習慣卡片打卡，就會記在這裡。</div>'}</section>
-  <section class="px">${sh('累積', 'TOTALS')}<div class="stat">
-    ${H.map(h => h.kind === 'vocus' ? `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${D.articles}</b><small>篇文章</small></div>`
-      : `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`).join('')}
-    <div><small>番茄鐘</small><b>${pomos.length}</b><small>段・${pomoHours.toFixed(1)} 小時</small></div>
-    <div><small>跑步總距離</small><b>${runKm.toFixed(1)}</b><small>km・${runs.length} 次</small></div>
-  </div></section>`;
+  <section class="px">${sh('累積', 'TOTALS')}${(tot => tot ? `<div class="stat">${tot}</div>` : '<div class="dim">完成任務後，累積的數字會出現在這裡。</div>')([
+    ...H.map(h => h.kind === 'vocus' ? D.articles && `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${D.articles}</b><small>篇文章</small></div>`
+      : daysOf(h.id) && `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`),
+    pomos.length && `<div><small>番茄鐘</small><b>${pomos.length}</b><small>段・${pomoHours.toFixed(1)} 小時</small></div>`,
+    runs.length && `<div><small>跑步總距離</small><b>${runKm.toFixed(1)}</b><small>km・${runs.length} 次</small></div>`,
+  ].filter(Boolean).join(''))}</section>`;
 }
 
 // 關於頁

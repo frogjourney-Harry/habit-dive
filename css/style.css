@@ -175,7 +175,6 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .shop .it .sp{flex:1 1 120px;min-width:0}
 .price{color:var(--coin);text-align:right;white-space:nowrap}
 .need{text-align:right;font-size:14px;white-space:nowrap}
-.goal{background:var(--panel2);padding:12px 14px;margin:12px 0}
 .erow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .erow input.sp{flex:1 1 100px;min-width:0}
 .tset{padding:8px 0;border-bottom:1px solid var(--line)}
@@ -301,3 +300,8 @@ nav .badge{display:inline-block;min-width:16px;height:16px;margin-left:4px;paddi
 .qend{flex:none;font-size:13px;color:var(--ok);padding:0 4px}
 .tip{gap:8px;margin:0 0 6px;padding:6px 8px;background:var(--panel2);font-size:13px;color:var(--dim)}
 .tip button{margin:0;padding:3px 8px;font-size:12px}
+.shop .it.next{background:var(--panel2);margin:4px -8px;padding:9px 8px;border-bottom:0}
+.nextbar2{flex-basis:100%;margin-left:44px}
+.nextbar2 small{color:var(--coin);font-size:12px}
+.nextbar2 .bar{margin-top:4px}
+.sh button.sm{margin:0;padding:4px 10px;font-size:13px}
