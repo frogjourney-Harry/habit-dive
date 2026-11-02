@@ -431,14 +431,12 @@ function finishHabits() {
   }
   UI.habEdit = false; save();
 }
-// 四種寶箱用不同顏色：原色、綠、藍、紫
-const CHEST_TINT = ['none', 'hue-rotate(110deg)', 'hue-rotate(190deg)', 'hue-rotate(250deg) saturate(1.4)'];
-// 寶箱的機率說明，例如「普通 85%・少見 15%」；淺灘寶箱另外標出飼料
+// 五種寶箱照稀有度上色：灰、綠、藍、紫、金
+const CHEST_TINT = ['grayscale(1) brightness(1.15)', 'hue-rotate(80deg)', 'hue-rotate(170deg)', 'hue-rotate(230deg) saturate(1.3)', 'saturate(1.5) brightness(1.15)'];
+// 寶箱說明：開出哪個稀有度、有幾種可能，例如「普通生物 6 種隨機一種・25% 開出飼料」
 function chestOdds(ch) {
-  const live = 100 - ch.feed;
-  const parts = ch.rates.map((p, r) => p ? `${RARITY[r].name} ${+(p * live / 100).toFixed(1)}%` : '').filter(Boolean);
-  if (ch.feed) parts.unshift(`飼料 ${ch.feed}%`);
-  return parts.join('・');
+  const r = ch.rates.findIndex(p => p > 0), n = CREATURES.filter(c => c.r === r).length;
+  return `${RARITY[r].name}生物 ${n} 種${n > 1 ? '隨機一種' : ''}${ch.feed ? `・${ch.feed}% 開出飼料` : ''}`;
 }
 function shop(D) {
   const hist = S.logs.filter(l => l.k === 'redeem').slice(-8).reverse();

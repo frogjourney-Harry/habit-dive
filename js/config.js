@@ -11,14 +11,16 @@ const CONFIG = {
   coins: { base: 8, rand: 8, critChance: 0.1, period: 60, welcome: 60, top3: 30, pubchest: 40 },
   rewardRows: 3,              // 六件事每天只有前幾項打勾有獎勵，其餘只做紀錄
   coinsPerDay: 90,            // 紀錄不夠時，商店用這個速度估計「要努力幾天」
-  // 生物寶箱：在商店用金幣買。rates＝普通 / 少見 / 稀有 / 史詩 / 傳說（%），feed＝開出飼料的機率（%）
+  // 生物寶箱：在商店用金幣買，一種稀有度一種寶箱，開出那個稀有度裡隨機一種生物。
+  // rates＝普通 / 少見 / 稀有 / 史詩 / 傳說（%），feed＝開出飼料的機率（%，只有最便宜的普通寶箱有）
   chests: [
-    { id: 'shallow', name: '淺灘寶箱', price: 40,  feed: 25, rates: [85, 15, 0, 0, 0] },
-    { id: 'reef',    name: '珊瑚礁寶箱', price: 100, feed: 0,  rates: [45, 40, 15, 0, 0] },
-    { id: 'deep',    name: '深海寶箱', price: 250, feed: 0,  rates: [0, 45, 42, 12, 1] },
-    { id: 'abyss',   name: '傳說寶箱', price: 600, feed: 0,  rates: [0, 0, 50, 44, 6] },
+    { id: 'c0', name: '普通寶箱', price: 40,   feed: 25, rates: [100, 0, 0, 0, 0] },
+    { id: 'c1', name: '少見寶箱', price: 100,  feed: 0,  rates: [0, 100, 0, 0, 0] },
+    { id: 'c2', name: '稀有寶箱', price: 250,  feed: 0,  rates: [0, 0, 100, 0, 0] },
+    { id: 'c3', name: '史詩寶箱', price: 600,  feed: 0,  rates: [0, 0, 0, 100, 0] },
+    { id: 'c4', name: '傳說寶箱', price: 1500, feed: 0,  rates: [0, 0, 0, 0, 100] },
   ],
-  chestFeed: 5,               // 淺灘寶箱開出飼料時給幾顆
+  chestFeed: 5,               // 普通寶箱開出飼料時給幾顆
   dupCoins: [2, 5, 15, 40, 100],         // 抽到重複生物時換成的金幣
   shop: [
     { id: 'tea',     icon: '🧋', name: '喝一杯手搖飲',       price: 300 },

@@ -32,7 +32,7 @@ function grant(kind, tag, o = {}) {
     if (Math.random() < CONFIG.coins.critChance) { crit = true; c *= 2; }
   }
   const log = { id: rid(), t: Date.now(), d: o.d || dayKey(), k: kind, tag: tag || undefined, xp, c, key: o.key, ...o.extra };
-  if (kind === 'welcome') return dropCreature(log, chestOf('shallow').rates, BONUS.welcome);
+  if (kind === 'welcome') return dropCreature(log, chestOf('c0').rates, BONUS.welcome);
   S.logs.push(log);
   GAIN.xp += xp; GAIN.c += c; GAIN.crit = GAIN.crit || crit; GAIN.title = GAIN.title || o.title || BONUS[kind] || '';
   return log;
