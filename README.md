@@ -38,3 +38,4 @@
 | `js/sync.js` | 選擇性的 Google 登入與雲端同步 |
 | `js/main.js` | 按鈕與輸入事件、啟動 |
 | `firestore.rules` | Firestore 安全規則：只能讀寫自己的資料 |
+| `bump.sh` | 推上線前執行，更新 index.html 裡的版本號，避免瀏覽器用到舊的快取 |
