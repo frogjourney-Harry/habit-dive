@@ -2,9 +2,9 @@
 /* ========= 畫面 ========= */
 const IN_APP = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger/i.test(navigator.userAgent);
 function renderStat(D = derive()) {
-  const lv = levelOf(D.xp);
+  const lv = levelOf(D.xp), lo = xpFor(lv), hi = xpFor(lv + 1), pct = (D.xp - lo) / (hi - lo) * 100;
   document.getElementById('stat').innerHTML = `
-    <button class="lvchip" data-act="tab" data-v="log" title="查看等級">Lv.${lv}<small>${RANKS[rankIdx(lv)][1]}</small></button>
+    <button class="lvchip" data-act="tab" data-v="log" title="再 ${hi - D.xp} XP 升到 Lv.${lv + 1}">Lv.${lv}<small>${RANKS[rankIdx(lv)][1]}</small><i class="xpbar"><b style="width:${pct}%"></b></i></button>
     <span class="coin">${D.coins.toLocaleString()}${COIN}</span>`;
 }
 function render() {
@@ -14,7 +14,7 @@ function render() {
     ? `<div class="banner row"><span class="sp">你正在 App 內建的瀏覽器裡開啟，這裡的紀錄跟 Chrome、Safari 是分開的。建議用右上角選單「用瀏覽器開啟」。</span><button class="ghost" data-act="iabok">知道了</button></div>` : '';
   const tabs = [['today', '今日'], ['quest', '任務'], ['tank', '水族箱'], ['shop', '商店'], ['log', '紀錄'], ['about', '關於']];
   const pendN = dailyTasks(D).filter(t => t.pend.length).length;
-  document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? '<i class="dot"></i>' : ''}</button>`).join('');
+  document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? `<i class="badge">${pendN}</i>` : ''}</button>`).join('');
   document.getElementById('main').innerHTML = ({ today, quest: quests, tank, shop, log, about })[UI.tab](D);
   if (UI.tab === 'tank') tankStart();
 }
@@ -96,6 +96,21 @@ function quests(D) {
     <div class="mini" style="margin:0 6px">還沒完成的任務寫的是可以領到的金幣。忘了領也沒關係，隔天會自動入帳。</div>`;
 }
 
+// 首頁最上面一條：今天完成幾項、下一步做什麼（點了直接跳過去）、有幾份獎勵待領
+function nextStep(D, P) {
+  const T = dailyTasks(D).filter(t => !t.week && t.id !== 'plan1'), done = T.filter(t => t.full).length;
+  const pc = dailyTasks(D).flatMap(t => t.pend).reduce((a, l) => a + (l.c || 0), 0);
+  const nx = T.find(t => !t.full);
+  let label = '今天的任務都完成了！';
+  if (nx) {
+    const i = P.slice(0, CONFIG.rewardRows).findIndex(x => x.text.trim() && !x.done);
+    label = nx.id === 'rows' && i >= 0 ? `完成第 ${i + 1} 件「${P[i].text.trim()}」` : nx.name;
+  }
+  return `<section class="px nextbar"><div class="row">
+      <div class="sp" ${nx ? `data-act="goto" data-v="${nx.go}"` : ''}><small class="dim">今天 ${done}/${T.length}${nx ? '・下一步' : ''}</small><div class="nx">${esc(label)}${nx ? ' ›' : ''}</div></div>
+      ${pc ? `<button class="pri" data-act="tab" data-v="quest">領取 +${pc}${COIN}</button>` : ''}</div>
+    <div class="bar c"><i style="width:${done / T.length * 100}%"></i></div></section>`;
+}
 function today(D) {
   const st = streaks(D), td = dayKey(), d = viewDay(), P = getPlan(d);
   const claimed = D.claimed.has('plan:' + d), doneN = filled(P).filter(x => x.done).length;
@@ -125,7 +140,9 @@ function today(D) {
   const favs = S.favs || [];
   // 常用：點一下填進第一個空格，不用每天重打
   const favBar = favs.length ? `<div class="favs"><small class="dim">常用</small>${favs.map((t, i) => `<span class="fav"><button class="ghost" data-act="usefav" data-v="${i}">${esc(t)}</button><button class="ghost x" data-act="delfav" data-v="${i}" title="從常用移除">×</button></span>`).join('')}</div>` : '';
-  const rows = P.map((it, i) => {
+  const last = P.reduce((a, it, i) => it.text.trim() ? i : a, -1), shown = Math.min(P.length, Math.max(CONFIG.rewardRows, last + 1, UI.showRows || 0));
+  UI.shownRows = shown;
+  const rows = P.slice(0, shown).map((it, i) => {
     const divider = i === CONFIG.rewardRows ? '<div class="divider">以下只做紀錄</div>' : '';
     const starred = it.text.trim() && favs.includes(it.text.trim());
     return `${divider}<div class="prow ${it.done ? 'done' : ''}">
@@ -152,10 +169,11 @@ function today(D) {
   const habits = UI.habEdit ? habitEditor() : `<section class="px" id="habits">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
       <div class="habits">${chips}</div>
       ${risky.length ? `<div class="warn">昨天漏了 ${esc(risky.join('、'))}，今天做到就不會斷。</div>` : ''}</section>`;
-  return `${setup}${habits}
+  return `${UI.pday === 0 ? nextStep(D, P) : ''}${setup}${habits}
     <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
       <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}・${hint}</div>
       ${UI.pday >= 0 ? favBar : ''}${rows}
+      ${shown < P.length && UI.pday >= 0 ? `<button class="ghost addrow" data-act="addrow">＋ 再加一件${shown === CONFIG.rewardRows ? '（只做紀錄）' : ''}</button>` : ''}
       <div class="row" style="margin-top:8px">${UI.pday < 0 ? '' : claimed ? '' : '<button class="pri" data-act="plansave">寫好了</button>'}
         <span class="sp"></span><small>完成 ${doneN}/${filled(P).length}</small></div></section>
     ${timer}`;

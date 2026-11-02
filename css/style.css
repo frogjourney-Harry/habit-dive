@@ -261,7 +261,6 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .qprog{display:flex;align-items:center;gap:8px;margin-top:4px}
 .qbar{height:6px;flex:1;max-width:200px;background:#071a33}
 .qbar i{display:block;height:100%;background:var(--xp)}
-nav .dot{display:inline-block;width:7px;height:7px;margin-left:5px;vertical-align:3px;background:var(--coin)}
 @media (prefers-reduced-motion:reduce){.qc.pend .qbox{animation:none}}
 .qhow{display:block;font-size:13px;color:var(--faint);margin-top:1px}
 .qc [data-act="goto"]{cursor:pointer}
@@ -276,3 +275,15 @@ nav .dot{display:inline-block;width:7px;height:7px;margin-left:5px;vertical-alig
 @media (max-width:520px){.cpool{margin-left:0}}
 .shop [data-act="chestpool"]{cursor:pointer}
 .shop .more{color:var(--xp);margin-left:4px;white-space:nowrap}
+.lvchip{position:relative;padding-bottom:6px}
+.lvchip .xpbar{position:absolute;left:4px;right:4px;bottom:2px;height:3px;background:#071a33}
+.lvchip .xpbar b{display:block;height:100%;background:var(--xp)}
+nav .badge{display:inline-block;min-width:16px;height:16px;margin-left:4px;padding:0 3px;font:bold 11px/16px monospace;font-style:normal;vertical-align:2px;background:var(--coin);color:#0b2546}
+.fly{position:fixed;z-index:30;pointer-events:none;font-weight:bold;font-size:18px;color:var(--coin);text-shadow:0 2px 0 #0b2546;white-space:nowrap;transform:translate(-50%,-50%)}
+.nextbar{padding-top:10px;padding-bottom:10px}
+.nextbar [data-act="goto"]{cursor:pointer}
+.nextbar .nx{font-weight:bold;color:#fff;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nextbar [data-act="goto"]:hover .nx{color:var(--xp)}
+.nextbar .bar{margin-top:8px}
+.addrow{width:100%;margin:6px 0 0;padding:6px;color:var(--dim)}
+.nextbar .sp{min-width:0}

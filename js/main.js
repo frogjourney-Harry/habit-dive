@@ -22,7 +22,8 @@ document.addEventListener('click', async e => {
   const v = b.dataset.v;
   switch (b.dataset.act) {
     case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.tankView = ''; UI.swap = null; UI.tab = v; render(); window.scrollTo(0, 0); break;
-    case 'pday': UI.pday = +v; UI.swap = null; render(); break;
+    case 'pday': UI.pday = +v; UI.swap = null; UI.showRows = 0; render(); break;
+    case 'addrow': UI.showRows = UI.shownRows + 1; render(); document.querySelector(`[data-pf="text"][data-i="${UI.showRows - 1}"]`)?.focus(); break;
     // 六件事換順序：先點一個編號，再點另一個編號，兩件交換
     case 'swap': {
       const P = getPlan(viewDay()), i = +v, j = UI.swap;

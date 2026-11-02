@@ -23,7 +23,7 @@ function rollCreature(rates) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 // 完成事情的獎勵：XP 和金幣，先標成 pend（待領取），到「每日任務」按領取才入帳；當天沒領，隔天自動入帳（見 derive）
-const GAIN = { n: 0, title: '' };
+const GAIN = { n: 0, title: '', c: 0 };
 function grant(kind, tag, o = {}) {
   let xp = o.xp ?? CONFIG.xp[kind] ?? 0, c = BONUS[kind] ? CONFIG.coins[kind] : CONFIG.coins.task;   // 金幣固定，不隨機
   if (o.x2) { xp *= 2; c *= 2; }
@@ -31,7 +31,7 @@ function grant(kind, tag, o = {}) {
   if (kind === 'welcome') return dropCreature(log, null, BONUS.welcome, 0, CR.clown);   // 新手禮物：一隻小丑魚
   log.pend = true;
   S.logs.push(log);
-  GAIN.n++; GAIN.title = GAIN.title || o.title || BONUS[kind] || '';
+  GAIN.n++; GAIN.c += c; GAIN.title = GAIN.title || o.title || BONUS[kind] || '';
   return log;
 }
 // 在 log 上抽一隻生物（log.id 就是這隻的身分），排進開箱彈窗；超過上限時接著問要放生哪一隻
@@ -57,10 +57,25 @@ function buyChest(id) {
   save(); render(); nextChest();
 }
 // 這一輪有新的待領取獎勵時，提示去每日任務領
+// 完成的當下：從剛剛點的地方浮出「+15」，飛進底下的「任務」分頁
+const TAP = { x: innerWidth / 2, y: innerHeight / 2 };
+document.addEventListener('pointerdown', e => { TAP.x = e.clientX; TAP.y = e.clientY; }, { capture: true, passive: true });
+function flyGain(text) {
+  const to = document.querySelector('#nav [data-v="quest"]'); if (!to) return;
+  const r = to.getBoundingClientRect(), el = document.createElement('div');
+  el.className = 'fly'; el.innerHTML = text + COIN; el.style.left = TAP.x + 'px'; el.style.top = TAP.y + 'px';
+  document.body.appendChild(el);
+  const dx = r.left + r.width / 2 - TAP.x, dy = r.top + r.height / 2 - TAP.y;
+  el.animate([{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: 'translate(-50%,-150%) scale(1.3)', opacity: 1, offset: .3 },
+    { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.6)`, opacity: .3 }], { duration: 900, easing: 'ease-in' }).onfinish = () => {
+    el.remove(); const b = document.querySelector('#nav [data-v="quest"] .badge'); if (b) b.animate([{ transform: 'scale(1.8)' }, { transform: 'scale(1)' }], 300);
+  };
+}
 function showGain() {
   if (!GAIN.n) return;
-  toast(`${GAIN.title ? GAIN.title + '　' : ''}到「每日任務」領取獎勵`);
-  Object.assign(GAIN, { n: 0, title: '' });
+  toast(`${GAIN.title ? GAIN.title + '　' : ''}+${GAIN.c} 金幣，到「任務」領取`);
+  flyGain(`+${GAIN.c}`);
+  Object.assign(GAIN, { n: 0, title: '', c: 0 });
 }
 // 領取：把這些待領取的獎勵入帳，顯示拿到多少，檢查升級
 function claim(logs) {
