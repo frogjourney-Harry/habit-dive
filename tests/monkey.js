@@ -65,3 +65,34 @@ test('亂點：多組隨機種子（每組數百步）', async () => {
   }
   note('亂點完成 seeds ' + seeds.join('-'));
 });
+
+// 同一個瀏覽器開兩個分頁，輪流亂點：兩邊要一直保持一致（不能互相蓋掉、不能無限互相同步）
+async function monkey2(seed, steps) {
+  const rnd = mulberry(seed), pick = a => a[Math.floor(rnd() * a.length)], found = new Map(), trail = [];
+  const A = await boot({ state: mkState({ logs: [W0, coinLog(300)] }), width: 375, height: 800 }); await A.dismiss();
+  const B = await boot({ storeId: A.storeId, width: 1024, height: 800 }); await B.dismiss();
+  const rec = (m, n) => { if (!found.has(m)) found.set(m, { seed, step: n, trail: trail.slice(-12) }); };
+  for (let n = 1; n <= steps; n++) {
+    const I = rnd() < .5 ? A : B, who = I === A ? 'A' : 'B';
+    try {
+      const r = rnd();
+      if (r < .2) { const inputs = I.$$('input:not([type=checkbox]):not([type=file]):not([disabled])').filter(e => I.vis(e)); if (inputs.length) { const el = pick(inputs); const v = pick(['寫文章', 'a', '', '5', '30']); trail.push(`${who} 輸入 ${(el.id || el.dataset.pf || el.tagName)}=${v}`); await I.type(el, v); } }
+      else if (r < .25) { const j = pick([60e3, 3600e3, 24 * 3600e3]); trail.push(`時間+${j / 60e3}分`); await A.advance(j); B.win.tick(); await flush(); }
+      else {
+        let els; if (!I.$('#askov').classList.contains('hidden')) els = I.$$('#askov button'); else if (!I.$('#ov').classList.contains('hidden')) els = I.$$('#ov button'); else if (!I.$('#sheetov').classList.contains('hidden')) els = I.$$('#sheetov button'); else if (!I.$('#focus').classList.contains('hidden')) els = I.$$('#focus button'); else els = I.$$('button, input[type=checkbox]').filter(e => !e.closest('a') && !(e.dataset && ['export', 'import', 'login', 'logout', 'clouddel'].includes(e.dataset.act)));
+        els = els.filter(e => I.vis(e) && !e.disabled && !I.blocked(e)); if (!els.length) continue;
+        const nt = els.filter(e => !(e.dataset && e.dataset.act === 'tab')); const el = pick(rnd() < .75 && nt.length ? nt : els); trail.push(`${who} 點 ${el.dataset && el.dataset.act || el.tagName}${el.dataset && el.dataset.v !== undefined ? '(' + el.dataset.v + ')' : ''}`); await I.click(el);
+      }
+    } catch (e) { if (!/找不到|點不到/.test(e.message)) rec('例外：' + e.message, n); }
+    await flush(3);
+    for (const [nm, X] of [['A', A], ['B', B]]) for (const m of checkInvariants(X, '')) rec(`[${nm}] ${m}`, n);
+    const ia = document.activeElement; const typing = [A, B].some(X => /INPUT|TEXTAREA|SELECT/.test((X.doc.activeElement || {}).tagName || ''));
+    if (!typing && (A.S.mtime || 0) !== (B.S.mtime || 0)) rec(`兩個分頁沒有同步：A.mtime=${A.S.mtime} B.mtime=${B.S.mtime}`, n);
+    if (!typing && A.coins() !== B.coins()) rec(`兩個分頁金幣不同：${A.coins()} vs ${B.coins()}`, n);
+  }
+  A.destroy(); B.destroy(); return [...found.entries()].map(([msg, v]) => ({ msg, ...v }));
+}
+test('亂點：兩個分頁輪流操作', async () => {
+  const seeds = (new URLSearchParams(location.search).get('seeds2') || '1-3').split('-').map(Number), all = new Map();
+  for (let s = seeds[0]; s <= (seeds[1] ?? seeds[0]); s++) { const res = await monkey2(s, +(new URLSearchParams(location.search).get('steps2') || 120)); for (const r of res) { const key = r.msg.replace(/\d+/g, '#'); if (!all.has(key)) { all.set(key, r); ok(false, `[雙分頁 seed=${r.seed} 第 ${r.step} 步] ${r.msg}`, '操作紀錄：' + r.trail.join(' → ')); } } }
+});

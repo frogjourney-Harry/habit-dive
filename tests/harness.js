@@ -15,16 +15,18 @@ const flush = async (n = 4) => { for (let i = 0; i < n; i++) await macro(); };
 const ts = (y, m, d, h = 12, mi = 0) => new Date(y, m - 1, d, h, mi).getTime();
 const T0 = ts(2026, 11, 2, 10, 0);   // 星期一 10:00
 const SIM0 = Date.now();   // 所有 iframe 共用同一條時間軸（兩台裝置的時鐘不會一開始就差幾百毫秒）
-window.__stores = {}; window.__hubs = {}; window.__cloudDb = { docs: {}, fail: false, log: [] };
+window.__stores = {}; window.__hubs = {}; window.__clocks = {}; window.__cloudDb = { docs: {}, fail: false, log: [] };
 
 // ---- 注入到每個 iframe 最前面的環境（必須自給自足）----
 function SHIM(o, P) {
   const R = Date;
   // 1. 假時鐘
-  let off = (o.now == null ? R.now() : o.now) - R.now();
-  class FD extends R { constructor(...a) { if (a.length) super(...a); else super(R.now() + off); } static now() { return R.now() + off; } }
+  // 同一個瀏覽器的兩個分頁共用同一個系統時鐘（storeId 相同）；不同裝置（storeId 不同）各自有時鐘，還可以設定 skew 讓它快或慢
+  const ck = (P.__clocks[o.storeId] = P.__clocks[o.storeId] || { off: null });
+  if (ck.off == null) ck.off = (o.now == null ? R.now() : o.now) - R.now() + (o.skew || 0);
+  class FD extends R { constructor(...a) { if (a.length) super(...a); else super(R.now() + ck.off); } static now() { return R.now() + ck.off; } }
   window.Date = FD;
-  window.__clock = { set(ms) { off = ms - R.now(); }, advance(ms) { off += ms; }, now: () => R.now() + off };
+  window.__clock = { set(ms) { ck.off = ms - R.now(); }, advance(ms) { ck.off += ms; }, now: () => R.now() + ck.off };
   // 2. 錯誤收集
   window.__errors = []; window.__downloads = [];
   // 測驗頁在背景時瀏覽器會停掉 requestAnimationFrame，改成計時器驅動，水族箱才會動
@@ -75,7 +77,7 @@ function SHIM(o, P) {
   window.firebase = {
     initializeApp() {},
     auth: Object.assign(() => authObj, { GoogleAuthProvider: function () {} }),
-    firestore: Object.assign(() => ({ collection: () => ({ doc }) }), { FieldValue: { serverTimestamp: () => R.now() + off } }),
+    firestore: Object.assign(() => ({ collection: () => ({ doc }) }), { FieldValue: { serverTimestamp: () => R.now() + ck.off } }),
   };
   window.__fb = { signIn(u) { cur = mkUser(u); authCb && authCb(cur); } };
   const hd = document.head, apd = Node.prototype.appendChild;
@@ -92,7 +94,7 @@ async function boot(o = {}) {
     if (o.state) m.set('habitdive.v1', typeof o.state === 'string' ? o.state : JSON.stringify(o.state));
     window.__stores[storeId] = m;
   }
-  const opts = { now: o.now == null ? T0 + (Date.now() - SIM0) : o.now, storeId, storage: o.storage, noAudio: o.noAudio, noAnimate: o.noAnimate, ua: o.ua, cloudUser: o.cloudUser, noShare: o.noShare };
+  const opts = { now: o.now == null ? T0 + (Date.now() - SIM0) : o.now, storeId, storage: o.storage, noAudio: o.noAudio, noAnimate: o.noAnimate, ua: o.ua, cloudUser: o.cloudUser, noShare: o.noShare, skew: o.skew };
   const html = boot.html.replace('<head>', `<head><base href="${base}"><script>(${SHIM.toString()})(${JSON.stringify(opts)}, window.parent)<\/script>`);
   const frame = document.createElement('iframe');
   const w = o.width || 375, h = o.height || 812;

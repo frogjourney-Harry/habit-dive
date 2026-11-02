@@ -30,7 +30,8 @@ function cloudInit() {
 }
 const userDoc = () => firebase.firestore().collection('users').doc(CLOUD.user.uid);
 // 有沒有實際用過（新手寶箱不算）
-const hasProgress = s => (s.logs || []).some(l => l.k !== 'welcome') || Object.keys(s.checks || {}).length > 0;
+const hasProgress = s => (s.logs || []).some(l => l.k !== 'welcome') || Object.keys(s.checks || {}).length > 0
+  || Object.values(s.plans || {}).some(P => P.some(x => x.text && x.text.trim())) || (s.favs || []).length > 0 || !!s.shop;   // 寫過的六件事、常用、改過的獎勵也是使用者的資料
 const summary = s => { const D = deriveOf(s); return `Lv.${levelOf(D.xp)}・${D.coins} 金幣・${(s.logs || []).length} 筆紀錄`; };
 function deriveOf(s) { const keep = S; S = s; try { return derive(); } finally { S = keep; } }
 

@@ -221,3 +221,16 @@ test('雲端同步：存檔大小以位元組計算（中文一字 3 位元組�
   if (bytes > 1000000) ok(I.has('太大') && !window.__cloudDb.docs.u1, `超過 1 MB（${bytes} 位元組）要提示，不能硬傳`); else ok(!!window.__cloudDb.docs.u1, `${bytes} 位元組在上限內，要能上傳`);
   I.destroy();
 });
+
+test('雲端：兩台裝置的時鐘差很多，後改的仍然要贏（B 比 A 慢 10 分鐘）', async () => {
+  resetCloud();
+  const A = await boot({ state: mkState({ logs: [W0, coinLog(100)] }) }); await A.dismiss(); await loginAs(A);
+  const B = await boot({ seed: {}, skew: -10 * 60e3 }); await B.dismiss(); await loginAs(B);
+  await A.tab('today'); await A.plan(['A 先寫的', 'b', 'c']); await hide(A, true);               // A 先改，上傳
+  await hide(B, false); ok(B.S.plans[D0] && B.S.plans[D0][0].text === 'A 先寫的', 'B 拿到 A 的改動');
+  await B.tab('today'); await B.type('#six .ptext[data-i="1"]', 'B 之後改的'); await hide(B, true);   // B 的時鐘慢 10 分鐘，之後才改
+  await hide(A, false);
+  ok(A.S.plans[D0][1].text === 'B 之後改的', `A 回到畫面要拿到 B 後來的修改（不能被時鐘差蓋掉）：${A.S.plans[D0][1].text}`);
+  ok(JSON.parse(window.__cloudDb.docs.u1.data).plans[D0][1].text === 'B 之後改的', '雲端上也是 B 的修改');
+  A.check('A'); B.check('B'); A.destroy(); B.destroy();
+});

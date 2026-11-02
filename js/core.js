@@ -134,7 +134,8 @@ function probeStorage() { try { localStorage.setItem(KEY + '.probe', '1'); local
 probeStorage();
 // push=true：使用者真的改了東西，記下修改時間並排入雲端同步；false：只寫回本機（例如剛從雲端載入）
 function save(push = true) {
-  if (push) S.mtime = Date.now();
+  // 修改時間只增不減：這台的時鐘比別台慢（甚至慢好幾分鐘）時，接手別台的紀錄後再改，新的修改時間仍然比對方大，不會被當成「比較舊」而被蓋掉
+  if (push) S.mtime = Math.max(Date.now(), (S.mtime || 0) + 1);
   try { localStorage.setItem(KEY, JSON.stringify(S)); STORAGE_OK = true; } catch (e) { STORAGE_OK = false; }
   if (push && typeof cloudSchedule === 'function') cloudSchedule();
 }
