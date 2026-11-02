@@ -79,7 +79,8 @@ function reconcile(allowGrant) {
   const d = dayKey(), P = S.plans[d] || [], R = CONFIG.rewardRows;
   S.held = S.held || {};
   // 前三格都要有寫內容、而且都打勾才算
-  const conds = [['top3:' + d, 'top3', P.length >= R && P.slice(0, R).every(x => x.text.trim() && x.done)]];
+  const conds = [['top3:' + d, 'top3', P.length >= R && P.slice(0, R).every(x => x.text.trim() && x.done)],
+    ['anyhab:' + d, 'anyhab', activeHabits().some(h => dayChecks(d, h.id).length > 0), '今天完成了一個習慣！']];
   for (const h of activeHabits()) {
     const has = dayChecks(d, h.id).length > 0;
     if (h.kind === 'vocus') conds.push(['art:' + d, 'pubchest', has]);

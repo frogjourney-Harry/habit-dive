@@ -51,6 +51,7 @@ function dailyTasks(D) {
     { id: 'plan1', name: '寫好明天的清單（獎勵 ×2）', how: `六件事切到「明天」，寫下至少 ${R} 件，按「寫好了」`, go: 'six:1', est: times(2), logs: byKey('plan:' + d1) },
     { id: 'rows', name: `完成前 ${R} 件事`, how: `六件事的第 1～${R} 件，每打勾一件就有獎勵`, go: 'six', n: checks.length, of: R, est: times(Math.max(R - checks.length, 0)), logs: checks },
     { id: 'top3', name: `前 ${R} 件都完成`, how: `第 1～${R} 件全部打勾，再多一份獎勵`, go: 'six', est: fix(C.top3), logs: byKey('top3:' + d) },
+    { id: 'anyhab', name: '完成任一個習慣', how: '「習慣」裡任選一張卡片打卡', go: 'habits', est: rnd, logs: byKey('anyhab:' + d) },
     { id: 'pomo', name: `專注一段番茄鐘`, how: `番茄鐘專注滿 ${CONFIG.pomoRewardMin} 分鐘`, go: 'pomo', est: rnd, logs: byKey('pomo:' + d) },
   ];
   for (const h of activeHabits()) {
@@ -201,7 +202,7 @@ function renderSheet() {
       <h2>${c.name}</h2><p class="dim" style="margin:0 0 8px">${c.fact}</p>
       <div class="stages">${[1, 2, 3].map(s => `<div>${stageImg(c, s, 3, s > seen)}<small class="${s > seen ? 'dim' : ''}">${s > seen ? '？？？' : stageName(c, s)}</small></div>`).join('')}</div>
       <div class="mini">吃到 ${GROW[1]} 顆長成成體、${GROW[2]} 顆變成特殊型態</div>
-      <div class="sub">${P.length ? `擁有 ${P.length}/${MAX_PETS} 隻` : '都放生了，再抽到會回來。'}</div>`;
+      <div class="sub">${P.length ? `擁有 ${P.length}/${MAX_PETS} 隻` : derive().col[c.id] ? '都放生了，再抽到會回來。' : '還沒抽到，可以從商店的寶箱開出來。'}</div>`;
     return;
   }
   el.style.textAlign = '';
@@ -512,7 +513,8 @@ function shop(D) {
     <div class="mini">開出的生物會放進水族箱，飼料拿去餵牠們長大。每種最多養 ${MAX_PETS} 隻，抽到重複的另外送金幣。</div>
     ${CONFIG.chests.map((ch, i) => `<div class="it chest"><span class="ic" style="filter:${CHEST_TINT[i]}">${img(CHEST, 2)}</span>
       <span class="sp">${ch.name}<br><small>${chestOdds(ch)}</small></span>
-      <span class="price">${ch.price}${COIN}</span><button class="pri" data-act="buychest" data-v="${ch.id}" ${D.coins < ch.price ? 'disabled' : ''}>購買</button></div>`).join('')}
+      <span class="price">${ch.price}${COIN}</span><button class="pri" data-act="buychest" data-v="${ch.id}" ${D.coins < ch.price ? 'disabled' : ''}>購買</button>
+      <div class="cpool">${CREATURES.filter(c => c.r === ch.rates.findIndex(p => p > 0)).map(c => `<button class="ghost ${D.col[c.id] ? '' : 'new'}" data-act="fact" data-v="${c.id}" title="${c.name}">${img(c.px, 2)}<small>${c.name}</small></button>`).join('')}</div></div>`).join('')}
     <div class="it chest"><span class="ic">🦐</span><span class="sp">飼料 ${FEED.pack} 顆<br><small>每天另有免費 ${FEED.free} 顆・目前還有 ${feedLeft()} 顆</small></span>
       <span class="price">${FEED.price}${COIN}</span><button class="pri" data-act="buyfeed" ${D.coins < FEED.price ? 'disabled' : ''}>購買</button></div></section>
   <section class="px shop">${sh('獎勵商店', 'REWARDS', '<button class="ghost" data-act="shopedit">編輯</button>')}
