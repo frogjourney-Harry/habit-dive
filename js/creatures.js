@@ -25,7 +25,7 @@ const SHRIMP = ['k.k.............','.k.k............','..kkkkkkk.......','..kwko
 const CREATURES = [
   { id:'clown', name:'小丑魚', r:0, fact:'住在海葵裡，出生時全是雄性。', px: fish('o', {4:'w', 8:'w'}) },
   { id:'damsel', name:'藍魔鬼雀鯛', r:0, fact:'珊瑚礁上最常見的亮藍色小魚。', px: fish('b', {1:'c', 2:'c'}) },
-  { id:'butterfly', name:'蝴蝶魚', r:0, fact:'多半成對生活，在礁石間一起覓食。', px: ['......kkkkk','....kkyyyyykk','...kyykkyyykyyk','..kyyykkyyykyyyk','.kyyyyyyyykyyyyk','kkyyyyyyyywyyyyk','kykyyyyyyykyyyyyykk','kykyyyyyyykyyyyyykk','kkyyyyyyyykyyyyk','.kyyyyyyyykyyyk','..kyyyyyyykyyk','...kkyyyyykkk','.....kkkkk'] },
+  { id:'butterfly', name:'蝴蝶魚', r:0, fact:'多半成對生活，在礁石間一起覓食。', px: ['.........kkkkk', '.......kkyyyyykk', '......kyykkyyykyyk', 'kkk..kyyykkyyykyyyk', 'kyk.kyyyyyyyykyyyyk', 'kykkkyyyyyyyywyyyyk', 'kyyyyyyyyyyyykyyyyyykk', 'kyyyyyyyyyyyykyyyyyykk', 'kykkkyyyyyyyykyyyyk', 'kyk.kyyyyyyyykyyyk', 'kkk..kyyyyyyykyyk', '......kkyyyyykkk', '........kkkkk'] },
   { id:'star', name:'海星', r:0, fact:'沒有腦，斷掉的腕還能再長回來。', px: ['......k......','.....kok.....','.....kok.....','....koook....','kkkkkoyokkkkk','kooooyyyooook','.kkooyyyookk.','...koooook...','..kooo.oook..','..koo...ook..','.koo.....ook.','.kk.......kk.'] },
   { id:'hermit', name:'寄居蟹', r:0, fact:'長大就要換更大的殼——跟習慣一樣。', px: ['............kk','...........ktk','..........kttk','.........kkkkk','........kttttk','.......kwttttk','......kkkkkkkk','.....kttttttttk','.k.k.ktttttttttk','.r.r.kkkkkkkkkkk','krrrrrrkttttttk','kwrrrrrrkkkkkk','krrkrrrrrk','.kk.krkrkrk','....k.k.k.k'] },
   { id:'urchin', name:'海膽', r:0, fact:'下水時最該注意別踩到的傢伙。', px: ['k....k....k','.k...k...k.','..k.kPk.k..','...kPPPk...','kkkPPPPPkkk','...kPPPk...','..k.kPk.k..','.k...k...k.','k....k....k'] },
@@ -97,7 +97,7 @@ const SPECIES_PAL = {
 const MORPH = {
   clown: { n: '黑色小丑魚', map: { o: '#34343f' } },                      // 眼斑雙鋸魚的黑色型（達爾文小丑）
   damsel: { n: '黃尾雀鯛', map: { c: '#ffd23f' } },                       // 近親 Chrysiptera parasema：藍身黃尾
-  butterfly: { n: '浣熊蝴蝶魚', map: { y: '#f6a623', r: '#c4561e' }, px: ['......kkkkk', '....kkyrywykk', '...kyyryywykyyk', '..kyyryyywykyyyk', '.kyyryyyywkkkyyk', 'kkyryyyrywkwkyyk', 'kykyyyryywkkkyyyykk', 'kykkkryyywkkyyyyykk', 'kkykryyyywkkyyyk', '.kyryyyrywkkyyk', '..kyyyryywkkyk', '...kkryyywkkk', '.....kkkkk'] },                  // 近親 Chaetodon lunula：橘黃色
+  butterfly: { n: '浣熊蝴蝶魚', map: { y: '#f6a623', r: '#c4561e' }, px: ['.........kkkkk', '.......kkyrywykk', '......kyyryywykyyk', 'kkk..kyyryyywykyyyk', 'kyk.kyyryyyywkkkyyk', 'kykkkyryyyrywkwkyyk', 'kyyyyyyyyryywkkkyyyykk', 'kyyyyykkryyywkkyyyyykk', 'kykkkykryyyywkkyyyk', 'kyk.kyryyyrywkkyyk', 'kkk..kyyyryywkkyk', '......kkryyywkkk', '........kkkkk'] },                  // 近親 Chaetodon lunula：橘黃色
   star: { n: '藍指海星', map: { o: '#2f6fd6', y: '#2f6fd6' } },           // Linckia laevigata：整隻寶藍色
   hermit: { n: '藍腿寄居蟹', map: { r: '#2f6fd6' } },                     // Clibanarius tricolor
   urchin: { n: '火焰海膽', map: { P: '#ff5a3c', k: '#b0302a' } },         // Asthenosoma varium：紅色身體和刺
