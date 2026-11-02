@@ -33,6 +33,8 @@ document.addEventListener('click', async e => {
       reward(() => {}, UI.pday === 0); toast(`第 ${j + 1} 件和第 ${i + 1} 件換好了`); break;
     }
     case 'buychest': buyChest(v); break;
+    // 每日任務：領取一項或全部
+    case 'claim': claim(v === 'all' ? dailyTasks(derive()).flatMap(t => t.pend) : (dailyTasks(derive()).find(t => t.id === v) || { pend: [] }).pend); break;
     case 'iabok': UI.iabOk = true; render(); break;
     case 'start': startTimer(); break;
     case 'skipbreak': {

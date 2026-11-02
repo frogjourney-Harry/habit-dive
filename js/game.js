@@ -22,8 +22,8 @@ function rollCreature(rates) {
   const pool = CREATURES.filter(c => c.r === r);
   return pool[Math.floor(Math.random() * pool.length)];
 }
-// 完成事情的獎勵：XP 和金幣（生物改在商店用金幣買寶箱）。這一輪拿到的加總記在 GAIN，reward() 結束時一次顯示
-const GAIN = { xp: 0, c: 0, crit: false, title: '' };
+// 完成事情的獎勵：XP 和金幣，先標成 pend（待領取），到「每日任務」按領取才入帳；當天沒領，隔天自動入帳（見 derive）
+const GAIN = { n: 0, title: '' };
 function grant(kind, tag, o = {}) {
   let xp = o.xp ?? CONFIG.xp[kind] ?? 0, c, crit = false;
   if (BONUS[kind]) c = CONFIG.coins[kind];
@@ -31,10 +31,11 @@ function grant(kind, tag, o = {}) {
     c = CONFIG.coins.base + Math.floor(Math.random() * (CONFIG.coins.rand + 1));
     if (Math.random() < CONFIG.coins.critChance) { crit = true; c *= 2; }
   }
-  const log = { id: rid(), t: Date.now(), d: o.d || dayKey(), k: kind, tag: tag || undefined, xp, c, key: o.key, ...o.extra };
+  const log = { id: rid(), t: Date.now(), d: o.d || dayKey(), k: kind, tag: tag || undefined, xp, c, key: o.key, crit: crit || undefined, ...o.extra };
   if (kind === 'welcome') return dropCreature(log, chestOf('c0').rates, BONUS.welcome);
+  log.pend = true;
   S.logs.push(log);
-  GAIN.xp += xp; GAIN.c += c; GAIN.crit = GAIN.crit || crit; GAIN.title = GAIN.title || o.title || BONUS[kind] || '';
+  GAIN.n++; GAIN.title = GAIN.title || o.title || BONUS[kind] || '';
   return log;
 }
 // 在 log 上抽一隻生物（log.id 就是這隻的身分），排進開箱彈窗；超過上限時接著問要放生哪一隻
@@ -58,12 +59,22 @@ function buyChest(id) {
   } else dropCreature(log, ch.rates, ch.name, CONFIG.chests.indexOf(ch));
   save(); render(); nextChest();
 }
-// 這一輪的 XP、金幣用一行提示顯示，不用彈窗
+// 這一輪有新的待領取獎勵時，提示去每日任務領
 function showGain() {
-  if (!GAIN.xp && !GAIN.c) return;
-  toast(`${GAIN.title ? GAIN.title + '　' : ''}+${GAIN.xp} XP　+${GAIN.c} 金幣${GAIN.crit ? '（爆擊 ×2）' : ''}`);
-  if (GAIN.c > 0) SFX.buy();
-  Object.assign(GAIN, { xp: 0, c: 0, crit: false, title: '' });
+  if (!GAIN.n) return;
+  toast(`${GAIN.title ? GAIN.title + '　' : ''}到「每日任務」領取獎勵`);
+  Object.assign(GAIN, { n: 0, title: '' });
+}
+// 領取：把這些待領取的獎勵入帳，顯示拿到多少，檢查升級
+function claim(logs) {
+  logs = logs.filter(l => l.pend); if (!logs.length) return;
+  const before = levelOf(derive().xp);
+  let xp = 0, c = 0, crit = false;
+  for (const l of logs) { delete l.pend; xp += l.xp || 0; c += l.c || 0; crit = crit || !!l.crit; }
+  const after = levelOf(derive().xp);
+  if (after > before && after > (S.lvSeen || 0)) { Q.push({ level: after, title: rankIdx(after) > rankIdx(before) ? RANKS[rankIdx(after)][1] : '' }); S.lvSeen = after; }
+  ac(); SFX.buy(); toast(`+${xp} XP　+${c} 金幣${crit ? '（爆擊 ×2）' : ''}`);
+  save(); render(); nextChest();
 }
 // 今天的獎勵（前三件、每個習慣的打卡、週期達標）跟著條件走：條件不再成立時把獎勵收進 S.held，
 // 條件恢復時原封不動還回來（不重抽，避免用取消再打卡刷稀有生物）
@@ -105,7 +116,7 @@ function reward(fn, allowGrant = true) {
 }
 
 /* ========= 番茄鐘 ========= */
-// 一段「專注工作階段」：選整段總長度，自動切成「專注 25 分＋休息」的段落；每段專注滿 pomoRewardMin 分鐘有一次獎勵
+// 一段「專注工作階段」：選整段總長度，自動切成「專注 25 分＋休息」的段落；每天第一段專注滿 pomoRewardMin 分鐘有獎勵
 const pomoMin = () => S.pomoMin || CONFIG.pomodoroMin;
 function sessionPlan(total) {
   const segs = [];
@@ -133,7 +144,8 @@ function finishSeg() {
   SFX.done();
   if (seg.m === 'focus') {
     const d = dayKey(end - 1);
-    if (seg.min >= CONFIG.pomoRewardMin) reward(() => grant('pomo', null, { title: `專注 ${seg.min} 分鐘完成！`, d, extra: { min: seg.min } }));
+    // 每天只有第一段（滿 pomoRewardMin 分鐘）有獎勵，之後的照樣記錄、算進累積時數
+    if (seg.min >= CONFIG.pomoRewardMin && !derive().claimed.has('pomo:' + d)) reward(() => grant('pomo', null, { key: 'pomo:' + d, title: `專注 ${seg.min} 分鐘完成！`, d, extra: { min: seg.min } }));
     else { S.logs.push({ id: rid(), t: end, d, k: 'pomo', min: seg.min, xp: 0, c: 0 }); save(); render(); }
   } else { save(); render(); }
   toast(last ? '這段專注全部完成！' : next.m === 'break' ? `休息 ${next.min} 分鐘，起來走走吧` : `休息結束，繼續專注 ${next.min} 分鐘`);
