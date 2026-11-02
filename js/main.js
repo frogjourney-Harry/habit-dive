@@ -205,6 +205,11 @@ document.addEventListener('click', async e => {
     case 'import': document.getElementById('importFile').click(); break;
   }
 });
+// 鍵盤：Enter／空白鍵可以「按」不是按鈕的可點元素（見 views.js render）
+document.addEventListener('keydown', e => {
+  const t = e.target;
+  if ((e.key === 'Enter' || e.key === ' ') && t && t.getAttribute && t.getAttribute('role') === 'button' && !/^(BUTTON|INPUT|SELECT|A)$/.test(t.tagName)) { e.preventDefault(); t.click(); }
+});
 // 點彈窗外面的暗色區域就關閉面板
 document.getElementById('sheetov').addEventListener('click', e => { if (e.target.id === 'sheetov') { UI.sheet = null; renderSheet(); } });
 document.addEventListener('keydown', e => {

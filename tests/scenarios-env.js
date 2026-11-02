@@ -263,3 +263,12 @@ test('更多 App 內建瀏覽器、輸入框屬性', async () => {
   const I = await boot({ state: mkState() }); await I.dismiss(); await I.tab('today');
   const bad = I.$$('#six .ptext').filter(e => e.getAttribute('autocomplete') !== 'off' || e.getAttribute('spellcheck') !== 'false'); eq(bad.length, 0, '六件事輸入框要關掉自動填入和拼字檢查'); I.destroy();
 });
+
+test('鍵盤：所有可點的東西都能用 Tab 聚焦、Enter 觸發', async () => {
+  const I = await boot({ state: mkState({ logs: [W0, coinLog(500), ...drops(['clown'])] }), width: 375, height: 800 }); await I.dismiss();
+  const bad = new Set();
+  for (const t of TABS) { await I.tab(t); if (t === 'tank') await I.click('[data-act=tankview][data-v=dex]'); for (const e of I.$$('[data-act]')) { if (!I.vis(e)) continue; if (!e.matches('button, input, select, a, [tabindex]')) bad.add(`${t}:${e.dataset.act}`); } }
+  eq([...bad], [], '有 data-act 卻無法用鍵盤聚焦的元素');
+  await I.tab('quest'); const row = I.$('.qc .sp[data-act=goto]'); if (row) { row.focus(); ok(I.doc.activeElement === row, '任務名稱可以聚焦'); row.dispatchEvent(new I.win.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await flush(); eq(I.UI.tab, 'today', 'Enter 觸發「前往」'); }
+  I.check('鍵盤'); I.destroy();
+});

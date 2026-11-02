@@ -350,3 +350,5 @@ body.focusing{overflow:hidden}
   .wrap{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
   @media (max-width:600px){ .wrap{padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))} }
 }
+/* 用鍵盤操作時要看得到目前在哪一個（滑鼠點擊不會出現） */
+button:focus-visible,[role=button]:focus-visible,a:focus-visible,input[type=checkbox]:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
