@@ -99,7 +99,7 @@ const MORPH = {
   damsel: { n: '黃尾雀鯛', map: { c: '#ffd23f' } },                       // 近親 Chrysiptera parasema：藍身黃尾
   butterfly: { n: '浣熊蝴蝶魚', map: { y: '#f6a623' } },                  // 近親 Chaetodon lunula：橘黃色
   star: { n: '藍指海星', map: { o: '#2f6fd6', y: '#2f6fd6' } },           // Linckia laevigata：整隻寶藍色
-  hermit: { n: '藍腿寄居蟹', map: { r: '#2f6fd6' } },                     // Clibanarius tricolor
+  hermit: { n: '藍腿寄居蟹', map: { r: '#2f6fd6' }, px: ['..........k....', '.........ktk...', '.........kwk...', '........kttk...', '........kkkkk..', '.......kttttk..', '.......kkkkkkk.', '......kttttttk.', '.k.k..kkkkkkkkk', '.r.r..ktttttttk', 'krrrrk.kkkkkkk.', 'kwrrrrrrrrrk...', 'krrkrrrrrrk....', '.kk.krkrkrk....', '....k.k.k.k....'] },                     // Clibanarius tricolor
   urchin: { n: '火焰海膽', map: { P: '#ff5a3c', k: '#b0302a' } },         // Asthenosoma varium：紅色身體和刺
   turtle: { n: '玳瑁', map: { G: '#3b2414', g: '#d79a3b', y: '#f0dca0' } },   // 綠蠵龜的近親，琥珀色龜甲，極度瀕危
   octopus: { n: '藍環章魚', map: { y: '#e3c13a', b: '#1f5fd6' }, px: ['....kkkkkkk....', '...kyyybyyyk...', '..kyyybybyyyk..', '..kybyybyybyk..', '..kbybyyybybk..', '..kybyyyyybyk..', '..kywkyyywkyk..', '...kyyyyyyyk...', '..kykykykykyk..', '.kyk.ky.yk.kyk.', 'kyk..ky.yk..kyk', 'yk...k...k...ky', 'k.............k'] },   // Hapalochlaena，身上的藍環
@@ -116,6 +116,8 @@ const MORPH = {
   dolphin: { n: '中華白海豚', map: { b: '#f2b6c6', w: '#fde6ee' } },      // 台灣西海岸的粉紅色海豚
   whaleshark: { n: '白化鯨鯊', map: { n: '#dfe6ea', w: '#ffffff' } },     // 罕見的白化個體
 };
+// 黑色獅子魚全身暗色，黑眼睛會被吃掉，改成黃色的眼睛
+MORPH.lion.px = CR.lion.px.map((r, j) => j === 4 ? r.slice(0, 10) + 'y' + r.slice(11) : r);
 const stageName = (c, s) => s === 1 ? '幼體' : s === 2 ? '成體' : MORPH[c.id].n;
 
 
