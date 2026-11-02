@@ -94,8 +94,7 @@ function quests(D) {
       ${right}</div>`;
   };
   const hd = hab.filter(t => t.full).length;
-  return `<section class="px">${sh('每日任務', 'DAILY', `<span class="qcnt">${done}/${daily.length}</span>`)}
-      ${pend.length ? `<button class="pri qall" data-act="claim" data-v="all">全部領取 +${pc}${COIN}</button>` : ''}
+  return `<section class="px">${sh('每日任務', 'DAILY', `<span class="qcnt">${done}/${daily.length}</span>${pend.length ? `<button class="pri qall" data-act="claim" data-v="all">全部領取 +${pc}${COIN}</button>` : ''}`)}
       <div class="bar c qtop"><i style="width:${done / daily.length * 100}%"></i></div>${base.map(row).join('')}</section>
     ${hab.length ? `<section class="px">${sh('習慣養成', 'HABITS', `<span class="qcnt">${hd}/${hab.length}</span>`)}${hab.map(row).join('')}</section>` : ''}`;
 }
