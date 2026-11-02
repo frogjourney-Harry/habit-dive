@@ -23,6 +23,10 @@ document.addEventListener('click', async e => {
   switch (b.dataset.act) {
     case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.tankView = ''; UI.swap = null; UI.tab = v; render(); window.scrollTo(0, 0); break;
     case 'pday': UI.pday = +v; UI.swap = null; UI.showRows = 0; render(); break;
+    case 'prowdel': {   // 刪掉後面的往上補，最後補一個空格
+      const P = getPlan(viewDay()); P.splice(+v, 1); P.push({ text: '', cat: 'other', done: false, rw: false });
+      UI.showRows = Math.max(0, UI.shownRows - 1); save(); render(); break;
+    }
     case 'addrow': UI.showRows = UI.shownRows + 1; render(); document.querySelector(`[data-pf="text"][data-i="${UI.showRows - 1}"]`)?.focus(); break;
     // 六件事換順序：先點一個編號，再點另一個編號，兩件交換
     case 'swap': {

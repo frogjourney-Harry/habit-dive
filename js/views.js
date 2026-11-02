@@ -17,6 +17,7 @@ function render() {
   document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? `<i class="badge">${pendN}</i>` : ''}</button>`).join('');
   document.getElementById('main').innerHTML = ({ today, quest: quests, tank, shop, log, about })[UI.tab](D);
   if (UI.tab === 'tank') tankStart();
+  renderFocus();
 }
 
 const freqOpts = (h, sel) => (h.kind === 'custom' ? [[0, '每天']] : []).concat([[1, '每週'], [2, '每兩週']])
@@ -156,24 +157,19 @@ function today(D) {
       <input type="checkbox" data-act="pdone" data-v="${i}" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
       <button class="ghost no ${UI.swap === i ? 'sel' : ''}" data-act="swap" data-v="${i}" title="點兩個編號交換順序">${i + 1}</button>
       <input class="ptext" data-pf="text" data-i="${i}" value="${esc(it.text)}" placeholder="${i === 0 ? '今天最重要的事' : ''}">
-      <button class="ghost star" data-act="fav" data-v="${i}" title="${starred ? '從常用移除' : '存成常用'}">${starred ? '★' : '☆'}</button></div>`;
+      <button class="ghost star" data-act="fav" data-v="${i}" title="${starred ? '從常用移除' : '存成常用'}">${starred ? '★' : '☆'}</button>
+      ${i >= CONFIG.rewardRows && UI.pday >= 0 ? `<button class="ghost pdel" data-act="prowdel" data-v="${i}" title="刪掉這件">✕</button>` : '<span class="pdel"></span>'}</div>`;
   }).join('');
   const T = S.timer && S.timer.segs ? S.timer : null, seg = T && T.segs[T.si], pm = pomoMin();
   const PRESETS = [25, 45, 60, 90], custom = UI.pomoCustom || !PRESETS.includes(pm);
   const todayPomo = S.logs.filter(l => l.k === 'pomo' && l.d === td).length;
-  const segLine = segs => segs.map((x, i) => `<span class="${T && i < T.si ? 'past' : T && i === T.si ? 'now' : ''}">${x.m === 'break' ? '休息' : '專注'} ${x.min}</span>`).join('<span>›</span>');
-  const timer = T ? `<section class="px timer">
-      <div class="label">${seg.m === 'break' ? 'BREAK' : 'FOCUS'}・${T.si + 1}/${T.segs.length}</div>
-      <div>${seg.m === 'break' ? '休息中' : '專注中'}</div>
-      <div class="clock" id="tclock">--:--</div><div class="bar c"><i id="tbar" style="width:0"></i></div>
-      <div class="segs">${segLine(T.segs)}</div>
-      ${seg.m === 'break' ? '<button class="ghost" data-act="skipbreak">跳過休息</button>' : ''}<button class="ghost" data-act="cancel">結束</button></section>`
+  const timer = T ? ''
     : `<section class="px" id="pomo">${sh('番茄鐘', 'FOCUS', `<small class="dim">今天 ${todayPomo} 段</small>`)}
       <div class="pomo-set"><div class="presets">${PRESETS.map(m => `<button class="${pm === m && !custom ? 'sel' : ''}" data-act="pomoset" data-v="${m}">${m} 分</button>`).join('')}
           <button class="${custom ? 'sel' : ''}" data-act="pomocustom">${custom ? `${pm} 分` : '自訂'}</button></div>
         <div class="pomo-go">${custom ? `<input type="number" id="pomoMin" min="5" max="120" step="5" value="${pm}" title="總長度（分鐘）"><span class="dim">分</span>` : ''}
         <button class="pri" data-act="start">開始專注</button></div></div>
-      <div class="segs" id="pomoPlan">${segLine(sessionPlan(pm))}</div>
+      <div class="segs" id="pomoPlan">${segLine(null, sessionPlan(pm))}</div>
       <div class="mini">每天第一段專注滿 ${CONFIG.pomoRewardMin} 分鐘有獎勵。</div></section>`;
   const habits = UI.habEdit ? habitEditor() : `<section class="px" id="habits">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
       <div class="habits">${chips}</div>
@@ -186,6 +182,24 @@ function today(D) {
       ${shown < P.length && UI.pday >= 0 ? `<button class="ghost addrow" data-act="addrow">＋ 再加一件${shown === CONFIG.rewardRows ? '（只做紀錄）' : ''}</button>` : ''}
       ${UI.pday < 0 || claimed ? '' : '<div class="row" style="margin-top:8px"><button class="pri" data-act="plansave">寫好了</button></div>'}</section>
     ${timer}`;
+}
+
+const segLine = (T, segs) => segs.map((x, i) => `<span class="${T && i < T.si ? 'past' : T && i === T.si ? 'now' : ''}">${x.m === 'break' ? '休息' : '專注'} ${x.min}</span>`).join('<span>›</span>');
+// 專注中：蓋住整個畫面，只剩計時器和「結束」，專心做事，不能跑去玩遊戲
+function renderFocus() {
+  let el = document.getElementById('focus');
+  if (!el) { el = document.createElement('div'); el.id = 'focus'; document.body.appendChild(el); }
+  const T = S.timer && S.timer.segs ? S.timer : null;
+  el.classList.toggle('hidden', !T); document.body.classList.toggle('focusing', !!T);
+  if (!T) { el.innerHTML = ''; return; }
+  const seg = T.segs[T.si], br = seg.m === 'break';
+  el.innerHTML = `<div class="fbox">
+    <div class="label">${br ? 'BREAK' : 'FOCUS'}・${T.si + 1}/${T.segs.length}</div>
+    <div class="fsprite">${img(CR.clown.px, 4)}</div>
+    <div>${br ? '休息一下，站起來動一動' : '專注中，先把手機放下'}</div>
+    <div class="clock" id="tclock">--:--</div><div class="bar c"><i id="tbar" style="width:0"></i></div>
+    <div class="segs">${segLine(T, T.segs)}</div>
+    <div class="row" style="justify-content:center;margin-top:14px">${br ? '<button class="pri" data-act="skipbreak">跳過休息</button>' : ''}<button class="ghost" data-act="cancel">結束</button></div></div>`;
 }
 
 /* ========= 習慣打卡面板 ========= */
