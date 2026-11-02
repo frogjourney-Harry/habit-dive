@@ -25,23 +25,23 @@ const SHRIMP = ['k.k.............','.k.k............','..kkkkkkk.......','..kwko
 const CREATURES = [
   { id:'clown', name:'小丑魚', r:0, fact:'住在海葵裡，出生時全是雄性。', px: fish('o', {4:'w', 8:'w'}) },
   { id:'damsel', name:'藍魔鬼雀鯛', r:0, fact:'珊瑚礁上最常見的亮藍色小魚。', px: fish('b', {1:'c', 2:'c'}) },
-  { id:'butterfly', name:'蝴蝶魚', r:0, fact:'多半成對生活，在礁石間一起覓食。', px: fish('y', {9:'k', 1:'w'}) },
+  { id:'butterfly', name:'蝴蝶魚', r:0, fact:'多半成對生活，在礁石間一起覓食。', px: ['......kkkkk','....kkyyyyykk','...kyykkyyykyyk','..kyyykkyyykyyyk','.kyyyyyyyykyyyyk','kkyyyyyyyywyyyyk','kykyyyyyyykyyyyyykk','kykyyyyyyykyyyyyykk','kkyyyyyyyykyyyyk','.kyyyyyyyykyyyk','..kyyyyyyykyyk','...kkyyyyykkk','.....kkkkk'] },
   { id:'star', name:'海星', r:0, fact:'沒有腦，斷掉的腕還能再長回來。', px: ['......k......','.....kok.....','.....kok.....','....koook....','kkkkkoyokkkkk','kooooyyyooook','.kkooyyyookk.','...koooook...','..kooo.oook..','..koo...ook..','.koo.....ook.','.kk.......kk.'] },
-  { id:'hermit', name:'寄居蟹', r:0, fact:'長大就要換更大的殼——跟習慣一樣。', px: ['.........kkkk..','.......kktttwk.','......kttkkkttk','.....ktktttkttk','.....ktktktkttk','.k.k.kttkkktttk','.r.r..kttttttk.','krrrrk.kkkkkk..','kwrrrrrrrrrk...','krrkrrrrrrk....','.kk.krkrkrk....','....k.k.k.k....'] },
+  { id:'hermit', name:'寄居蟹', r:0, fact:'長大就要換更大的殼——跟習慣一樣。', px: ['............kk','...........ktk','..........kttk','.........kkkkk','........kttttk','.......kwttttk','......kkkkkkkk','.....kttttttttk','.k.k.ktttttttttk','.r.r.kkkkkkkkkkk','krrrrrrkttttttk','kwrrrrrrkkkkkk','krrkrrrrrk','.kk.krkrkrk','....k.k.k.k'] },
   { id:'urchin', name:'海膽', r:0, fact:'下水時最該注意別踩到的傢伙。', px: ['k....k....k','.k...k...k.','..k.kPk.k..','...kPPPk...','kkkPPPPPkkk','...kPPPk...','..k.kPk.k..','.k...k...k.','k....k....k'] },
-  { id:'turtle', name:'綠蠵龜', alias:'海龜', r:1, fact:'休息時可以閉氣好幾個小時。', px: ['.....kkkkk....','...kkGgGgGkk..','..kGgGgGgGgkkk','.kGgGgGgGgGkgk','.kyyyyyyyyykgk','..kkgkkkkgkkk.','..kgk....kgk..','...k......k...'] },
+  { id:'turtle', name:'綠蠵龜', alias:'海龜', r:1, fact:'休息時可以閉氣好幾個小時。', px: ['......kkkkkk','....kkGgGgGgkk','...kGgGgGgGgGgk','..kGgGgGgGgGgGgk..kk','..kyyyyyyyyyyyyykggk','.kkkkkkkkkkkkkkkgkgk','kgk.......kgggkkggk','.k.......kgggk.kk','........kgggk','.........kkk'] },
   { id:'octopus', name:'章魚', r:1, fact:'三顆心臟、藍色的血。', px: ['...kkkkk...','..krrrrrk..','.krrrrrrrk.','.krwkrwkrk.','.krrrrrrrk.','..krrrrrk..','.krkrkrkrk.','kr.kr.kr.rk','k..k..k...k'] },
   { id:'nudi', name:'海蛞蝓', alias:'海兔', r:1, fact:'微距攝影的最愛，配色一隻比一隻浮誇。', px: ['..o.o...o.o.o','.kPPPkkkkPPPk','kPPwPPPPPPPPk','kPPPPPwPPPPPk','.kyyyyyyyyyk.','..kkkkkkkkk..'] },
-  { id:'lion', name:'獅子魚', r:1, fact:'很美，但背鰭有毒，看就好。', px: fish('r', {3:'w', 5:'w', 7:'w', 9:'w'}, '...r.r.r.r...') },
+  { id:'lion', name:'獅子魚', r:1, fact:'很美，但背鰭有毒，看就好。', px: ['...r.r.r.r','...r.r.r.r.r','...r.r.r.r.r','..kkkkkkkkkk','.kkrwrwrwrwrkk','krkrwrwrwrwrrrk','krrrwrwrwrwrryk','krkrwrwrwrwrrrkk','.kkrwrwrwrwrkk','..rkkkkkkkkkr','.r.r.r.r.r.r','r..r..r..r'] },
   { id:'puffer', name:'河豚', r:1, fact:'受到威脅時會吸水膨脹成一顆球。', px: ['..k..k..k..','...kkkkk...','..kyyyyyk..','.kyyyyykyk.','kkyyyyyyyyk','kyywwwwwyyk','.kwwwwwwwk.','..kkkkkkk..'] },
-  { id:'cuttle', name:'烏賊', r:1, fact:'能在一瞬間改變膚色與紋路。', px: ['....kkkkkkkk..','...kwswswswsk.','kkkswkswswswsk','sskswswswswswk','kkksssssssssk.','...kkkkkkkkk..'] },
+  { id:'cuttle', name:'烏賊', r:1, fact:'能在一瞬間改變膚色與紋路。', px: ['..kkkkkkkkkkk','.kwwwwwwwwwwwk','kwssswsssswsskk','kssswssswsssswwk','kswssssswssssswkk.s.s','ksssswssswsssskkssss','kswssssswsssskkss.s.s','.kwwwwwwwwwwwk','..kkkkkkkkkkk'] },
   { id:'seahorse', name:'海馬', r:2, fact:'由爸爸懷孕、生下寶寶。', px: ['..kkk...','.kyyyk..','.kykyyyk','..kyykk.','..kyyk..','.kyyyk..','kyyyyk..','kyyyk...','.kyyk...','..kyk...','.kyk....','.kk.....'] },
   { id:'shark', name:'白鰭鯊', alias:'白鰭礁鯊', r:2, fact:'白天常趴在礁洞底下休息。', px: ['..........kk............','.........kwk............','........kSSk............','kk.....kSSSSkkkkkk......','kwk.kkkSSSSSSSSSSSkkk...','.kSkSSSSSSSSSSSSSSSSkSk.','..kSSSSSSSSSSSSSSSSSSSSk','.kSkwwwwwwwwwwwwwwwwwwk.','kwk.kkkkSkkkkkSkkkkkk...','kk......kk....k.........'] },
   { id:'moray', name:'裸胸鯙', alias:'錢鰻、海鱔', r:2, fact:'嘴巴一開一合是在呼吸，不是要咬你。', px: ['.............kkkkk..','..........kkkgggggk.','.kkkkkkkkkgggywkgggk','kgggygggyggggggggwwk','kggggggggggggggkk.kk','.kkygggyggggggggwwk.','...kkkkkkkkkkkkkkk..'] },
   { id:'jelly', name:'水母', r:2, fact:'沒有腦也沒有心臟，已在海裡活了五億年。', px: ['...kkkkk...','..kcccccck.','.kcwcccccck','kccccccccck','kkkkkkkkkkk','.c.c.c.c.c.','.c..c.c..c.','..c.c..c.c.','..c..c.c...','.c...c..c..'] },
   { id:'manta', name:'鬼蝠魟', alias:'魔鬼魚', r:3, fact:'Nusa Penida Manta Point 的明星，翼展可達 7 公尺。', px: ['.........kk..........', '........knnk.........', '........knnnk........', '.......knnnnnkk......', '......knnnnnnnnk.....', '......knnnnnnwnnk.kk.', '.....knnnnnnnnnnnkk..', 'kkkkknnnnnnnnnnnnnnk.', '.....knnnnnnnnnnnkk..', '......knnnnnnwnnk.kk.', '......knnnnnnnnk.....', '.......knnnnnkk......', '........knnnk........', '........knnk.........', '.........kk..........'] },
   { id:'mola', name:'翻車魚', r:3, fact:'Crystal Bay 的夢幻魚種，世界最重的硬骨魚。', px: ['.....k.........','....ksk........','...kssk........','...ksskkkkk....','..kkssssssskk..','.ksssssssssssk.','kssssssssssskwk','.ksssssssssssk.','.kssssssssssssk','kkssssssssssssk','.ksssssssssssk.','..kksssssssskk.','...ksskkkkk....','...kssk........','....ksk........','.....k.........'] },
-  { id:'dolphin', name:'海豚', r:3, fact:'睡覺時只讓半邊大腦休息。', px: ['........k.......','.......kbk......','k...kkkbbbkkk...','kbkkbbbbbbbbbkk.','.kbbbbbbbbbbkbkk','kbkkwwwwwwwwwkbk','k...kkkbkkkkkkk.','.......k........'] },
+  { id:'dolphin', name:'海豚', r:3, fact:'睡覺時只讓半邊大腦休息。', px: ['..........kk','.........kbk','........kbbk','.....kkkbbbbkkkk','...kkbbbbbbbbbbbkk','k.kbbbbbbbbbbbbbbbk','kkbbbbbbbbbbbbbbbkbk','kbkbbbbbbbbbbbbbbbbbkkkk','k..kwwwwwwwwwwwwwwwwbbbbk','....kkkkwwwkkkkkkkkkkkk','.........kwk','..........k'] },
   { id:'whaleshark', name:'鯨鯊', r:4, fact:'世界上最大的魚，卻只吃浮游生物。', px: ['........kk........','.......knk........','k....kkknnkkkk....','kk.kknwnnnwnnnnkk.','knkknnnnwnnnnwnknk','knnnnwnnnnwnnnnnnk','kkkkwwwwwwwwwwwwk.','k...kkkkknkkkkkk..','.........k........'] },
 ];
 const CR = Object.fromEntries(CREATURES.map(c => [c.id, c]));
@@ -58,7 +58,7 @@ const JUV = {
   damsel: mini('b', { 1: 'y', 2: 'y' }),                             // 尾巴黃色
   butterfly: mini('y', {}, [[3, 3, 'k'], [2, 3, 'w'], [4, 3, 'w']]),  // 背上有假眼斑
   star: ['.....k.....','....kok....','....kok....','kkkkoookkkk','kooooyooook','.kkoooookk.','..koooook..','.kook.kook.','.kok...kok.','.kk.....kk.'],   // 五隻腳的小海星
-  hermit: ['......kkk.','....kktttk','...ktkkktk','.k.ktktktk','.r..kttttk','krrrkkkkk.','kwrrrrrk..','.kkrkrk...','...k.k....'],   // 背著小小的螺殼
+  hermit: ['.......k','......ktk','.....kkkk','....ktttk','.k.kkkkkk','.r.ktttttk','krrrkkkkkk','kwrrrrk','.kkrkrk','...k.k'],   // 背著小小的螺殼
   urchin: ['k..k..k', '.kkPkk.', 'kkPPPkk', '.kkPkk.', 'k..k..k'],
   turtle: ['..kkkk...', '.kGgGgkk.', 'kGgGgGkgk', '.kyyyykkk', '.kgkkgk..'],   // 剛孵化的小海龜，頭大
   octopus: ['..kkk..', '.koook.', 'kowowok', 'koooook', '.koook.', '.o.o.o.', 'o.o.o.o'],   // 小章魚，腳還很短
@@ -67,12 +67,12 @@ const JUV = {
   puffer: ['.k.k.k.', '..kkk..', '.kyyyk.', 'kyyykyk', 'kywwwyk', '.kwwwk.', '..kkk..'],   // 圓滾滾、全身小刺
   cuttle: ['..kkkk..', '.kwsswk.', 'kswskwsk', '.kwsswk.', '..kkkk..', '.s.s.s..'],   // 剛孵化的小烏賊，大眼睛
   seahorse: ['.kk..', 'kyyk.', 'kykyk', '.kyk.', '.kyk.', 'kyk..', '.k...'],
-  shark: ['.......kk.......','......kSk.......','k....kSSSkkkk...','kwkkkSSSSSSSSkk.','.kSSSSSSSSSSSkSk','kwkkwwwwwwwwwwk.','k...kkkSkkkkk...'],
+  shark: ['.......kk.......','......kSk.......','k....kSSSkkkk...','kwkkkSSSSSSSSkk.','.kSSSSSSSSSSSkSk','kwkkwwwwwwwwwwk.','k...kkkSkkkSk...'],
   moray: ['.........kkkk.','.kkkkkkkkgwkgk','kgggygggygggwk','.kkkkkkkkkkkk.'],
   jelly: ['.c.c.c.', 'ccccccc', '.ccwcc.', 'ccccccc', '.c.c.c.'],      // 碟狀幼體
   manta: ['.....kk......', '....knnnk....', '...knnnnwk.k.', '..knnnnnnnkk.', 'kkknnnnnnnnk.', '..knnnnnnnkk.', '...knnnnwk.k.', '....knnnk....', '.....kk......'],
   mola: ['....k....', '...ksk...', '.kkssskk.', 'kssssskwk', 'ksssssssk', '.kkssskk.', '...ksk...', '....k....'],   // 小翻車魚：上下兩片鰭、圓圓的身體
-  dolphin: ['.....k....', '....kbk...', 'k..kbbbkk.', 'kbkbbbbkbk', 'k..kwwwkk.'],
+  dolphin: ['.....k......','....kbk.....','k..kbbbkkk..','kbkbbbbbbbkkk','k..kwwwwwwbbbk','....kkkkkkkk'],
   whaleshark: ['......k.....', '.....knk....', 'k..kknnnkkk.', 'kkknwnnwnnkk', 'k..kkwwwwwk.'],
 };
 // 每種生物的實際顏色（對照真實物種調整，蓋過共用調色盤）
@@ -99,7 +99,7 @@ const MORPH = {
   damsel: { n: '黃尾雀鯛', map: { c: '#ffd23f' } },                       // 近親 Chrysiptera parasema：藍身黃尾
   butterfly: { n: '浣熊蝴蝶魚', map: { y: '#f6a623' } },                  // 近親 Chaetodon lunula：橘黃色
   star: { n: '藍指海星', map: { o: '#2f6fd6', y: '#2f6fd6' } },           // Linckia laevigata：整隻寶藍色
-  hermit: { n: '藍腿寄居蟹', map: { r: '#2f6fd6' }, px: ['..........k....', '.........ktk...', '.........kwk...', '........kttk...', '........kkkkk..', '.......kttttk..', '.......kkkkkkk.', '......kttttttk.', '.k.k..kkkkkkkkk', '.r.r..ktttttttk', 'krrrrk.kkkkkkk.', 'kwrrrrrrrrrk...', 'krrkrrrrrrk....', '.kk.krkrkrk....', '....k.k.k.k....'] },                     // Clibanarius tricolor
+  hermit: { n: '藍腿寄居蟹', map: { r: '#2f6fd6' } },                     // Clibanarius tricolor
   urchin: { n: '火焰海膽', map: { P: '#ff5a3c', k: '#b0302a' } },         // Asthenosoma varium：紅色身體和刺
   turtle: { n: '玳瑁', map: { G: '#3b2414', g: '#d79a3b', y: '#f0dca0' } },   // 綠蠵龜的近親，琥珀色龜甲，極度瀕危
   octopus: { n: '藍環章魚', map: { y: '#e3c13a', b: '#1f5fd6' }, px: ['....kkkkkkk....', '...kyyybyyyk...', '..kyyybybyyyk..', '..kybyybyybyk..', '..kbybyyybybk..', '..kybyyyyybyk..', '..kywkyyywkyk..', '...kyyyyyyyk...', '..kykykykykyk..', '.kyk.ky.yk.kyk.', 'kyk..ky.yk..kyk', 'yk...k...k...ky', 'k.............k'] },   // Hapalochlaena，身上的藍環
@@ -116,8 +116,6 @@ const MORPH = {
   dolphin: { n: '中華白海豚', map: { b: '#f2b6c6', w: '#fde6ee' } },      // 台灣西海岸的粉紅色海豚
   whaleshark: { n: '白化鯨鯊', map: { n: '#dfe6ea', w: '#ffffff' } },     // 罕見的白化個體
 };
-// 黑色獅子魚全身暗色，黑眼睛會被吃掉，改成黃色的眼睛
-MORPH.lion.px = CR.lion.px.map((r, j) => j === 4 ? r.slice(0, 10) + 'y' + r.slice(11) : r);
 const stageName = (c, s) => s === 1 ? '幼體' : s === 2 ? '成體' : MORPH[c.id].n;
 
 

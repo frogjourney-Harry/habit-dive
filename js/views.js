@@ -345,9 +345,9 @@ function dex(D) {
 // 每種生物的體型（相對大小）與游速，照真實生物的感覺；第三個值＝在海底爬
 const TANK_SPECIES = {
   clown: [1, .45], damsel: [.9, .6], butterfly: [1, .4], star: [1, .05, 1], hermit: [1, .18, 1], urchin: [1, .04, 1],
-  turtle: [1.7, .2], octopus: [1.3, .25], nudi: [.9, .07, 1], lion: [1.3, .2], puffer: [1.1, .25], cuttle: [1.3, .35],
+  turtle: [1.2, .2], octopus: [1.3, .25], nudi: [.9, .07, 1], lion: [1.1, .2], puffer: [1.1, .25], cuttle: [1, .35],
   seahorse: [1, .1], shark: [1.6, .7], moray: [1.3, .3], jelly: [1.3, .08], manta: [1.7, .35], mola: [1.8, .15],
-  dolphin: [1.8, .9], whaleshark: [2.6, .2],
+  dolphin: [1.2, .9], whaleshark: [2.6, .2],
 };
 const STAGE_SCALE = [1, 1, 1.1];   // 幼體圖本身就比較小
 const FEED = { free: 3, pack: 10, price: 30 };            // 每天免費 3 顆；商店 30 金幣買 10 顆
