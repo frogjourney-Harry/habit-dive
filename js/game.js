@@ -170,6 +170,8 @@ function finishSeg() {
   toast(last ? '這段專注全部完成！' : next.m === 'break' ? `休息 ${next.min} 分鐘，起來走走吧` : `休息結束，繼續專注 ${next.min} 分鐘`);
 }
 function tick() {
+  // 跨過換日時間：昨天沒領的獎勵會自動入帳、今天的任務和統計都要重算，馬上重畫（不等 30 秒的檢查）
+  const dk = dayKey(); if (tick.day && tick.day !== dk) { tick.day = dk; render(); renderSheet(); } tick.day = dk;
   if (!S.timer) { document.title = '習慣深潛'; return; }
   let T = S.timer;
   if (!T.segs) S.timer = T = { segs: [{ m: T.mode === 'break' ? 'break' : 'focus', min: Math.round(T.dur / 60e3) }], si: 0, start: T.start };
