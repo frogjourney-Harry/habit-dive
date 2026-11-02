@@ -39,22 +39,26 @@ function habitEditor() {
 }
 
 /* ========= 每日任務 ========= */
+const mdOf = k => k.slice(5).replace('-', '/').replace(/^0/, '').replace('/0', '/');   // 2026-11-02 → 11/2
 // 任務就是會給獎勵的那些事；進度從紀錄算，獎勵是對應的 log（有 pend＝還沒領）
 function dailyTasks(D) {
   const d = dayKey(), byKey = k => S.logs.filter(l => l.key === k), R = CONFIG.rewardRows;
   const checks = S.logs.filter(l => l.k === 'check' && l.d === d);
   const T = [
-    { id: 'plan', name: '寫好今天的清單', logs: byKey('plan:' + d) },
-    { id: 'rows', name: `完成前 ${R} 件事`, n: checks.length, of: R, logs: checks },
-    { id: 'top3', name: `前 ${R} 件都完成`, logs: byKey('top3:' + d) },
+    // how＝怎麼完成；go＝點了跳到「今日」頁的哪一區
+    { id: 'plan', name: '寫好今天的清單', how: '在「最重要的六件事」寫下要做的事，按「寫好了」', go: 'six', logs: byKey('plan:' + d) },
+    { id: 'rows', name: `完成前 ${R} 件事`, how: `六件事的第 1～${R} 件，每打勾一件就有獎勵`, go: 'six', n: checks.length, of: R, logs: checks },
+    { id: 'top3', name: `前 ${R} 件都完成`, how: `第 1～${R} 件全部打勾，再多一份獎勵`, go: 'six', logs: byKey('top3:' + d) },
   ];
   for (const h of activeHabits())
-    T.push({ id: 'h_' + h.id, name: `${h.e} ${h.n}${h.kind === 'vocus' ? ' 發文' : ' 打卡'}`, logs: byKey(h.kind === 'vocus' ? 'art:' + d : `hab:${h.id}:${d}`) });
-  T.push({ id: 'pomo', name: `專注一段番茄鐘`, logs: byKey('pomo:' + d) });
+    T.push({ id: 'h_' + h.id, name: `${h.e} ${h.n}${h.kind === 'vocus' ? ' 發文' : ' 打卡'}`, go: 'habits',
+      how: h.kind === 'vocus' ? '點「Vocus」卡片，記錄今天發布的文章' : `點「${h.n}」卡片打卡`, logs: byKey(h.kind === 'vocus' ? 'art:' + d : `hab:${h.id}:${d}`) });
+  T.push({ id: 'pomo', name: `專注一段番茄鐘`, how: `番茄鐘專注滿 ${CONFIG.pomoRewardMin} 分鐘`, go: 'pomo', logs: byKey('pomo:' + d) });
   // 週期達標（例如本週運動 3 天）
   for (const h of activeHabits()) if (h.weeks && h.kind !== 'vocus') {
     const p = periodKey(d, h.weeks), key = h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`;
-    T.push({ id: 'p_' + h.id, week: true, name: `${h.e} ${h.n}・${periodWord(h)} ${h.target} 天`, n: Math.min(perCount(D, h, p), h.target), of: h.target, logs: byKey(key) });
+    T.push({ id: 'p_' + h.id, week: true, name: `${h.e} ${h.n}・${periodWord(h)} ${h.target} 天`, go: 'habits',
+      how: `${periodWord(h)}（${mdOf(p)}–${mdOf(addDays(p, 7 * h.weeks - 1))}）有 ${h.target} 天打卡`, n: Math.min(perCount(D, h, p), h.target), of: h.target, logs: byKey(key) });
   }
   for (const t of T) {
     t.pend = t.logs.filter(l => l.pend);
@@ -68,10 +72,11 @@ function quests(D) {
   const daily = T.filter(t => !t.week), week = T.filter(t => t.week), done = daily.filter(t => t.full).length;
   const row = t => {
     const st = t.pend.length ? 'pend' : t.full ? 'got' : 'todo';
+    // 領取按鈕一直都在，完成了才能按
     const right = st === 'pend' ? `<button class="pri" data-act="claim" data-v="${t.id}">領取 +${t.pend.reduce((a, l) => a + (l.c || 0), 0)}${COIN}</button>`
-      : st === 'got' ? `<span class="coin">+${t.c}${COIN}</span>` : '';
+      : `<button class="pri" disabled>${st === 'got' ? `已領 +${t.c}${COIN}` : '領取'}</button>`;
     return `<div class="qc ${st}"><i class="qbox"></i>
-      <div class="sp"><div class="qn">${esc(t.name)}</div>${t.of && !t.full ? `<div class="qprog"><div class="qbar"><i style="width:${t.n / t.of * 100}%"></i></div><small>${t.n} / ${t.of}</small></div>` : ''}</div>
+      <div class="sp" ${st === 'todo' ? `data-act="goto" data-v="${t.go}"` : ''}><div class="qn">${esc(t.name)}</div>${st === 'todo' ? `<small class="qhow">${esc(t.how)} ›</small>` : ''}${t.of && !t.full ? `<div class="qprog"><div class="qbar"><i style="width:${t.n / t.of * 100}%"></i></div><small>${t.n} / ${t.of}</small></div>` : ''}</div>
       ${right}</div>`;
   };
   return `<section class="px qhead"><div class="row"><div class="sp"><div class="label">DAILY QUESTS</div>
@@ -130,13 +135,13 @@ function today(D) {
       <div class="clock" id="tclock">--:--</div><div class="bar c"><i id="tbar" style="width:0"></i></div>
       <div class="segs">${segLine(T.segs)}</div>
       ${seg.m === 'break' ? '<button class="ghost" data-act="skipbreak">跳過休息</button>' : ''}<button class="ghost" data-act="cancel">結束</button></section>`
-    : `<section class="px">${sh('番茄鐘', 'FOCUS', `<small class="dim">今天 ${todayPomo} 段</small>`)}
+    : `<section class="px" id="pomo">${sh('番茄鐘', 'FOCUS', `<small class="dim">今天 ${todayPomo} 段</small>`)}
       <div class="pomo-set"><div class="presets">${[25, 45, 60, 90].map(m => `<button class="${pm === m ? 'sel' : ''}" data-act="pomoset" data-v="${m}">${m} 分</button>`).join('')}</div>
         <div class="pomo-go"><input type="number" id="pomoMin" min="5" max="120" step="5" value="${pm}" title="自訂總長度（分鐘）"><span class="dim">分</span>
         <button class="pri" data-act="start">開始專注</button></div></div>
       <div class="segs" id="pomoPlan">${segLine(sessionPlan(pm))}</div>
       <div class="mini">每天第一段專注滿 ${CONFIG.pomoRewardMin} 分鐘有獎勵。</div></section>`;
-  const habits = UI.habEdit ? habitEditor() : `<section class="px">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
+  const habits = UI.habEdit ? habitEditor() : `<section class="px" id="habits">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
       <div class="habits">${chips}</div>
       ${risky.length ? `<div class="warn">昨天漏了 ${esc(risky.join('、'))}，今天做到就不會斷。</div>` : ''}</section>`;
   return `${setup}${habits}
@@ -196,7 +201,7 @@ function renderSheet() {
   const h = habit(UI.sheet.id); if (!h) { UI.sheet = null; renderSheet(); return; }
   const D = derive(), s = streaks(D)[h.id], day = UI.sheet.day, d = addDays(dayKey(), day), list = dayChecks(d, h.id);
   // 這一期的日期範圍，例如「本週（11/2–11/8）」
-  const p0 = h.weeks && periodKey(dayKey(), h.weeks), md = k => k.slice(5).replace('-', '/').replace(/^0/, '').replace('/0', '/');
+  const p0 = h.weeks && periodKey(dayKey(), h.weeks), md = mdOf;
   const goal = h.weeks ? `${h.weeks === 1 ? '每週' : '每兩週'} ${h.target} ${countWord(h)}・${periodWord(h)}（${md(p0)}–${md(addDays(p0, 7 * h.weeks - 1))}）${perCount(D, h, p0)}/${h.target}` : '每天';
   let body;
   if (h.kind === 'exercise') {
