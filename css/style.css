@@ -327,6 +327,7 @@ body.focusing{overflow:hidden}
   .prow .no{width:36px;height:34px;padding:0}
   .star{min-width:38px;min-height:36px}
   .pdel{width:34px;min-height:34px}
+  span.pdel{display:none}   /* 前三件沒有刪除鈕，不留空位，輸入框才夠寬 */
   .seg-switch button{padding:7px 14px}
   .sh button.sm{padding:7px 12px}
   .qc .sp[data-act="goto"]{align-self:stretch;display:flex;flex-direction:column;justify-content:center;min-height:36px}
