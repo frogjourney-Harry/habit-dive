@@ -240,7 +240,7 @@ function renderSheet() {
     el.style.textAlign = 'center';
     el.innerHTML = `<div class="row"><span class="rar" style="background:${R.color}">${R.name}</span><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
       ${stageImg(c, seen, big, false, 'pop')}
-      <h2>${c.name}</h2><p class="dim" style="margin:0 0 8px">${c.fact}</p>
+      <h2>${c.name}</h2>${c.alias ? `<div class="alias">俗稱 ${c.alias}</div>` : ''}<p class="dim" style="margin:0 0 8px">${c.fact}</p>
       <div class="stages">${[1, 2, 3].map(s => `<div>${stageImg(c, s, 3, s > seen)}<small class="${s > seen ? 'dim' : ''}">${s > seen ? '？？？' : stageName(c, s)}</small></div>`).join('')}</div>
       <div class="mini">吃到 ${GROW[1]} 顆長成成體、${GROW[2]} 顆變成特殊型態</div>
       <div class="sub">${P.length ? `擁有 ${P.length}/${MAX_PETS} 隻` : derive().col[c.id] ? '都放生了，再抽到會回來。' : '還沒抽到，可以從商店的寶箱開出來。'}</div>`;
