@@ -253,7 +253,7 @@ function checkInvariants(I, label = '') {
   if (I.opts.storage !== 'blocked' && I.opts.storage !== 'blocked-getter' && I.opts.storage !== 'full') {
     if (!st) add('localStorage 裡沒有存檔'); else {
       const a = JSON.parse(JSON.stringify(S)), b = JSON.parse(JSON.stringify(st));
-      delete a.shop; delete b.shop;
+      delete a.shop; delete b.shop; if (UI.habEdit) { delete a.habits; delete b.habits; }   // 正在編輯習慣時，草稿本來就和存檔不同
       // 只存在記憶體的空資料不算差異：空的 held、沒寫任何字的六件事草稿（看過就會建立）
       for (const o of [a, b]) { if (o.held && !Object.keys(o.held).length) delete o.held; for (const [d, P] of Object.entries(o.plans || {})) if (P.every(x => !x.text && !x.done)) delete o.plans[d]; }
       if (JSON.stringify(a) !== JSON.stringify(b)) { const ks = Object.keys(a).filter(k => JSON.stringify(a[k]) !== JSON.stringify(b[k])); add('記憶體和存檔不一致：' + ks.join(',')); }

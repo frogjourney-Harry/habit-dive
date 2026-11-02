@@ -524,7 +524,7 @@ function tankStart() {
 const shopItems = () => (S.shop || CONFIG.shop).filter(x => String(x.name || '').trim())
   .map(x => ({ ...x, price: Math.max(1, Math.round(+x.price) || 1) }));
 function finishShop() {
-  S.shop = S.shop.filter(x => x.name.trim()).map(x => ({ ...x, icon: String(x.icon).trim() || '🎁', price: Math.max(1, Math.round(+x.price) || 1) }));
+  S.shop = (Array.isArray(S.shop) ? S.shop : shopItems()).filter(x => x.name.trim()).map(x => ({ ...x, icon: String(x.icon).trim() || '🎁', price: Math.max(1, Math.round(+x.price) || 1) }));
   UI.shopEdit = false; save();
 }
 function finishHabits() {
@@ -547,6 +547,7 @@ function chestOdds(ch, D) {
   return `已收集 ${got}/${pool.length}${ch.feed ? `・${ch.feed}% 開出飼料` : ''}`;
 }
 function shop(D) {
+  if (UI.shopEdit && !Array.isArray(S.shop)) S.shop = shopItems().map(x => ({ ...x }));
   const hist = S.logs.filter(l => l.k === 'redeem').slice(-5).reverse();   // 只留最近 5 筆
   if (UI.shopEdit) return `<section class="px shop">${sh('編輯獎勵', 'REWARDS', '<button class="pri" data-act="shopdone">完成</button>')}
     <div class="mini">設定你真的想要的獎勵。參考：每天大約能賺 ${CONFIG.coinsPerDay} 金幣。</div>

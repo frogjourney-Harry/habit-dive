@@ -36,8 +36,8 @@ const summary = s => { const D = deriveOf(s); return `Lv.${levelOf(D.xp)}・${D.
 function deriveOf(s) { const keep = S; S = s; try { return derive(); } finally { S = keep; } }
 
 function adopt(cloud, keepTimer = false) {
-  const timer = S.timer;
-  S = migrate(Object.assign(blank(), cloud));
+  const timer = S.timer, old = S;
+  S = migrate(Object.assign(blank(), cloud)); carryEditDrafts(old);
   if (keepTimer && !S.timer && timer) S.timer = timer;
   S.cloudUid = CLOUD.user.uid;
   save(false); render();

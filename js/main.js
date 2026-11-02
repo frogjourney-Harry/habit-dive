@@ -90,11 +90,11 @@ document.addEventListener('click', async e => {
       if (customCount() >= CONFIG.maxCustom) break;
       S.habits.push({ id: 'h' + rid(), e: '⭐', n: '', kind: 'custom', weeks: 0, target: 1 }); save(); render(); break;
     case 'habdel': {
-      const h = S.habits[+v];
+      const h = S.habits[+v]; if (!h) break;
       if (!(await ask(`刪除習慣「${h.n || '（未命名）'}」？\n過去的紀錄會保留，只是不再顯示和計算。`, '刪除'))) break;
       h.off = true; save(); render(); break;
     }
-    case 'habrestore': { const h = S.habits.find(x => x.id === v); h.off = false; save(); render(); break; }
+    case 'habrestore': { const h = S.habits.find(x => x.id === v); if (!h) break; h.off = false; save(); render(); break; }
     case 'gcatadd': S.gcats.push({ id: 'g' + rid(), e: '🔖', n: '' }); save(); render(); break;
     case 'gcatdel': S.gcats[+v].off = true; save(); render(); break;
     case 'vcfg': {
@@ -103,8 +103,8 @@ document.addEventListener('click', async e => {
       S.vocusSet = true; save(); render(); toast(`設定好了：每 ${V.weeks} 週至少 ${V.target} 篇`); break;
     }
     case 'shopedit': S.shop = shopItems().map(x => ({ ...x })); UI.shopEdit = true; render(); break;
-    case 'shopadd': S.shop.push({ id: 'c' + Date.now(), icon: '🎁', name: '', price: 100 }); save(); render(); break;
-    case 'shopdel': S.shop.splice(+v, 1); save(); render(); break;
+    case 'shopadd': S.shop = S.shop || []; S.shop.push({ id: 'c' + Date.now(), icon: '🎁', name: '', price: 100 }); save(); render(); break;
+    case 'shopdel': if (S.shop) S.shop.splice(+v, 1); save(); render(); break;
     case 'shopdone': finishShop(); render(); toast('商店已更新'); break;
     case 'openchest': openChest(); break;
     case 'close': UI.opened = false; nextChest(); break;
@@ -258,10 +258,11 @@ document.addEventListener('input', e => {
     if (p) p.textContent = paceText({ type: document.getElementById('exType').value, dist: g('dist'), m: g('m'), min: g('min') });
     return;
   }
-  if (el.dataset.sf) { S.shop[el.dataset.si][el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); return; }
-  if (el.dataset.gf) { S.gcats[el.dataset.gi][el.dataset.gf] = el.value; save(); return; }
+  if (el.dataset.sf) { const it = S.shop && S.shop[el.dataset.si]; if (it) { it[el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); } return; }
+  if (el.dataset.gf) { const g = S.gcats && S.gcats[el.dataset.gi]; if (g) { g[el.dataset.gf] = el.value; save(); } return; }
   if (el.dataset.hf) {
     const h = S.habits[el.dataset.hi], f = el.dataset.hf;
+    if (!h) return;
     h[f] = f === 'weeks' || f === 'target' ? +el.value : el.value;
     save(); if (f === 'weeks') render();
     return;
@@ -287,6 +288,7 @@ document.getElementById('importFile').addEventListener('change', async e => {
 let syncPending = false;
 function refreshFromStorage() {
   if (!syncFromStorage()) return;
+  renderStat(); renderFocus();   // 上方的金幣、等級和專注畫面不受輸入框影響，馬上更新
   const a = document.activeElement;
   if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { syncPending = true; return; }
   render(); renderSheet(); tick();

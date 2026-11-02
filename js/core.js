@@ -143,8 +143,16 @@ function save(push = true) {
 function syncFromStorage() {
   let j; try { j = JSON.parse(localStorage.getItem(KEY)); } catch (e) { return false; }
   if (!j || typeof j !== 'object' || !Array.isArray(j.logs) || (j.mtime || 0) <= (S.mtime || 0)) return false;
-  try { S = migrate(Object.assign(blank(), j)); } catch (e) { return false; }
+  const old = S;
+  try { S = migrate(Object.assign(blank(), j)); } catch (e) { S = old; return false; }
+  carryEditDrafts(old);
   return true;
+}
+// 正在編輯習慣或獎勵商店時，從別處同步進來的紀錄不能把編輯中的草稿換掉（欄位對應的位置會錯亂，獎勵商店甚至會整個壞掉）
+function carryEditDrafts(old) {
+  if (typeof UI === 'undefined') return;
+  if (UI.shopEdit && Array.isArray(old.shop)) S.shop = old.shop;
+  if (UI.habEdit && Array.isArray(old.habits)) S.habits = old.habits;
 }
 
 /* ========= 存檔瘦身 ========= */
