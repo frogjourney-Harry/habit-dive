@@ -134,7 +134,7 @@ function renderSheet() {
   const ov = document.getElementById('sheetov'), el = document.getElementById('sheet');
   if (!UI.sheet) { ov.classList.add('hidden'); return; }
   ov.classList.remove('hidden');
-  if (UI.sheet.creature) {   // 圖鑑放大：三種成長外觀＋擁有的每一隻
+  if (UI.sheet.creature) {   // 圖鑑放大：介紹、三種成長外觀、擁有幾隻
     const c = CR[UI.sheet.creature], R = RARITY[c.r], P = pets(c.id), seen = seenStage(c.id);
     const big = Math.max(3, Math.min(8, Math.floor(110 / Math.max(...c.px.map(r => r.length)))));
     el.style.textAlign = 'center';
@@ -143,9 +143,7 @@ function renderSheet() {
       <h2>${c.name}</h2><p class="dim" style="margin:0 0 8px">${c.fact}</p>
       <div class="stages">${[1, 2, 3].map(s => `<div>${stageImg(c, s, 3, s > seen)}<small class="${s > seen ? 'dim' : ''}">${s > seen ? '？？？' : stageName(c, s)}</small></div>`).join('')}</div>
       <div class="mini">吃到 ${GROW[1]} 顆長成成體、${GROW[2]} 顆變成特殊型態</div>
-      <div class="sub" style="text-align:left">擁有 ${P.length}/${MAX_PETS} 隻</div>
-      ${P.map(p => `<div class="entry" style="text-align:left">${stageImg(c, stageOf(p.fed), 2)}
-        <span class="sp">${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</span></div>`).join('') || '<div class="dim" style="text-align:left">都放生了，再抽到會回來。</div>'}
+      <div class="sub">${P.length ? `擁有 ${P.length}/${MAX_PETS} 隻` : '都放生了，再抽到會回來。'}</div>
       <div class="mini">放生和放進水族箱，在「水族箱 → 設定」調整。</div>`;
     return;
   }
@@ -252,9 +250,7 @@ const TANK_SPECIES = {
 };
 const STAGE_SCALE = [1, 1, 1.1];   // 幼體圖本身就比較小
 const FEED = { free: 3, pack: 10, price: 30 };            // 每天免費 3 顆；商店 30 金幣買 10 顆
-// 水族箱設定：S.tankCfg[物種] = { size: 0.6／1／1.3 }；哪幾隻放進去記在 S.outTank
-const SIZES = [[.6, '小'], [1, '標準'], [1.3, '大']];
-const tankSize = id => (S.tankCfg && S.tankCfg[id] && S.tankCfg[id].size) || 1;
+// 水族箱設定：哪幾隻放進去記在 S.outTank
 const freeLeft = () => S.feedDay && S.feedDay.d === dayKey() ? Math.max(0, FEED.free - S.feedDay.used) : FEED.free;
 const feedLeft = () => freeLeft() + (S.feed || 0);
 function useFeed() {
@@ -289,11 +285,10 @@ function tankFeedText() {
 function tankEditor(D) {
   const owned = CREATURES.filter(c => pets(c.id).length);
   return `<section class="px">${sh('水族箱設定', 'AQUARIUM', '<button class="pri" data-act="tankdone">完成</button>')}
-    <div class="mini">勾選要放進水族箱的個體、調整每種生物的大小，不想養的可以放生。</div>
+    <div class="mini">勾選要放進水族箱的個體，不想養的可以放生。</div>
     ${owned.map(c => {
       const P = pets(c.id);
-      return `<div class="tset"><div class="row"><b class="sp">${c.name}</b><small class="dim">大小</small>
-        <select data-tf="size" data-tv="${c.id}">${SIZES.map(([v, l]) => `<option value="${v}" ${tankSize(c.id) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      return `<div class="tset"><div class="row"><b class="sp">${c.name}</b></div>
         ${P.map(p => `<div class="entry"><label class="row sp" style="gap:8px"><input type="checkbox" data-act="intank" data-v="${p.id}" ${inTank(p.id) ? 'checked' : ''}>
           ${stageImg(c, stageOf(p.fed), 3)}<small>${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</small></label>
           <button class="ghost" data-act="release" data-v="${p.id}">放生</button></div>`).join('')}</div>`;
@@ -317,11 +312,11 @@ function tankStart() {
   const floorY = H - 16;
   const prev = new Map((TANK.fish || []).map(f => [f.key, f]));   // 重畫（例如買飼料）時，每一隻留在原位
   TANK.food = TANK.food || []; TANK.bub = TANK.bub || [];
-  // 外觀和體型跟著型態走：物種大小 × 自訂大小 × 型態大小
+  // 外觀和體型跟著型態走：物種大小 × 型態大小
   const look = f => {
     const st = stageOf(fedOf(f.key));
     f.st = st; f.s = stageCanvas(f.c, st);
-    const sc = TANK_SPECIES[f.c.id][0] * tankSize(f.c.id) * STAGE_SCALE[st - 1];
+    const sc = TANK_SPECIES[f.c.id][0] * STAGE_SCALE[st - 1];
     f.w = Math.round(f.s.width * sc); f.h = Math.round(f.s.height * sc);
   };
   TANK.fish = [];
