@@ -112,7 +112,8 @@ function reconcile(allowGrant) {
       if (S.held[key]) { S.logs.push(S.held[key]); delete S.held[key]; }
       else if (allowGrant) grant(kind, null, { key, title, xp });
     } else if (!ok && has) {
-      const i = S.logs.findIndex(l => l.key === key);
+      // 已經領走的就不收回（金幣可能已經花掉，收回會變負的）；還沒領的先收起來，條件回來再還
+      const i = S.logs.findIndex(l => l.key === key && l.pend);
       if (i >= 0) S.held[key] = S.logs.splice(i, 1)[0];
     }
   }

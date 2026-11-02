@@ -120,8 +120,8 @@ document.addEventListener('click', async e => {
       reward(() => {
         if (UI.pday !== 0) { if (it.done) SFX.tap(); return; }
         if (!it.done) {
-          let i = S.logs.findIndex(l => it.lid && l.id === it.lid);
-          if (i < 0 && it.rw) {
+          let i = S.logs.findIndex(l => it.lid && l.id === it.lid && l.pend);   // 已經領走的不收回
+          if (i < 0 && it.rw && !S.logs.some(l => it.lid && l.id === it.lid)) {
             const linked = new Set(Object.values(S.plans).flat().map(x => x.lid).filter(Boolean));
             for (let j = S.logs.length - 1; j >= 0; j--) {
               const l = S.logs[j];
@@ -208,7 +208,7 @@ document.addEventListener('keydown', e => {
   } else if (e.key === 'Escape' && UI.sheet) { UI.sheet = null; renderSheet(); }
 });
 // 六件事拖曳排序：按住編號往上或往下拖，放開就移到那個位置（只點一下還是「點兩個編號交換」）
-const DRAG = { i: null, y0: 0, moved: false, to: null, block: false };
+const DRAG = { i: null, y0: 0, moved: false, to: null, until: 0 };
 document.addEventListener('pointerdown', e => {
   const b = e.target.closest('#six .prow .no'); if (!b || UI.pday < 0) return;
   Object.assign(DRAG, { i: +b.dataset.v, y0: e.clientY, moved: false, to: +b.dataset.v });
@@ -227,12 +227,12 @@ document.addEventListener('pointerup', () => {
   if (DRAG.i == null) return;
   const { i, to, moved } = DRAG; DRAG.i = null;
   if (!moved) return;
-  DRAG.block = true;   // 拖完放開時的 click 不要再當成「點編號交換」
+  DRAG.until = performance.now() + 350;   // 拖完放開時緊接著的 click 不要再當成「點編號交換」（觸控拖曳不會有 click，所以只擋一下子）
   if (to === i) { render(); return; }
   const P = getPlan(viewDay()); P.splice(to, 0, P.splice(i, 1)[0]); UI.swap = null;
   reward(() => {}, UI.pday === 0); toast(`移到第 ${to + 1} 件`);
 });
-document.addEventListener('click', e => { if (DRAG.block) { DRAG.block = false; if (e.target.closest('.prow .no')) { e.stopPropagation(); e.preventDefault(); } } }, true);
+document.addEventListener('click', e => { if (performance.now() < DRAG.until && e.target.closest('.prow .no')) { DRAG.until = 0; e.stopPropagation(); e.preventDefault(); } }, true);
 // 輸入框只存資料不重畫，避免打字時失去焦點
 document.addEventListener('input', e => {
   const el = e.target, i = el.dataset.i;
