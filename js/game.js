@@ -173,6 +173,8 @@ function tick() {
   if (!S.timer) { document.title = '習慣深潛'; return; }
   let T = S.timer;
   if (!T.segs) S.timer = T = { segs: [{ m: T.mode === 'break' ? 'break' : 'focus', min: Math.round(T.dur / 60e3) }], si: 0, start: T.start };
+  // 系統時間被往回調：起點跑到「未來」了，從現在重新計這一段，不然會多等很久（容許其他裝置同步過來的幾十秒誤差）
+  if (T.start > Date.now() + 60e3) { T.start = Date.now(); save(false); }
   if (Date.now() >= T.start + T.segs[T.si].min * 60e3) {
     while (S.timer && Date.now() >= S.timer.start + S.timer.segs[S.timer.si].min * 60e3) finishSeg();
     return;

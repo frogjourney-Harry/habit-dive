@@ -67,11 +67,15 @@ document.addEventListener('click', async e => {
     }
     case 'exadd': {
       const type = document.getElementById('exType').value, e = { type };
+      let skipped = false;
       for (const [k, , , step] of EX_FIELDS[type]) {
         const v = document.getElementById('ex_' + k).value.trim();
-        if (v) e[k] = step ? +v : v;
+        if (!v) continue;
+        if (step) { const n = +v; if (Number.isFinite(n) && n > 0 && n <= 100000) e[k] = n; else skipped = true; }   // 負數、0、無限大、離譜的大數都不收
+        else e[k] = v.slice(0, 60);
       }
-      const note = document.getElementById('ex_note').value.trim(); if (note) e.note = note;
+      const note = document.getElementById('ex_note').value.trim().slice(0, 200); if (note) e.note = note;
+      if (skipped) toast('有欄位的數字不合理，已略過');
       UI.sheet.exType = type;
       addCheck(sheetDay(), 'exercise', e); ac(); SFX.tap();
       reward(() => {}, UI.sheet.day === 0); break;

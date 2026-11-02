@@ -154,7 +154,7 @@ function today(D) {
     return `${divider}<div class="prow ${it.done ? 'done' : ''}">
       <input type="checkbox" data-act="pdone" data-v="${i}" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
       <button class="ghost no ${UI.swap === i ? 'sel' : ''}" data-act="swap" data-v="${i}" title="按住拖曳排序，或點兩個編號交換">${i + 1}</button>
-      <input class="ptext" data-pf="text" data-i="${i}" value="${esc(it.text)}" placeholder="${i === 0 ? '今天最重要的事' : ''}">
+      <input class="ptext" data-pf="text" data-i="${i}" maxlength="200" value="${esc(it.text)}" placeholder="${i === 0 ? '今天最重要的事' : ''}">
       <button class="ghost star" data-act="fav" data-v="${i}" title="${starred ? '從常用移除' : '存成常用'}">${starred ? '★' : '☆'}</button>
       ${i >= CONFIG.rewardRows && UI.pday >= 0 ? `<button class="ghost pdel" data-act="prowdel" data-v="${i}" title="刪掉這件">✕</button>` : '<span class="pdel"></span>'}</div>`;
   }).join('');
@@ -259,13 +259,13 @@ function renderSheet() {
         <select id="exType">${ETAGS.map(t => `<option ${t === type ? 'selected' : ''}>${t}</option>`).join('')}</select>
         ${EX_FIELDS[type].map(([k, label, unit, step]) => step
           ? `<input id="ex_${k}" class="f-num" type="number" min="0" step="${step}" placeholder="${label}${unit ? `（${unit}）` : ''}">`
-          : `<input id="ex_${k}" class="f-wide" placeholder="${label}">`).join('')}
+          : `<input id="ex_${k}" class="f-wide" maxlength="60" placeholder="${label}">`).join('')}
         <span class="dim" id="exPace" style="align-self:center"></span>
-        <input id="ex_note" class="f-wide" placeholder="備註">
+        <input id="ex_note" class="f-wide" maxlength="200" placeholder="備註">
       </div><button class="pri wide" data-act="exadd">記錄這次${type}</button>`;
   } else if (h.kind === 'vocus') body = `
       ${list.map((e, i) => `<div class="entry"><span class="sp">${esc(e.title || '（無標題）')}</span><button class="ghost" data-act="chkdel" data-v="${i}">✕</button></div>`).join('')}
-      <div class="form"><input id="artTitle" class="f-wide" placeholder="發布的文章標題（可留空）"></div>
+      <div class="form"><input id="artTitle" class="f-wide" maxlength="120" placeholder="發布的文章標題（可留空）"></div>
       <button class="pri wide" data-act="artadd">記錄發布的文章</button>`;
   else body = list.length
       ? `<button class="wide" data-act="chk">✓ 已完成，點一下取消</button>`
@@ -404,6 +404,12 @@ function tank(D) {
       <button data-act="buyfeed">買飼料 ${FEED.pack} 顆・${FEED.price}${COIN}</button></div>
     <div class="mini">點水面撒飼料，吃到的那一隻會長大（幼體 → 成體 → 特殊型態）。</div></section>`;
 }
+// 視窗大小改變（手機轉橫向、電腦拉視窗）時重新量水族箱，不然畫面會被拉扁；每一隻留在原位
+let tankResizeTimer = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(tankResizeTimer);
+  tankResizeTimer = setTimeout(() => { if (UI.tab === 'tank' && !UI.tankEdit && UI.tankView !== 'dex' && document.getElementById('tank')) tankStart(); }, 120);
+});
 function tankStart() {
   cancelAnimationFrame(TANK.raf);
   const cv = document.getElementById('tank'); if (!cv) return;
@@ -541,8 +547,8 @@ function shop(D) {
   if (UI.shopEdit) return `<section class="px shop">${sh('編輯獎勵', 'REWARDS', '<button class="pri" data-act="shopdone">完成</button>')}
     <div class="mini">設定你真的想要的獎勵。參考：每天大約能賺 ${CONFIG.coinsPerDay} 金幣。</div>
     ${S.shop.map((it, i) => `<div class="it">
-      <input data-sf="icon" data-si="${i}" value="${esc(it.icon)}" style="width:52px;text-align:center" title="圖示（可貼 emoji）">
-      <input class="sp" data-sf="name" data-si="${i}" value="${esc(it.name)}" placeholder="獎勵名稱，例如：吃甜點（100 元內）">
+      <input data-sf="icon" data-si="${i}" maxlength="8" value="${esc(it.icon)}" style="width:52px;text-align:center" title="圖示（可貼 emoji）">
+      <input class="sp" data-sf="name" data-si="${i}" maxlength="40" value="${esc(it.name)}" placeholder="獎勵名稱，例如：吃甜點（100 元內）">
       <input type="number" min="1" data-sf="price" data-si="${i}" value="${it.price}" style="width:90px">${COIN}
       <button class="ghost" data-act="shopdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
     <div class="row" style="margin-top:8px"><button data-act="shopadd">＋ 新增獎勵</button></div></section>`;
