@@ -235,7 +235,7 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
   .clock{font-size:50px}
   .stat{grid-template-columns:1fr 1fr}
   .dex{grid-template-columns:repeat(3,1fr);gap:8px}
-  .tank{height:300px}
+  .tank{height:360px}
   .toast{bottom:calc(76px + env(safe-area-inset-bottom))}
 }
 
@@ -316,3 +316,6 @@ nav .badge{display:inline-block;min-width:16px;height:16px;margin-left:4px;paddi
 .fbox .segs{justify-content:center}
 @keyframes bob{50%{transform:translateY(-8px)}}
 body.focusing{overflow:hidden}
+#six .prow .no{touch-action:none;cursor:grab}
+.prow.drag{position:relative;z-index:2;background:var(--panel2);opacity:.9}
+.prow.over{box-shadow:inset 0 0 0 2px var(--coin)}

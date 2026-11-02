@@ -207,6 +207,32 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { e.preventDefault(); ask.res(false); }
   } else if (e.key === 'Escape' && UI.sheet) { UI.sheet = null; renderSheet(); }
 });
+// 六件事拖曳排序：按住編號往上或往下拖，放開就移到那個位置（只點一下還是「點兩個編號交換」）
+const DRAG = { i: null, y0: 0, moved: false, to: null, block: false };
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest('#six .prow .no'); if (!b || UI.pday < 0) return;
+  Object.assign(DRAG, { i: +b.dataset.v, y0: e.clientY, moved: false, to: +b.dataset.v });
+  try { b.setPointerCapture(e.pointerId); } catch (_) {}
+});
+document.addEventListener('pointermove', e => {
+  if (DRAG.i == null) return;
+  if (!DRAG.moved && Math.abs(e.clientY - DRAG.y0) < 8) return;
+  DRAG.moved = true;
+  const rows = [...document.querySelectorAll('#six .prow')], mid = r => { const q = r.getBoundingClientRect(); return q.top + q.height / 2; };
+  DRAG.to = rows.reduce((best, r, k) => Math.abs(mid(r) - e.clientY) < Math.abs(mid(rows[best]) - e.clientY) ? k : best, 0);
+  rows.forEach((r, k) => { r.classList.toggle('drag', k === DRAG.i); r.classList.toggle('over', k === DRAG.to && k !== DRAG.i); });
+  rows[DRAG.i].style.transform = `translateY(${e.clientY - DRAG.y0}px)`;
+});
+document.addEventListener('pointerup', () => {
+  if (DRAG.i == null) return;
+  const { i, to, moved } = DRAG; DRAG.i = null;
+  if (!moved) return;
+  DRAG.block = true;   // 拖完放開時的 click 不要再當成「點編號交換」
+  if (to === i) { render(); return; }
+  const P = getPlan(viewDay()); P.splice(to, 0, P.splice(i, 1)[0]); UI.swap = null;
+  reward(() => {}, UI.pday === 0); toast(`移到第 ${to + 1} 件`);
+});
+document.addEventListener('click', e => { if (DRAG.block) { DRAG.block = false; if (e.target.closest('.prow .no')) { e.stopPropagation(); e.preventDefault(); } } }, true);
 // 輸入框只存資料不重畫，避免打字時失去焦點
 document.addEventListener('input', e => {
   const el = e.target, i = el.dataset.i;

@@ -155,7 +155,7 @@ function today(D) {
     const starred = it.text.trim() && favs.includes(it.text.trim());
     return `${divider}<div class="prow ${it.done ? 'done' : ''}">
       <input type="checkbox" data-act="pdone" data-v="${i}" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
-      <button class="ghost no ${UI.swap === i ? 'sel' : ''}" data-act="swap" data-v="${i}" title="點兩個編號交換順序">${i + 1}</button>
+      <button class="ghost no ${UI.swap === i ? 'sel' : ''}" data-act="swap" data-v="${i}" title="按住拖曳排序，或點兩個編號交換">${i + 1}</button>
       <input class="ptext" data-pf="text" data-i="${i}" value="${esc(it.text)}" placeholder="${i === 0 ? '今天最重要的事' : ''}">
       <button class="ghost star" data-act="fav" data-v="${i}" title="${starred ? '從常用移除' : '存成常用'}">${starred ? '★' : '☆'}</button>
       ${i >= CONFIG.rewardRows && UI.pday >= 0 ? `<button class="ghost pdel" data-act="prowdel" data-v="${i}" title="刪掉這件">✕</button>` : '<span class="pdel"></span>'}</div>`;
@@ -177,7 +177,7 @@ function today(D) {
   return `${UI.pday === 0 ? nextStep(D, P) : ''}${setup}${habits}
     <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
       <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}・${hint}</div>
-      ${UI.pday >= 0 && !S.tipSix ? `<div class="tip row"><span class="sp">小技巧：點編號可以換順序，點 ☆ 存成常用。</span><button class="ghost" data-act="tipsix">知道了</button></div>` : ''}
+      ${UI.pday >= 0 && !S.tipSix ? `<div class="tip row"><span class="sp">小技巧：按住編號拖曳可以排順序，點 ☆ 存成常用。</span><button class="ghost" data-act="tipsix">知道了</button></div>` : ''}
       ${UI.pday >= 0 ? favBar : ''}${rows}
       ${shown < P.length && UI.pday >= 0 ? `<button class="ghost addrow" data-act="addrow">＋ 再加一件${shown === CONFIG.rewardRows ? '（只做紀錄）' : ''}</button>` : ''}
       ${UI.pday < 0 || claimed ? '' : '<div class="row" style="margin-top:8px"><button class="pri" data-act="plansave">寫好了</button></div>'}</section>
@@ -346,8 +346,8 @@ function dex(D) {
 const TANK_SPECIES = {
   clown: [1, .45], damsel: [.9, .6], butterfly: [1, .4], star: [1, .05, 1], hermit: [1, .18, 1], urchin: [1, .04, 1],
   turtle: [1.7, .2], octopus: [1.3, .25], nudi: [.9, .07, 1], lion: [1.3, .2], puffer: [1.1, .25], cuttle: [1.3, .35],
-  seahorse: [1, .1], shark: [2.3, .7], moray: [1.8, .3], jelly: [1.3, .08], manta: [2.1, .35], mola: [2.3, .15],
-  dolphin: [2.2, .9], whaleshark: [3.3, .2],
+  seahorse: [1, .1], shark: [1.6, .7], moray: [1.3, .3], jelly: [1.3, .08], manta: [1.7, .35], mola: [1.8, .15],
+  dolphin: [1.8, .9], whaleshark: [2.6, .2],
 };
 const STAGE_SCALE = [1, 1, 1.1];   // 幼體圖本身就比較小
 const FEED = { free: 3, pack: 10, price: 30 };            // 每天免費 3 顆；商店 30 金幣買 10 顆
@@ -408,10 +408,10 @@ function tank(D) {
 function tankStart() {
   cancelAnimationFrame(TANK.raf);
   const cv = document.getElementById('tank'); if (!cv) return;
-  const W = Math.max(240, Math.floor(cv.clientWidth / 2)), H = Math.floor(cv.clientHeight / 2);   // 以 2 倍像素畫，維持像素感
+  const W = Math.floor(cv.clientWidth / 3), H = Math.floor(cv.clientHeight / 3);   // 每一格固定 3 個螢幕像素，手機上也看得清楚
   cv.width = W; cv.height = H;
   const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
-  const floorY = H - 16;
+  const floorY = H - 12;
   const prev = new Map((TANK.fish || []).map(f => [f.key, f]));   // 重畫（例如買飼料）時，每一隻留在原位
   TANK.food = TANK.food || []; TANK.bub = TANK.bub || [];
   // 外觀和體型跟著型態走：物種大小 × 型態大小
