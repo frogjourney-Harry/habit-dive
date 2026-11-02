@@ -10,8 +10,8 @@ function renderStat(D = derive()) {
 function render() {
   const D = derive();
   renderStat(D);
-  document.getElementById('banner').innerHTML = IN_APP && !UI.iabOk
-    ? `<div class="banner row"><span class="sp">你正在 App 內建的瀏覽器裡開啟，這裡的紀錄跟 Chrome、Safari 是分開的。建議用右上角選單「用瀏覽器開啟」。</span><button class="ghost" data-act="iabok">知道了</button></div>` : '';
+  document.getElementById('banner').innerHTML = (STORAGE_OK ? '' : `<div class="banner warn">這個瀏覽器目前無法儲存紀錄（可能是無痕模式，或封鎖了網站資料）。紀錄只在這個分頁裡，關掉就會消失。到「更多」→「備份」可以先下載一份。</div>`) + (IN_APP && !UI.iabOk
+    ? `<div class="banner row"><span class="sp">你正在 App 內建的瀏覽器裡開啟，這裡的紀錄跟 Chrome、Safari 是分開的。建議用右上角選單「用瀏覽器開啟」。</span><button class="ghost" data-act="iabok">知道了</button></div>` : '');
   const tabs = [['today', '今日'], ['quest', '任務'], ['tank', '水族箱'], ['shop', '商店'], ['log', '紀錄'], ['about', '更多']];
   const pendN = dailyTasks(D).filter(t => t.pend.length).length;
   document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? `<i class="badge">${pendN}</i>` : ''}</button>`).join('');

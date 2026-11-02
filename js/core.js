@@ -23,10 +23,23 @@ const OLD_CAT = { '☀️': 'wake', '💻': 'research', '✍️': 'vocus', '🏃
 // v1：六件事有 line/time/dur；v2：分類用 emoji、習慣寫死；v3：習慣可自訂；v4：習慣改在卡片上打卡（S.checks）
 function migrate(s) {
   const old = (s.v || 1) < 3;
-  s.logs = Array.isArray(s.logs) ? s.logs : [];
-  for (const l of s.logs) if (!l.id) l.id = rid();
-  s.plans = s.plans && typeof s.plans === 'object' ? s.plans : {};
-  for (const [d, P] of Object.entries(s.plans)) if (!Array.isArray(P)) delete s.plans[d];
+  s.logs = (Array.isArray(s.logs) ? s.logs : []).filter(l => l && typeof l === 'object');
+  for (const l of s.logs) {
+    if (!l.id) l.id = rid();
+    for (const k of ['c', 'xp']) if (l[k] != null && typeof l[k] !== 'number') l[k] = Number(l[k]) || 0;   // 字串數字會讓金幣變成字串相加
+  }
+  s.plans = s.plans && typeof s.plans === 'object' && !Array.isArray(s.plans) ? s.plans : {};
+  for (const [d, P] of Object.entries(s.plans)) {
+    if (!Array.isArray(P)) { delete s.plans[d]; continue; }
+    // 六件事一律剛好 6 格（舊版可能只有幾格、壞資料可能有 null）
+    const fixed = P.filter(it => it && typeof it === 'object').slice(0, 6);
+    while (fixed.length < 6) fixed.push({ text: '', cat: 'other', done: false, rw: false });
+    s.plans[d] = fixed;
+  }
+  for (const k of ['fed', 'released', 'outTank', 'held', 'seen']) if (s[k] && (typeof s[k] !== 'object' || Array.isArray(s[k]))) s[k] = {};
+  if (s.shop && !Array.isArray(s.shop)) delete s.shop;
+  if (s.habits && !Array.isArray(s.habits)) delete s.habits;
+  if (s.habits) s.habits = s.habits.filter(h => h && typeof h === 'object' && h.id);
   for (const P of Object.values(s.plans)) for (const it of P) {
     it.text = String(it.text ?? '');
     if (!it.cat) it.cat = it.line || '📌';
@@ -34,7 +47,12 @@ function migrate(s) {
     if (it.done && it.rw === undefined) it.rw = true;
     delete it.line; delete it.time; delete it.dur; delete it.cal;
   }
-  s.checks = s.checks && typeof s.checks === 'object' ? s.checks : {};
+  s.checks = s.checks && typeof s.checks === 'object' && !Array.isArray(s.checks) ? s.checks : {};
+  for (const [d, C] of Object.entries(s.checks)) {
+    if (!C || typeof C !== 'object') { delete s.checks[d]; continue; }
+    for (const [id, arr] of Object.entries(C)) { if (!Array.isArray(arr)) delete C[id]; else C[id] = arr.filter(e => e && typeof e === 'object'); if (C[id] && !C[id].length) delete C[id]; }
+    if (!Object.keys(C).length) delete s.checks[d];
+  }
   if (!s.habits) {
     s.habits = DEFAULT_HABITS.map(h => ({ ...h }));
     if (s.vcfg) { Object.assign(s.habits.find(h => h.id === 'vocus'), { weeks: s.vcfg.weeks, target: s.vcfg.target }); s.vocusSet = true; }
@@ -81,7 +99,7 @@ function migrate(s) {
     for (const c of CONFIG.generalCats) if (s.gcats.filter(x => !x.off).length < 6 && !s.gcats.some(x => x.id === c.id || x.n === c.n)) s.gcats.splice(s.gcats.length - 1, 0, { ...c });
     s.catsFilled = true;
   }
-  if (s.timer && (s.timer.k || !(s.timer.start > 0) || (s.timer.segs && !(s.timer.segs[s.timer.si] && s.timer.segs[s.timer.si].min > 0)))) delete s.timer;
+  if (s.timer && (typeof s.timer !== 'object' || s.timer.k || !(s.timer.start > 0) || (s.timer.segs && (!Array.isArray(s.timer.segs) || !(s.timer.segs[s.timer.si] && s.timer.segs[s.timer.si].min > 0))))) delete s.timer;
   // v6：生物只從商店寶箱來。舊制度（打卡、新手寶箱）送的生物收回，金幣和 XP 保留；圖鑑跟著重來
   if (s.v < 6) {
     const gone = new Set();
@@ -94,16 +112,30 @@ function migrate(s) {
   s.v = 7;
   return s;
 }
+let STORAGE_OK = true;   // 這個瀏覽器存不存得了紀錄（無痕模式、封鎖網站資料、容量滿了都會變 false）
 function load() {
-  try { const j = JSON.parse(localStorage.getItem(KEY)); if (j && Array.isArray(j.logs)) return migrate(Object.assign(blank(), j)); } catch (e) {}
+  let raw = null;
+  try { raw = localStorage.getItem(KEY); } catch (e) { STORAGE_OK = false; }
+  try { const j = JSON.parse(raw); if (j && typeof j === 'object' && Array.isArray(j.logs)) return migrate(Object.assign(blank(), j)); } catch (e) {}
+  // 讀不懂的存檔先另存一份，不要被新的空存檔蓋掉
+  if (raw) { try { localStorage.setItem(KEY + '.corrupt', raw); } catch (e) {} }
   return migrate(blank());
 }
 let S = load();
+function probeStorage() { try { localStorage.setItem(KEY + '.probe', '1'); localStorage.removeItem(KEY + '.probe'); STORAGE_OK = true; } catch (e) { STORAGE_OK = false; } }
+probeStorage();
 // push=true：使用者真的改了東西，記下修改時間並排入雲端同步；false：只寫回本機（例如剛從雲端載入）
 function save(push = true) {
   if (push) S.mtime = Date.now();
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  try { localStorage.setItem(KEY, JSON.stringify(S)); STORAGE_OK = true; } catch (e) { STORAGE_OK = false; }
   if (push && typeof cloudSchedule === 'function') cloudSchedule();
+}
+// 同一個瀏覽器開了兩個分頁時：別的分頁存了比較新的，這一頁就換成那一份，不然這一頁下一次存檔會把對方的改動整個蓋掉
+function syncFromStorage() {
+  let j; try { j = JSON.parse(localStorage.getItem(KEY)); } catch (e) { return false; }
+  if (!j || typeof j !== 'object' || !Array.isArray(j.logs) || (j.mtime || 0) <= (S.mtime || 0)) return false;
+  try { S = migrate(Object.assign(blank(), j)); } catch (e) { return false; }
+  return true;
 }
 
 /* ========= 習慣與分類 ========= */

@@ -281,6 +281,18 @@ document.getElementById('importFile').addEventListener('change', async e => {
   } catch (err) { toast('這不是有效的備份檔'); }
 });
 
+// 另一個分頁存了新的紀錄：這一頁跟上（正在打字就等放開輸入框再重畫，免得打到一半被洗掉）
+let syncPending = false;
+function refreshFromStorage() {
+  if (!syncFromStorage()) return;
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { syncPending = true; return; }
+  render(); renderSheet(); tick();
+}
+window.addEventListener('storage', e => { if (!e.key || e.key === KEY) refreshFromStorage(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFromStorage(); });
+document.addEventListener('focusout', () => { if (syncPending) { syncPending = false; setTimeout(() => { render(); renderSheet(); tick(); }, 0); } });
+
 /* ========= 啟動 ========= */
 (function init() {
   document.getElementById('logo').innerHTML = img(CR.clown.px, 3);
