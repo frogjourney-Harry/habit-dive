@@ -238,3 +238,20 @@ test('任務頁：進度、領取單項、全部領取、點未完成會跳到�
   eq([nb[1], nb[2]], [qc[1], qc[2]], '首頁進度列和任務頁數字一致');
   I.check('任務頁'); I.destroy();
 });
+
+test('獎勵名額：打勾拿獎勵→換到後面→刪掉→再打勾，不能超過 3 份', async () => {
+  const I = await startToday();
+  await I.plan(['A', 'B', 'C', 'D']);
+  await I.tick(0);                                                          // A 拿到獎勵
+  await I.click('#six [data-act=swap][data-v="0"]'); await I.click('#six [data-act=swap][data-v="3"]');   // A 換到第 4 格
+  await I.click('#six [data-act=prowdel][data-v="3"]');                     // 刪掉 A，名額空出來
+  await I.tick(0); await I.tick(1); await I.tick(2);
+  ok(rewardLogs(I).length <= 3, `一天最多 3 份打勾獎勵，現在有 ${rewardLogs(I).length} 份`);
+  // 先取消（獎勵先收起來）、再刪掉那一列
+  const J = await startToday();
+  await J.plan(['A', 'B', 'C', 'D']); await J.tick(0); await J.tick(0);     // 取消 → 獎勵收起來
+  await J.click('#six [data-act=swap][data-v="0"]'); await J.click('#six [data-act=swap][data-v="3"]'); await J.click('#six [data-act=prowdel][data-v="3"]');
+  await J.tick(0); await J.tick(1); await J.tick(2);
+  ok(rewardLogs(J).length <= 3, `取消後刪除也不能多拿：${rewardLogs(J).length} 份`);
+  I.check('A'); J.check('B'); I.destroy(); J.destroy();
+});

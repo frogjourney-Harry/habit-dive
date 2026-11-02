@@ -136,7 +136,9 @@ document.addEventListener('click', async e => {
           return;
         }
         if (it.held) { S.logs.push(it.held); delete it.held; SFX.tap(); toast('已恢復這一項的獎勵'); return; }
-        if (it.rw || +v >= CONFIG.rewardRows || getPlan(d).filter(x => x.rw).length >= CONFIG.rewardRows) { SFX.tap(); return; }
+        // 名額照「今天已經發出去的打勾獎勵」算（含先收起來的），不是看哪幾列有標記：不然把有獎勵的那件換到後面再刪掉，就能多拿
+        const given = S.logs.filter(l => l.k === 'check' && l.d === d).length + getPlan(d).filter(x => x.held).length;
+        if (it.rw || +v >= CONFIG.rewardRows || given >= CONFIG.rewardRows) { SFX.tap(); return; }
         it.rw = true;
         it.lid = grant('check', c.n, { title: `✔ ${it.text}`, xp: CONFIG.xp.check }).id;
       }, UI.pday === 0);
