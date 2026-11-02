@@ -527,7 +527,7 @@ function shop(D) {
       ${D.coins >= it.price ? `<button class="pri" data-act="redeem" data-v="${it.id}">兌換</button>`
         : `<span class="dim need">約 ${daysFor(it.price - D.coins)} 天</span>`}</div>`).join('')}
   </section>
-  <section class="px">${sh('兌換紀錄', 'HISTORY')}${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(l.name)}</span><span class="sp"></span><span class="price">${l.c}${COIN}</span></div>`).join('') : '<div class="dim">還沒有兌換過。</div>'}</section>`;
+  <section class="px">${sh('兌換紀錄', 'HISTORY', '<small class="dim">近五筆</small>')}${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(l.name)}</span><span class="sp"></span><span class="price">${l.c}${COIN}</span></div>`).join('') : '<div class="dim">還沒有兌換過。</div>'}</section>`;
 }
 
 // 最近的打卡紀錄（含運動細節、文章標題）
@@ -577,8 +577,6 @@ function log(D) {
   ${cloudSection()}
   <section class="px">${sh('設定與備份', 'SETTINGS')}
     <label class="switch"><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button><span>音效</span></label>
-    <label class="switch" style="margin-left:18px"><button class="toggle ${bgmOn() ? 'on' : ''}" data-act="bgm" role="switch" aria-checked="${bgmOn()}" aria-label="背景音"><i></i></button><span>背景音</span></label>
-    <div class="mini" style="margin-top:6px">背景音是水下的浪聲和氣泡，只在這台裝置開啟。</div>
     <div class="mini" style="margin-top:12px">${CLOUD.user ? '紀錄已同步到雲端。也可以另外下載一份備份檔。' : '紀錄只存在這個瀏覽器。換手機、換瀏覽器或清除瀏覽資料就會消失，請定期備份。'}</div>
     <div class="row" style="margin-top:6px"><button data-act="export">備份</button><button data-act="import">還原</button></div></section>`;
 }
