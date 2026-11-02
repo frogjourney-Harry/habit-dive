@@ -211,10 +211,6 @@ document.addEventListener('input', e => {
     return;
   }
   if (el.dataset.sf) { S.shop[el.dataset.si][el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); return; }
-  if (el.dataset.tf) {
-    S.tankCfg = S.tankCfg || {};
-    (S.tankCfg[el.dataset.tv] || (S.tankCfg[el.dataset.tv] = {})).size = +el.value; save(); return;
-  }
   if (el.dataset.gf) { S.gcats[el.dataset.gi][el.dataset.gf] = el.value; save(); return; }
   if (el.dataset.hf) {
     const h = S.habits[el.dataset.hi], f = el.dataset.hf;
