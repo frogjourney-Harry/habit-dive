@@ -26,15 +26,14 @@ const targetOpts = sel => [1, 2, 3, 4, 5, 6, 7].map(n => `<option ${sel === n ? 
 
 function habitEditor() {
   return `<section class="px">${sh('編輯習慣', 'HABITS', '<button class="pri" data-act="habdone">完成</button>')}
-    <div class="mini">圖示可以貼任何 emoji（Windows：Win ＋ .）。自訂習慣最多 ${CONFIG.maxCustom} 個。</div>
+    <div class="mini">自訂習慣最多 ${CONFIG.maxCustom} 個。</div>
     ${S.habits.map((h, i) => h.off ? '' : `<div class="erow">
-      <input data-hf="e" data-hi="${i}" value="${esc(h.e)}" style="width:52px;text-align:center" title="圖示">
       <input class="sp" data-hf="n" data-hi="${i}" value="${esc(h.n)}" maxlength="20" placeholder="${h.kind === 'custom' ? '習慣名稱，例如：冥想' : '習慣名稱'}">
       <select data-hf="weeks" data-hi="${i}">${freqOpts(h, h.weeks)}</select>
       ${h.weeks ? `<span class="dim">至少</span><select data-hf="target" data-hi="${i}">${targetOpts(h.target)}</select><span class="dim">${countWord(h)}</span>` : ''}
       <button class="ghost" data-act="habdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
     <div class="row" style="margin-top:8px"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣 ${customCount()}/${CONFIG.maxCustom}</button>
-      ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${h.id}">加回 ${esc(h.e)} ${esc(h.n)}</button>`).join('')}</div>
+      ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${h.id}">加回 ${esc(h.n)}</button>`).join('')}</div>
     <div class="mini">每天的習慣漏兩天才斷；每週／每兩週的習慣沒達標就斷。</div>
     </section>`;
 }
@@ -131,7 +130,7 @@ function today(D) {
       on = dayDone(D, td, h.id); sub = on ? '今天 ✓' : '今天還沒';
     }
     return `<button class="hab ${on ? 'on' : ''}" data-act="habtap" data-v="${h.id}">
-      <div class="row"><span class="hn">${esc(h.e)} ${esc(h.n)}</span><span class="sp"></span>${badge}</div>
+      <div class="row"><span class="hn">${esc(h.n)}</span><span class="sp"></span>${badge}</div>
       <div class="hs">${sub}</div></button>`;
   }).join('');
   const risky = activeHabits().filter(h => st[h.id].risk).map(h => h.n);
