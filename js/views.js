@@ -28,7 +28,7 @@ function habitEditor() {
     <div class="mini">圖示可以貼任何 emoji（Windows：Win ＋ .）。自訂習慣最多 ${CONFIG.maxCustom} 個。</div>
     ${S.habits.map((h, i) => h.off ? '' : `<div class="erow">
       <input data-hf="e" data-hi="${i}" value="${esc(h.e)}" style="width:52px;text-align:center" title="圖示">
-      <input class="sp" data-hf="n" data-hi="${i}" value="${esc(h.n)}" placeholder="${h.kind === 'custom' ? '習慣名稱，例如：冥想' : '習慣名稱'}">
+      <input class="sp" data-hf="n" data-hi="${i}" value="${esc(h.n)}" maxlength="20" placeholder="${h.kind === 'custom' ? '習慣名稱，例如：冥想' : '習慣名稱'}">
       <select data-hf="weeks" data-hi="${i}">${freqOpts(h, h.weeks)}</select>
       ${h.weeks ? `<span class="dim">至少</span><select data-hf="target" data-hi="${i}">${targetOpts(h.target)}</select><span class="dim">${countWord(h)}</span>` : ''}
       <button class="ghost" data-act="habdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
@@ -49,15 +49,15 @@ function dailyTasks(D) {
     { id: 'plan', name: '寫好今天的清單', how: '在「最重要的六件事」寫下要做的事，按「寫好了」', go: 'six', logs: byKey('plan:' + d) },
     { id: 'rows', name: `完成前 ${R} 件事`, how: `六件事的第 1～${R} 件，每打勾一件就有獎勵`, go: 'six', n: checks.length, of: R, logs: checks },
     { id: 'top3', name: `前 ${R} 件都完成`, how: `第 1～${R} 件全部打勾，再多一份獎勵`, go: 'six', logs: byKey('top3:' + d) },
+    { id: 'pomo', name: `專注一段番茄鐘`, how: `番茄鐘專注滿 ${CONFIG.pomoRewardMin} 分鐘`, go: 'pomo', logs: byKey('pomo:' + d) },
   ];
   for (const h of activeHabits())
-    T.push({ id: 'h_' + h.id, name: `${h.e} ${h.n}${h.kind === 'vocus' ? ' 發文' : ' 打卡'}`, go: 'habits',
+    T.push({ id: 'h_' + h.id, hab: true, name: `${h.e} ${h.n}${h.kind === 'vocus' ? ' 發文' : ' 打卡'}`, go: 'habits',
       how: h.kind === 'vocus' ? '點「Vocus」卡片，記錄今天發布的文章' : `點「${h.n}」卡片打卡`, logs: byKey(h.kind === 'vocus' ? 'art:' + d : `hab:${h.id}:${d}`) });
-  T.push({ id: 'pomo', name: `專注一段番茄鐘`, how: `番茄鐘專注滿 ${CONFIG.pomoRewardMin} 分鐘`, go: 'pomo', logs: byKey('pomo:' + d) });
   // 週期達標（例如本週運動 3 天）
   for (const h of activeHabits()) if (h.weeks && h.kind !== 'vocus') {
     const p = periodKey(d, h.weeks), key = h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`;
-    T.push({ id: 'p_' + h.id, week: true, name: `${h.e} ${h.n}・${periodWord(h)} ${h.target} 天`, go: 'habits',
+    T.push({ id: 'p_' + h.id, hab: true, week: true, name: `${h.e} ${h.n}・${periodWord(h)} ${h.target} 天`, go: 'habits',
       how: `${periodWord(h)}（${mdOf(p)}–${mdOf(addDays(p, 7 * h.weeks - 1))}）有 ${h.target} 天打卡`, n: Math.min(perCount(D, h, p), h.target), of: h.target, logs: byKey(key) });
   }
   for (const t of T) {
@@ -69,7 +69,9 @@ function dailyTasks(D) {
 }
 function quests(D) {
   const T = dailyTasks(D), pend = T.flatMap(t => t.pend), pc = pend.reduce((a, l) => a + (l.c || 0), 0);
-  const daily = T.filter(t => !t.week), week = T.filter(t => t.week), done = daily.filter(t => t.full).length;
+  // 拆成兩區：每日任務（清單、六件事、番茄鐘）和習慣養成（每天打卡＋本期目標）
+  const daily = T.filter(t => !t.week), done = daily.filter(t => t.full).length;
+  const base = T.filter(t => !t.hab), habD = T.filter(t => t.hab && !t.week), habW = T.filter(t => t.week);
   const row = t => {
     const st = t.pend.length ? 'pend' : t.full ? 'got' : 'todo';
     // 領取按鈕一直都在，完成了才能按
@@ -83,8 +85,9 @@ function quests(D) {
       <div class="qsum">今天完成 <b>${done}</b> / ${daily.length}</div></div>
       ${pend.length ? `<button class="pri" data-act="claim" data-v="all">全部領取 +${pc}${COIN}</button>` : ''}</div>
       <div class="bar c"><i style="width:${done / daily.length * 100}%"></i></div></section>
-    <section class="px">${sh('今日任務', 'TODAY')}${daily.map(row).join('')}</section>
-    ${week.length ? `<section class="px">${sh('本期目標', 'GOALS')}${week.map(row).join('')}</section>` : ''}
+    <section class="px">${sh('每日任務', 'DAILY')}${base.map(row).join('')}</section>
+    ${habD.length || habW.length ? `<section class="px">${sh('習慣養成', 'HABITS')}${habD.map(row).join('')}
+      ${habW.length ? `<div class="divider">本期目標</div>${habW.map(row).join('')}` : ''}</section>` : ''}
     <div class="mini" style="margin:0 6px">忘了領也沒關係，隔天會自動入帳。</div>`;
 }
 
@@ -148,7 +151,7 @@ function today(D) {
     <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
       <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}・${hint}</div>
       ${UI.pday >= 0 ? favBar : ''}${rows}
-      <div class="row" style="margin-top:8px">${UI.pday < 0 ? '' : claimed ? '<span class="done-tag">✓ 清單已寫好</span>' : '<button class="pri" data-act="plansave">寫好了</button>'}
+      <div class="row" style="margin-top:8px">${UI.pday < 0 ? '' : claimed ? '' : '<button class="pri" data-act="plansave">寫好了</button>'}
         <span class="sp"></span><small>完成 ${doneN}/${filled(P).length}</small></div></section>
     ${timer}`;
 }
