@@ -216,3 +216,31 @@ test('捲動位置：在長頁面操作後不能跳回頂端', async () => {
   ok(Math.abs(I.win.scrollY - y0) < 40, `操作後捲動位置跳了：${y0} → ${I.win.scrollY}`);
   I.destroy();
 });
+
+test('版面：全新使用者（Vocus 設定卡）和空圖鑑在最窄的手機上', async () => {
+  for (const w of [280, 320, 360]) {
+    const I = await boot({ seed: {}, width: w, height: 700 }); await I.dismiss();
+    ok(I.has('Vocus 發文節奏'), '全新使用者有節奏設定卡'); layoutAudit(I, `${w}px/全新`); I.check(`${w}px/全新`);
+    for (const t of TABS) { await I.tab(t); layoutAudit(I, `${w}px/全新/${t}`); }
+    await I.tab('tank'); await I.click('[data-act=tankview][data-v=dex]'); layoutAudit(I, `${w}px/空圖鑑`); I.check(`${w}px/空圖鑑`);
+    I.destroy();
+  }
+});
+
+test('待領取的獎勵一定領得到：刪掉習慣後它的獎勵仍在任務頁', async () => {
+  const I = await boot({ state: mkState() }); await I.dismiss();
+  await I.click(['#habits .hab', 'Vocus']); await I.click('[data-act=artadd]'); await I.dismiss(); await I.click('#sheet [data-act=sheetclose]').catch(() => {});
+  ok(I.S.logs.some(l => l.key === 'art:' + D0 && l.pend), 'Vocus 發文有待領取的獎勵');
+  await I.click('#habits [data-act=habedit]'); await I.click(I.$$('[data-act=habdel]')[0]); await I.click('#askyes'); await I.click('[data-act=habdone]');
+  await I.tab('quest'); ok(I.has('其他獎勵') || I.has('Vocus'), '刪掉習慣後，它還沒領的獎勵要在任務頁'); ok(I.$('.qall'), '全部領取還在'); I.check('刪掉有獎勵的習慣');
+  await I.click('.qall'); await I.dismiss(); eq(I.pendCount(), 0, '全部領得到'); I.check('領完'); I.destroy();
+});
+
+test('舊資料的六件事：沒有獎勵欄位的打勾不能每次開啟都變成「有獎勵」', async () => {
+  const plan = Array.from({ length: 6 }, (_, i) => ({ text: i < 5 ? '事' + i : '', cat: 'other', done: i >= 3 && i < 5 }));   // 沒有 rw 欄位，第 4、5 件有打勾
+  const I = await boot({ state: mkState({ plans: { [D0]: plan } }) }); await I.dismiss();
+  eq(I.S.plans[D0].filter(x => x.rw).length, 0, '第 4、5 件打勾沒有獎勵，不能算進獎勵名額');
+  await I.plan(['事0', '事1', '事2']); for (let i = 0; i < 3; i++) await I.tick(i);
+  eq(I.S.logs.filter(l => l.k === 'check').length, 3, '前三件還是都拿得到獎勵');
+  const J = await I.reload(); await J.dismiss(); eq(J.S.plans[D0].filter(x => x.rw).length, 3, '重開後獎勵名額仍是 3'); J.check('重開'); J.destroy(); I.destroy();
+});

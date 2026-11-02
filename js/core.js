@@ -52,7 +52,7 @@ function migrate(s) {
     it.text = String(it.text ?? '');
     if (!it.cat) it.cat = it.line || '📌';
     if (OLD_CAT[it.cat]) it.cat = OLD_CAT[it.cat];
-    if (it.done && it.rw === undefined) it.rw = true;
+    if (it.rw === undefined) it.rw = !!it.done && (s.v || 1) < 5;   // 舊制度（v5 以前）打勾都有獎勵；之後沒有欄位的一律當作沒領過，不然每次開啟都會把「沒獎勵的打勾」算成有
     delete it.line; delete it.time; delete it.dur; delete it.cal;
   }
   s.checks = s.checks && typeof s.checks === 'object' && !Array.isArray(s.checks) ? s.checks : {};

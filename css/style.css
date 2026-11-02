@@ -234,7 +234,7 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
   .pomo-go input + .dim{margin-right:6px}
   .clock{font-size:50px}
   .stat{grid-template-columns:1fr 1fr}
-  .dex{grid-template-columns:repeat(3,1fr);gap:8px}
+  .dex{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
   .tank{height:360px}
   .toast{bottom:calc(76px + env(safe-area-inset-bottom))}
 }
@@ -343,3 +343,4 @@ body.focusing{overflow:hidden}
   input[type=checkbox]{width:24px;height:24px}
   nav button{font-size:12px}
 }
+.dex .cell img{max-width:100%;height:auto}

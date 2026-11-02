@@ -67,6 +67,9 @@ function dailyTasks(D) {
       how: `${mdOf(p)}–${mdOf(days[days.length - 1])}`,
       n: Math.min(perCount(D, h, p), h.target), of: h.target, logs: [...days.flatMap(dayLogs), ...bonus] });
   }
+  // 保險：今天待領取、卻不屬於任何任務的獎勵（例如習慣已刪除）一律放進「其他獎勵」，確保一定領得到
+  const shown = new Set(T.flatMap(t => t.logs.map(l => l.id))), orphans = S.logs.filter(l => l.pend && l.d === d && !shown.has(l.id));
+  if (orphans.length) T.push({ id: 'misc', name: '其他獎勵', how: '', go: 'six', est: 0, ex: 0, logs: orphans });
   for (const t of T) {
     t.pend = t.logs.filter(l => l.pend);
     t.full = t.of ? t.n >= t.of : t.logs.length > 0;
@@ -100,7 +103,7 @@ function quests(D) {
 
 // 首頁最上面一條：今天完成幾項、下一步做什麼（點了直接跳過去）、有幾份獎勵待領
 // 每日任務完成幾項：只算「每日任務」那一區，任務頁和首頁共用
-function questCount(T) { const daily = T.filter(t => !t.hab); return { daily, done: daily.filter(t => t.full).length }; }
+function questCount(T) { const daily = T.filter(t => !t.hab && t.id !== 'misc'); return { daily, done: daily.filter(t => t.full).length }; }
 function nextStep(D, P) {
   const all = dailyTasks(D), { daily, done } = questCount(all), T = all.filter(t => !t.week);
   const pc = all.flatMap(t => t.pend).reduce((a, l) => a + (l.c || 0), 0);
