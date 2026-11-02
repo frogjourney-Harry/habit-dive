@@ -2,7 +2,7 @@
 /* ========= 可自行調整的設定 ========= */
 const CONFIG = {
   pomodoroMin: 25,            // 一段專注的長度；使用者選的是「整段工作階段」的總長度（5–120 分）
-  pomoRewardMin: 20,          // 專注滿這麼多分鐘才有獎勵
+  pomoRewardMin: 25,          // 專注滿這麼多分鐘才有獎勵
   breakMin: 5, longBreakMin: 15, longBreakEvery: 4,   // 工作階段中：每段專注後短休息，每 4 段長休息
   dayStartHour: 4,            // 凌晨 4 點前都算「前一天」
   habitDays: 66,              // Lally et al. 2010：習慣自動化所需天數中位數
