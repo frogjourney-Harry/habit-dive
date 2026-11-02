@@ -268,4 +268,3 @@ nav .dot{display:inline-block;width:7px;height:7px;margin-left:5px;vertical-alig
 .qc [data-act="goto"]:hover .qhow{color:var(--xp)}
 .qc button:disabled{opacity:.3}
 .qc.got button:disabled{opacity:.55}
-.qc + .divider{border-top:0;padding-top:4px}

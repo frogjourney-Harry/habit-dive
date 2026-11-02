@@ -132,8 +132,9 @@ document.addEventListener('click', async e => {
     }
     case 'plansave': {
       const d = viewDay();
-      if (!filled(getPlan(d)).length) { toast('至少寫下一件重要的事'); break; }
-      ac(); reward(() => grant('plan', null, { key: 'plan:' + d, d, title: '今天的清單寫好了！' })); break;
+      if (filled(getPlan(d)).length < CONFIG.rewardRows) { toast(`至少寫下 ${CONFIG.rewardRows} 件事`); break; }
+      const ahead = d > dayKey();
+      ac(); reward(() => grant('plan', null, { key: 'plan:' + d, x2: ahead, title: ahead ? '提前寫好明天的清單，獎勵 ×2！' : '今天的清單寫好了！' })); break;
     }
     case 'redeem': {
       const it = shopItems().find(x => x.id === v);
@@ -150,7 +151,7 @@ document.addEventListener('click', async e => {
     case 'tankedit': UI.tankEdit = true; render(); break;
     case 'tankview': UI.tankView = v; render(); window.scrollTo(0, 0); break;
     // 任務頁點未完成的任務：跳到「今日」頁對應的區塊（六件事、習慣、番茄鐘）
-    case 'goto': UI.tab = 'today'; UI.pday = 0; render(); { const el = document.getElementById(v); if (el) el.scrollIntoView({ block: 'start' }); } break;
+    case 'goto': { const [id, pd] = v.split(':'); UI.tab = 'today'; UI.pday = +pd || 0; render(); const el = document.getElementById(id); if (el) el.scrollIntoView({ block: 'start' }); } break;
     case 'intank': S.outTank = S.outTank || {}; if (b.checked) delete S.outTank[v]; else S.outTank[v] = true; save(); break;
     case 'release': {
       const lg = S.logs.find(l => l.id === v), c = lg && CR[lg.drop]; if (!c) break;

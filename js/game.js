@@ -31,6 +31,7 @@ function grant(kind, tag, o = {}) {
     c = CONFIG.coins.base + Math.floor(Math.random() * (CONFIG.coins.rand + 1));
     if (Math.random() < CONFIG.coins.critChance) { crit = true; c *= 2; }
   }
+  if (o.x2) { xp *= 2; c *= 2; }
   const log = { id: rid(), t: Date.now(), d: o.d || dayKey(), k: kind, tag: tag || undefined, xp, c, key: o.key, crit: crit || undefined, ...o.extra };
   if (kind === 'welcome') return dropCreature(log, null, BONUS.welcome, 0, CR.clown);   // 新手禮物：一隻小丑魚
   log.pend = true;
