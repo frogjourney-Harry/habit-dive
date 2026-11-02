@@ -21,8 +21,18 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const v = b.dataset.v;
   switch (b.dataset.act) {
-    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.tab = v; render(); window.scrollTo(0, 0); break;
-    case 'pday': UI.pday = +v; render(); break;
+    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.swap = null; UI.tab = v; render(); window.scrollTo(0, 0); break;
+    case 'pday': UI.pday = +v; UI.swap = null; render(); break;
+    // 六件事換順序：先點一個編號，再點另一個編號，兩件交換
+    case 'swap': {
+      const P = getPlan(viewDay()), i = +v, j = UI.swap;
+      if (j == null) { UI.swap = i; render(); toast('再點另一個編號交換'); break; }
+      UI.swap = null;
+      if (i === j) { render(); break; }
+      [P[i], P[j]] = [P[j], P[i]];
+      reward(() => {}, UI.pday === 0); toast(`第 ${j + 1} 件和第 ${i + 1} 件換好了`); break;
+    }
+    case 'buychest': buyChest(v); break;
     case 'iabok': UI.iabOk = true; render(); break;
     case 'start': startTimer(); break;
     case 'skipbreak': {
@@ -96,7 +106,7 @@ document.addEventListener('click', async e => {
       if (!it.text.trim()) { toast('先寫下這件事'); render(); break; }
       it.done = !it.done;
       if (it.done) ac();
-      // 只有「今天」打勾才開寶箱，每一格一天只抽一次；勾錯取消時獎勵先收進 it.held，再勾回來原封不動還回去
+      // 只有「今天」打勾才有獎勵；一天最多 rewardRows 件（換順序也不能多拿）。勾錯取消時獎勵先收進 it.held，再勾回來原封不動還回去
       reward(() => {
         if (UI.pday !== 0) { if (it.done) SFX.tap(); return; }
         if (!it.done) {
@@ -112,7 +122,7 @@ document.addEventListener('click', async e => {
           return;
         }
         if (it.held) { S.logs.push(it.held); delete it.held; SFX.tap(); toast('已恢復這一項的獎勵'); return; }
-        if (it.rw || +v >= CONFIG.rewardRows) { SFX.tap(); return; }
+        if (it.rw || +v >= CONFIG.rewardRows || getPlan(d).filter(x => x.rw).length >= CONFIG.rewardRows) { SFX.tap(); return; }
         it.rw = true;
         it.lid = grant('check', c.n, { title: `✔ ${it.text}`, xp: CONFIG.xp.check }).id;
       }, UI.pday === 0);
@@ -137,8 +147,8 @@ document.addEventListener('click', async e => {
     case 'intank': S.outTank = S.outTank || {}; if (b.checked) delete S.outTank[v]; else S.outTank[v] = true; save(); break;
     case 'release': {
       const lg = S.logs.find(l => l.id === v), c = lg && CR[lg.drop]; if (!c) break;
-      const no = pets(c.id).findIndex(p => p.id === v) + 1;
-      if (!(await ask(`放生${c.name}${pets(c.id).length > 1 ? ` ${no} 號` : ''}？\n牠會回到大海，不會再出現在水族箱。圖鑑的收集紀錄會保留。`, '放生'))) break;
+      const p = pets(c.id).find(x => x.id === v), st = p ? `（${stageName(c, stageOf(p.fed))}）` : '';
+      if (!(await ask(`放生這隻${c.name}${st}？\n牠會回到大海，不會再出現在水族箱。圖鑑的收集紀錄會保留。`, '放生'))) break;
       S.released = S.released || {}; S.released[v] = true; save(); render(); renderSheet(); toast(`${c.name}回到大海了`); break;
     }
     case 'releasepick': {

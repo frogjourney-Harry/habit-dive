@@ -6,6 +6,8 @@
   --r0:#94b0c2; --r1:#38b764; --r2:#41a6f6; --r3:#b267e6; --r4:#ffcd75;
 }
 *{box-sizing:border-box}
+/* 宣告本來就是深色頁面：Samsung 網際網路、Chrome 的「網頁強制深色」就不會再把顏色反轉；也不讓瀏覽器自動放大字 */
+html{color-scheme:dark;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{margin:0}
 body{color:var(--ink);background:var(--bg);min-height:100vh;
   font:16px/1.6 "Cascadia Mono",Consolas,"Microsoft JhengHei UI","Microsoft JhengHei",monospace}
@@ -89,7 +91,8 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .prow{display:flex;align-items:center;gap:10px;padding:5px 0}
 .prow .ptext{flex:1;min-width:0}
 .prow.done .ptext{text-decoration:line-through;color:var(--dim)}
-.prow .no{width:14px;text-align:center;color:var(--faint);font-size:14px;flex:none}
+.prow .no{width:28px;margin:0;padding:3px 0;text-align:center;color:var(--faint);font-size:14px;flex:none}
+.prow .no.sel{color:var(--coin);box-shadow:0 -2px 0 var(--coin),0 2px 0 var(--coin),-2px 0 0 var(--coin),2px 0 0 var(--coin)}
 .prow select{font-size:14px;padding:4px 4px;flex:none;max-width:42%}
 .divider{margin:10px 0 2px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;letter-spacing:.2em;color:var(--faint)}
 .seg-switch{display:inline-flex}
@@ -175,6 +178,13 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .goal{background:var(--panel2);padding:12px 14px;margin:12px 0}
 .erow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .erow input.sp{flex:1 1 100px;min-width:0}
+.tset{padding:8px 0;border-bottom:1px solid var(--line)}
+.tset .entry{border:0;padding:2px 0 2px 4px}
+.tset .entry .sprite{margin:2px 0}
+.tset select{font-size:14px}
+.shop .it.chest .ic{width:40px;text-align:center}
+.feedpile{display:flex;justify-content:center;gap:6px;margin:14px 0}
+.feedpile i{width:10px;height:10px;background:#ef7d57;box-shadow:2px 2px 0 #a6492b}
 
 /* 紀錄 */
 .heat{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;max-width:420px}

@@ -60,9 +60,9 @@ function today(D) {
       <div class="row" style="margin-top:8px">每 <select id="vW"><option value="1">1 週</option><option value="2">2 週</option></select>
         至少 <select id="vT">${targetOpts(1)}</select> 篇
         <button class="pri" data-act="vcfg">確定</button></div></section>`;
-  const hint = UI.pday < 0 ? '補登昨天：只算完成，不開寶箱。'
-    : UI.pday > 0 ? '先寫好明天的清單，寫好就能開寶箱。'
-    : `前 ${CONFIG.rewardRows} 件完成會開寶箱。點 ☆ 存成常用。`;
+  const hint = UI.pday < 0 ? '補登昨天：只算完成，沒有獎勵。'
+    : UI.pday > 0 ? '先寫好明天的清單，寫好就有獎勵。'
+    : `前 ${CONFIG.rewardRows} 件完成有金幣。點編號可以換順序，點 ☆ 存成常用。`;
   const favs = S.favs || [];
   // 常用：點一下填進第一個空格，不用每天重打
   const favBar = favs.length ? `<div class="favs"><small class="dim">常用</small>${favs.map((t, i) => `<span class="fav"><button class="ghost" data-act="usefav" data-v="${i}">${esc(t)}</button><button class="ghost x" data-act="delfav" data-v="${i}" title="從常用移除">×</button></span>`).join('')}</div>` : '';
@@ -71,7 +71,7 @@ function today(D) {
     const starred = it.text.trim() && favs.includes(it.text.trim());
     return `${divider}<div class="prow ${it.done ? 'done' : ''}">
       <input type="checkbox" data-act="pdone" data-v="${i}" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
-      <span class="no">${i + 1}</span>
+      <button class="ghost no ${UI.swap === i ? 'sel' : ''}" data-act="swap" data-v="${i}" title="點兩個編號交換順序">${i + 1}</button>
       <input class="ptext" data-pf="text" data-i="${i}" value="${esc(it.text)}" placeholder="${i === 0 ? '今天最重要的事' : ''}">
       <button class="ghost star" data-act="fav" data-v="${i}" title="${starred ? '從常用移除' : '存成常用'}">${starred ? '★' : '☆'}</button></div>`;
   }).join('');
@@ -89,7 +89,7 @@ function today(D) {
         <div class="pomo-go"><input type="number" id="pomoMin" min="5" max="120" step="5" value="${pm}" title="自訂總長度（分鐘）"><span class="dim">分</span>
         <button class="pri" data-act="start">開始專注</button></div></div>
       <div class="segs" id="pomoPlan">${segLine(sessionPlan(pm))}</div>
-      <div class="mini">專注滿 ${CONFIG.pomoRewardMin} 分鐘開一個寶箱。</div></section>`;
+      <div class="mini">專注滿 ${CONFIG.pomoRewardMin} 分鐘有獎勵。</div></section>`;
   const habits = UI.habEdit ? habitEditor() : `<section class="px">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
       <div class="habits">${chips}</div>
       ${risky.length ? `<div class="warn">昨天漏了 ${esc(risky.join('、'))}，今天做到就不會斷。</div>` : ''}</section>`;
@@ -144,10 +144,9 @@ function renderSheet() {
       <div class="stages">${[1, 2, 3].map(s => `<div>${stageImg(c, s, 3, s > seen)}<small class="${s > seen ? 'dim' : ''}">${s > seen ? '？？？' : stageName(c, s)}</small></div>`).join('')}</div>
       <div class="mini">吃到 ${GROW[1]} 顆長成成體、${GROW[2]} 顆變成特殊型態</div>
       <div class="sub" style="text-align:left">擁有 ${P.length}/${MAX_PETS} 隻</div>
-      ${P.map((p, i) => `<div class="entry" style="text-align:left">${stageImg(c, stageOf(p.fed), 2)}
-        <span class="sp">${P.length > 1 ? `${i + 1} 號・` : ''}${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</span>
-        <label class="row" style="gap:4px;flex:none"><input type="checkbox" data-act="intank" data-v="${p.id}" ${inTank(p.id) ? 'checked' : ''}><small>水族箱</small></label>
-        <button class="ghost" data-act="release" data-v="${p.id}">放生</button></div>`).join('') || '<div class="dim" style="text-align:left">都放生了，再抽到會回來。</div>'}`;
+      ${P.map(p => `<div class="entry" style="text-align:left">${stageImg(c, stageOf(p.fed), 2)}
+        <span class="sp">${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</span></div>`).join('') || '<div class="dim" style="text-align:left">都放生了，再抽到會回來。</div>'}
+      <div class="mini">放生和放進水族箱，在「水族箱 → 設定」調整。</div>`;
     return;
   }
   el.style.textAlign = '';
@@ -177,7 +176,7 @@ function renderSheet() {
   el.innerHTML = `<div class="row"><b style="font-size:18px">${esc(h.e)} ${esc(h.n)}</b><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
     <div class="mini">${goal}${s.n ? `・連續 ${s.n} ${h.weeks ? (h.weeks === 1 ? '週' : '次') : '天'}` : ''}</div>
     <div class="row" style="margin-top:10px"><span class="seg-switch">${[[0, '今天'], [-1, '昨天']].map(([o, n]) => `<button class="${day === o ? 'sel' : ''}" data-act="shday" data-v="${o}">${n}</button>`).join('')}</span>
-      <small class="dim">${day < 0 ? '補登只算連勝，不開寶箱' : ''}</small></div>
+      <small class="dim">${day < 0 ? '補登只算連勝，沒有獎勵' : ''}</small></div>
     ${body}`;
 }
 
@@ -234,11 +233,9 @@ function stageImg(c, s, scale, sil = false, cls = '') {
 }
 
 function dex(D) {
-  const total = CONFIG.rarityRates.reduce((a, b) => a + b, 0);
   return `<section class="px">${sh('水下生物圖鑑', 'COLLECTION', `<span class="dim">${Object.keys(D.col).length} / ${CREATURES.length}</span>`)}
-    <div class="mini">完成事情就會開寶箱。點已收集的生物看介紹、成長型態，也可以放生。</div>
-    ${RARITY.map((R, r) => `<div class="grp row"><span class="rar" style="background:${R.color}">${R.name}</span>
-      <small>掉落率 ${(CONFIG.rarityRates[r] / total * 100).toFixed(1).replace('.0', '')}%</small></div>
+    <div class="mini">生物從商店的寶箱抽到。點已收集的生物看介紹和成長型態。</div>
+    ${RARITY.map((R, r) => `<div class="grp row"><span class="rar" style="background:${R.color}">${R.name}</span></div>
       <div class="dex">${CREATURES.filter(c => c.r === r).map(c => D.col[c.id]
         ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${stageImg(c, seenStage(c.id), Math.min(5, Math.floor(100 / stageCanvas(c, seenStage(c.id)).width)))}<div class="nm">${c.name}</div><small>${pets(c.id).length} 隻</small></div>`
         : `<div class="cell no">${img(c.px, Math.min(5, Math.floor(100 / Math.max(...c.px.map(r => r.length)))), true)}<div class="nm dim">？？？</div><small>&nbsp;</small></div>`).join('')}</div>`).join('')}</section>`;
@@ -267,6 +264,24 @@ function useFeed() {
   save(); return true;
 }
 const TANK = { raf: 0 };
+// 自由游動：每隻各自隨機挑一個目的地（左右上下都有可能）、用這一趟的速度游過去，到了偶爾停一下再挑下一個
+function wander(f, dt, W, floorY) {
+  const top = 2, bottom = floorY - f.h + 2, cx = f.x + f.w / 2;
+  if (f.tx == null || f.wt <= 0) {
+    const jelly = f.c.id === 'jelly';
+    f.tx = jelly ? cx + (Math.random() - .5) * 60 : f.w / 2 + Math.random() * Math.max(1, W - f.w);
+    f.ty = top + Math.random() * Math.max(1, bottom - top);
+    f.pace = .45 + Math.random() * .9;            // 這一趟快一點或慢一點
+    f.wt = 240 + Math.random() * 480;             // 太久沒到就換目的地
+  }
+  f.wt -= dt;
+  if (f.rest > 0) { f.rest -= dt; return; }
+  const dx = f.tx - cx, dy = f.ty - f.baseY, dist = Math.hypot(dx, dy);
+  if (dist < 2) { f.tx = null; if (Math.random() < .35) f.rest = 30 + Math.random() * 150; return; }
+  const step = Math.min(dist, Math.abs(f.vx) * f.pace * dt);
+  f.x += dx / dist * step; f.baseY += dy / dist * step * .6;   // 上下移動比左右慢一點
+  if (Math.abs(dx) > 2) f.vx = Math.sign(dx) * Math.abs(f.vx);
+}
 function tankFeedText() {
   const f = freeLeft(), b = S.feed || 0;
   return `飼料：今天免費 ${f}/${FEED.free}${b ? `・另有 ${b} 顆` : ''}`;
@@ -274,14 +289,15 @@ function tankFeedText() {
 function tankEditor(D) {
   const owned = CREATURES.filter(c => pets(c.id).length);
   return `<section class="px">${sh('水族箱設定', 'AQUARIUM', '<button class="pri" data-act="tankdone">完成</button>')}
-    <div class="mini">勾選要放進水族箱的個體，也可以調整每種生物的大小。想送走某一隻，到圖鑑點牠就能放生。</div>
+    <div class="mini">勾選要放進水族箱的個體、調整每種生物的大小，不想養的可以放生。</div>
     ${owned.map(c => {
       const P = pets(c.id);
-      return `<div class="erow">${stageImg(c, seenStage(c.id), 2)}<span class="sp">${c.name}</span>
-        <select data-tf="size" data-tv="${c.id}">${SIZES.map(([v, l]) => `<option value="${v}" ${tankSize(c.id) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
-        <div class="row" style="flex-basis:100%;gap:10px;padding-left:4px">${P.map((p, i) => `<label class="row" style="gap:4px"><input type="checkbox" data-act="intank" data-v="${p.id}" ${inTank(p.id) ? 'checked' : ''}>
-          <small>${P.length > 1 ? `${i + 1} 號 ` : ''}${stageName(c, stageOf(p.fed))}</small></label>`).join('')}</div></div>`;
-    }).join('') || '<div class="dim">還沒有生物。</div>'}</section>`;
+      return `<div class="tset"><div class="row"><b class="sp">${c.name}</b><small class="dim">大小</small>
+        <select data-tf="size" data-tv="${c.id}">${SIZES.map(([v, l]) => `<option value="${v}" ${tankSize(c.id) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        ${P.map(p => `<div class="entry"><label class="row sp" style="gap:8px"><input type="checkbox" data-act="intank" data-v="${p.id}" ${inTank(p.id) ? 'checked' : ''}>
+          ${stageImg(c, stageOf(p.fed), 3)}<small>${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</small></label>
+          <button class="ghost" data-act="release" data-v="${p.id}">放生</button></div>`).join('')}</div>`;
+    }).join('') || '<div class="dim">還沒有生物，到商店買寶箱吧。</div>'}</section>`;
 }
 function tank(D) {
   if (UI.tankEdit) return tankEditor(D);
@@ -360,6 +376,7 @@ function tankStart() {
         const dx = food.x - (f.x + f.w / 2), sp = Math.max(.12, sp0 * 1.8) * dt;   // 看到飼料會加速，但慢的還是慢
         f.x += Math.sign(dx) * Math.min(Math.abs(dx), sp);
         if (Math.abs(dx) > .5) f.vx = Math.sign(dx) * sp0;
+        f.tx = null; f.rest = 0;   // 吃完再重新找地方游
         if (!f.ground) { const dy = food.y - (f.y + f.h / 2); f.baseY += Math.sign(dy) * Math.min(Math.abs(dy), sp * .8); }
         if (eats(f, food)) {
           TANK.food.splice(TANK.food.indexOf(food), 1); SFX.eat();
@@ -374,8 +391,13 @@ function tankStart() {
           save();
         }
       } else if (f.ground) {
-        if (f.rest > 0) f.rest -= dt; else { f.x += f.vx * dt; if (Math.random() < .004 * dt) f.rest = 60 + Math.random() * 180; }
-      } else f.x += f.vx * dt;
+        if (f.rest > 0) f.rest -= dt;
+        else {
+          f.x += f.vx * dt;
+          if (Math.random() < .004 * dt) f.rest = 60 + Math.random() * 180;
+          if (Math.random() < .003 * dt) f.vx = -f.vx;   // 偶爾掉頭
+        }
+      } else wander(f, dt, W, floorY);
       if (!f.ground) {
         f.baseY = Math.max(2, Math.min(floorY - f.h + 2, f.baseY));
         f.y = f.baseY + Math.sin(now / (f.c.id === 'jelly' ? 1600 : 900) + f.ph) * (f.c.id === 'jelly' ? 8 : 3);
@@ -409,6 +431,15 @@ function finishHabits() {
   }
   UI.habEdit = false; save();
 }
+// 四種寶箱用不同顏色：原色、綠、藍、紫
+const CHEST_TINT = ['none', 'hue-rotate(110deg)', 'hue-rotate(190deg)', 'hue-rotate(250deg) saturate(1.4)'];
+// 寶箱的機率說明，例如「普通 85%・少見 15%」；淺灘寶箱另外標出飼料
+function chestOdds(ch) {
+  const live = 100 - ch.feed;
+  const parts = ch.rates.map((p, r) => p ? `${RARITY[r].name} ${+(p * live / 100).toFixed(1)}%` : '').filter(Boolean);
+  if (ch.feed) parts.unshift(`飼料 ${ch.feed}%`);
+  return parts.join('・');
+}
 function shop(D) {
   const hist = S.logs.filter(l => l.k === 'redeem').slice(-8).reverse();
   if (UI.shopEdit) return `<section class="px shop">${sh('編輯獎勵', 'REWARDS', '<button class="pri" data-act="shopdone">完成</button>')}
@@ -424,7 +455,12 @@ function shop(D) {
   const rate = activeDays >= 5 ? Math.max(10, Math.round(recent.reduce((a, l) => a + l.c, 0) / 14)) : CONFIG.coinsPerDay;
   const daysFor = p => Math.max(1, Math.ceil(p / rate));
   const items = [...shopItems()].sort((a, b) => a.price - b.price), next = items.find(it => it.price > D.coins);
-  return `<section class="px shop">${sh('獎勵商店', 'REWARDS', '<button class="ghost" data-act="shopedit">編輯</button>')}
+  return `<section class="px shop">${sh('生物寶箱', 'CHESTS')}
+    <div class="mini">開出的生物會放進水族箱。每種最多養 ${MAX_PETS} 隻，抽到重複的另外送金幣。</div>
+    ${CONFIG.chests.map((ch, i) => `<div class="it chest"><span class="ic" style="filter:${CHEST_TINT[i]}">${img(CHEST, 2)}</span>
+      <span class="sp">${ch.name}<br><small>${chestOdds(ch)}</small></span>
+      <span class="price">${ch.price}${COIN}</span><button class="pri" data-act="buychest" data-v="${ch.id}" ${D.coins < ch.price ? 'disabled' : ''}>購買</button></div>`).join('')}</section>
+  <section class="px shop">${sh('獎勵商店', 'REWARDS', '<button class="ghost" data-act="shopedit">編輯</button>')}
     <div class="mini">你可以自行設定想要的獎勵。${activeDays >= 5 ? `最近 14 天平均每天賺 ${rate} 金幣。` : `目前以每天約 ${rate} 金幣估算。`}</div>
     ${next ? `<div class="goal"><div class="label">NEXT GOAL</div>
       <div class="row"><span>${esc(next.icon)} ${esc(next.name)}</span><span class="sp"></span><span class="coin">${D.coins} / ${next.price}${COIN}</span></div>
@@ -504,7 +540,7 @@ const ABOUT_LINKS = [
 ];
 function about() {
   return `<section class="px">${sh('關於習慣深潛', 'ABOUT')}
-    <p>嗨，我是 Harry，喜歡潛水，也在努力每週寫文章。這個遊戲是我為了讓自己持續寫作和運動而做的：每天寫下最重要的事，完成就開寶箱，收集我在海裡遇過（或還在等）的生物。</p>
+    <p>嗨，我是 Harry，喜歡潛水，也在努力每週寫文章。這個遊戲是我為了讓自己持續寫作和運動而做的：每天寫下最重要的事，完成就賺金幣，用金幣開寶箱，收集我在海裡遇過（或還在等）的生物。</p>
     <p class="dim">從浮潛客一路升到潛水教練的稱號、圖鑑裡的鬼蝠魟和翻車魚，都來自我的潛水經驗。希望它也能陪你一點一點往前進。</p></section>
   <section class="px">${sh('我的沙龍', 'SALON')}
     <div class="salon"><b style="font-size:17px">${SALON.name}</b><p class="dim" style="margin:6px 0 12px">${SALON.desc}</p>
