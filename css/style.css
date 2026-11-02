@@ -242,3 +242,12 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 /* Google 登入按鈕：照 Google 品牌規範，白底、灰框、原色 G */
 .gbtn { display: inline-flex; align-items: center; gap: 10px; margin-top: 8px; background: #fff; color: #1f1f1f; border: 1px solid #747775; border-radius: 4px; padding: 8px 14px; font-weight: 500; box-shadow: none; }
 .gbtn svg { flex: none; }
+
+/* 每日任務 */
+.quest{display:flex;align-items:center;gap:8px;padding:4px 0;min-height:38px;font-size:15px}
+.quest .qk{width:16px;flex:none;color:var(--ok);text-align:center}
+.quest.todo .sp{color:var(--dim)}
+.quest.got .sp{color:var(--dim)}
+.quest button{margin:0;padding:4px 12px}
+.qbar{width:56px;height:6px;background:#071a33;flex:none}
+.qbar i{display:block;height:100%;background:var(--xp)}

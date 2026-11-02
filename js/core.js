@@ -130,12 +130,13 @@ function delCheck(d, id, i) {
 }
 
 /* ========= 狀態推導 ========= */
-// XP、金幣、圖鑑由 logs 算；習慣完成由卡片打卡（S.checks）算，加上舊版的六件事打勾與紀錄
+// XP、金幣、圖鑑由 logs 算（待領取的獎勵 pend 要領了才算，當天沒領的隔天自動算進來）；習慣完成由卡片打卡（S.checks）算，加上舊版的六件事打勾與紀錄
 function derive() {
   const D = { xp: 0, coins: 0, col: {}, days: {}, per: {}, articles: 0, claimed: new Set() };
+  const today = dayKey();
   const inc = (d, k, n = 1) => { const x = D.days[d] || (D.days[d] = {}); x[k] = (x[k] || 0) + n; };
   for (const l of S.logs) {
-    D.xp += l.xp || 0; D.coins += l.c || 0;
+    if (!l.pend || l.d < today) { D.xp += l.xp || 0; D.coins += l.c || 0; }
     if (l.drop) D.col[l.drop] = (D.col[l.drop] || 0) + 1;
     if (l.key) D.claimed.add(l.key);
     if (['wake', 'research', 'exercise'].includes(l.k) && !l.late) inc(l.d, l.k);
