@@ -42,7 +42,7 @@ function habitEditor() {
 const mdOf = k => k.slice(5).replace('-', '/').replace(/^0/, '').replace('/0', '/');   // 2026-11-02 → 11/2
 // 任務就是會給獎勵的那些事；進度從紀錄算，獎勵是對應的 log（有 pend＝還沒領）
 function dailyTasks(D) {
-  const C = CONFIG.coins, rnd = [C.base, C.base + C.rand], times = (k, [a, b] = rnd) => [a * k, b * k], fix = n => [n, n];
+  const C = CONFIG.coins, rnd = [C.task, C.task], times = (k, [a, b] = rnd) => [a * k, b * k], fix = n => [n, n];
   const d = dayKey(), d1 = addDays(d, 1), byKey = k => S.logs.filter(l => l.key === k), R = CONFIG.rewardRows;
   const checks = S.logs.filter(l => l.k === 'check' && l.d === d);
   const T = [
@@ -92,7 +92,7 @@ function quests(D) {
       <div class="bar c"><i style="width:${done / daily.length * 100}%"></i></div></section>
     <section class="px">${sh('每日任務', 'DAILY')}${base.map(row).join('')}</section>
     ${hab.length ? `<section class="px">${sh('習慣養成', 'HABITS')}${hab.map(row).join('')}</section>` : ''}
-    <div class="mini" style="margin:0 6px">還沒完成的任務寫的是可以領到的金幣（${CONFIG.coins.base}–${CONFIG.coins.base + CONFIG.coins.rand} 是隨機的，偶爾會爆擊 ×2）。忘了領也沒關係，隔天會自動入帳。</div>`;
+    <div class="mini" style="margin:0 6px">還沒完成的任務寫的是可以領到的金幣。忘了領也沒關係，隔天會自動入帳。</div>`;
 }
 
 function today(D) {
@@ -494,7 +494,7 @@ function chestOdds(ch) {
   return `${RARITY[r].name}生物 ${n} 種${n > 1 ? '隨機一種' : ''}${ch.feed ? `・${ch.feed}% 開出飼料` : ''}`;
 }
 function shop(D) {
-  const hist = S.logs.filter(l => l.k === 'redeem').slice(-8).reverse();
+  const hist = S.logs.filter(l => l.k === 'redeem').slice(-5).reverse();   // 只留最近 5 筆
   if (UI.shopEdit) return `<section class="px shop">${sh('編輯獎勵', 'REWARDS', '<button class="pri" data-act="shopdone">完成</button>')}
     <div class="mini">設定你真的想要的獎勵。參考：每天大約能賺 60–90 金幣。</div>
     ${S.shop.map((it, i) => `<div class="it">
@@ -573,7 +573,6 @@ function log(D) {
       : `<div><small>${esc(h.e)} ${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`).join('')}
     <div><small>番茄鐘</small><b>${pomos.length}</b><small>段・${pomoHours.toFixed(1)} 小時</small></div>
     <div><small>跑步總距離</small><b>${runKm.toFixed(1)}</b><small>km・${runs.length} 次</small></div>
-    <div><small>潛水</small><b>${rec.filter(r => r.id === 'exercise' && r.e.type === '潛水').length}</b><small>支</small></div>
   </div></section>
   ${cloudSection()}
   <section class="px">${sh('設定與備份', 'SETTINGS')}

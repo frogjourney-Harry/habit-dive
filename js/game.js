@@ -25,14 +25,9 @@ function rollCreature(rates) {
 // 完成事情的獎勵：XP 和金幣，先標成 pend（待領取），到「每日任務」按領取才入帳；當天沒領，隔天自動入帳（見 derive）
 const GAIN = { n: 0, title: '' };
 function grant(kind, tag, o = {}) {
-  let xp = o.xp ?? CONFIG.xp[kind] ?? 0, c, crit = false;
-  if (BONUS[kind]) c = CONFIG.coins[kind];
-  else {
-    c = CONFIG.coins.base + Math.floor(Math.random() * (CONFIG.coins.rand + 1));
-    if (Math.random() < CONFIG.coins.critChance) { crit = true; c *= 2; }
-  }
+  let xp = o.xp ?? CONFIG.xp[kind] ?? 0, c = BONUS[kind] ? CONFIG.coins[kind] : CONFIG.coins.task;   // 金幣固定，不隨機
   if (o.x2) { xp *= 2; c *= 2; }
-  const log = { id: rid(), t: Date.now(), d: o.d || dayKey(), k: kind, tag: tag || undefined, xp, c, key: o.key, crit: crit || undefined, ...o.extra };
+  const log = { id: rid(), t: Date.now(), d: o.d || dayKey(), k: kind, tag: tag || undefined, xp, c, key: o.key, ...o.extra };
   if (kind === 'welcome') return dropCreature(log, null, BONUS.welcome, 0, CR.clown);   // 新手禮物：一隻小丑魚
   log.pend = true;
   S.logs.push(log);
@@ -71,11 +66,11 @@ function showGain() {
 function claim(logs) {
   logs = logs.filter(l => l.pend); if (!logs.length) return;
   const before = levelOf(derive().xp);
-  let xp = 0, c = 0, crit = false;
-  for (const l of logs) { delete l.pend; xp += l.xp || 0; c += l.c || 0; crit = crit || !!l.crit; }
+  let xp = 0, c = 0;
+  for (const l of logs) { delete l.pend; xp += l.xp || 0; c += l.c || 0; }
   const after = levelOf(derive().xp);
   if (after > before && after > (S.lvSeen || 0)) { Q.push({ level: after, title: rankIdx(after) > rankIdx(before) ? RANKS[rankIdx(after)][1] : '' }); S.lvSeen = after; }
-  ac(); SFX.buy(); toast(`+${xp} XP　+${c} 金幣${crit ? '（爆擊 ×2）' : ''}`);
+  ac(); SFX.buy(); toast(`+${xp} XP　+${c} 金幣`);
   save(); render(); nextChest();
 }
 // 今天的獎勵（前三件、每個習慣的打卡、週期達標）跟著條件走：條件不再成立時把獎勵收進 S.held，
