@@ -244,3 +244,22 @@ test('舊資料的六件事：沒有獎勵欄位的打勾不能每次開啟都�
   eq(I.S.logs.filter(l => l.k === 'check').length, 3, '前三件還是都拿得到獎勵');
   const J = await I.reload(); await J.dismiss(); eq(J.S.plans[D0].filter(x => x.rw).length, 3, '重開後獎勵名額仍是 3'); J.check('重開'); J.destroy(); I.destroy();
 });
+
+test('Safari（iPhone）登入：第一次按只載入，再按一次才開登入視窗', async () => {
+  resetCloud();
+  const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+  const I = await boot({ state: mkState(), ua }); await I.dismiss(); await I.tab('about');
+  ok(!I.has('App 內建的瀏覽器'), 'Safari 不是 App 內建瀏覽器');
+  await I.click('.gbtn'); await flush(10);
+  ok(!I.S.cloudUid, '第一次按：還沒登入（只是把登入程式載好）'); ok(I.has('再按一次'), '按鈕要提示再按一次：' + I.$('.gbtn').innerText);
+  await I.click('.gbtn'); await flush(12); ok(I.S.cloudUid === 'u1', '第二次按：登入成功');
+  I.check('Safari 登入'); I.destroy();
+  const C = await boot({ state: mkState(), ua: 'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/120 Safari/537.36' }); await C.dismiss(); await C.tab('about');
+  await C.click('.gbtn'); await flush(12); ok(C.S.cloudUid === 'u1', 'Chrome 一次就登入'); C.destroy();
+});
+
+test('更多 App 內建瀏覽器、輸入框屬性', async () => {
+  for (const ua of ['Mozilla/5.0 TikTok_26.0', 'Mozilla/5.0 Twitter for iPhone', 'Mozilla/5.0 Snapchat/12']) { const I = await boot({ state: mkState(), ua }); await I.dismiss(); ok(I.has('App 內建的瀏覽器'), '偵測到：' + ua.slice(12)); I.destroy(); }
+  const I = await boot({ state: mkState() }); await I.dismiss(); await I.tab('today');
+  const bad = I.$$('#six .ptext').filter(e => e.getAttribute('autocomplete') !== 'off' || e.getAttribute('spellcheck') !== 'false'); eq(bad.length, 0, '六件事輸入框要關掉自動填入和拼字檢查'); I.destroy();
+});

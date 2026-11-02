@@ -344,3 +344,8 @@ body.focusing{overflow:hidden}
   nav button{font-size:12px}
 }
 .dex .cell img{max-width:100%;height:auto}
+/* 橫向握持有瀏海的手機：內容不要被瀏海蓋住 */
+@supports (padding:max(0px)){
+  .wrap{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+  @media (max-width:600px){ .wrap{padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))} }
+}

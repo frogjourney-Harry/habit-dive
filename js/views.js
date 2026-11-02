@@ -1,6 +1,6 @@
 // 畫面：頂端列、今日、習慣面板、圖鑑、生物個體與水族箱、商店、紀錄、關於。
 /* ========= 畫面 ========= */
-const IN_APP = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger/i.test(navigator.userAgent);
+const IN_APP = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger|Twitter|TikTok|musical_ly|Bytedance|KAKAOTALK|Snapchat|Pinterest/i.test(navigator.userAgent);
 function renderStat(D = derive()) {
   const lv = levelOf(D.xp), lo = xpFor(lv), hi = xpFor(lv + 1), pct = (D.xp - lo) / (hi - lo) * 100;
   document.getElementById('stat').innerHTML = `
@@ -17,6 +17,7 @@ function render() {
   document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? `<i class="badge">${pendN}</i>` : ''}</button>`).join('');
   document.getElementById('main').innerHTML = ({ today, quest: quests, tank, shop, log, about })[UI.tab](D);
   if (UI.tab === 'tank') tankStart();
+  for (const i of document.querySelectorAll('#main input:not([type]), #main input[type=text], #sheet input:not([type]), #sheet input[type=text]')) { i.setAttribute('autocomplete', 'off'); i.setAttribute('autocapitalize', 'off'); i.setAttribute('spellcheck', 'false'); }
   renderFocus();
 }
 
@@ -33,7 +34,7 @@ function habitEditor() {
       ${h.weeks ? `<span class="dim">至少</span><select data-hf="target" data-hi="${i}">${targetOpts(h.target)}</select><span class="dim">${countWord(h)}</span>` : ''}
       <button class="ghost" data-act="habdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
     <div class="row" style="margin-top:8px"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣 ${customCount()}/${CONFIG.maxCustom}</button>
-      ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${h.id}">加回 ${esc(h.n)}</button>`).join('')}</div>
+      ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${esc(h.id)}">加回 ${esc(h.n)}</button>`).join('')}</div>
     <div class="mini">每天的習慣漏兩天才斷；每週／每兩週的習慣沒達標就斷。</div>
     </section>`;
 }
@@ -132,7 +133,7 @@ function today(D) {
     } else {
       on = dayDone(D, td, h.id); sub = on ? '今天 ✓' : '今天還沒';
     }
-    return `<button class="hab ${on ? 'on' : ''}" data-act="habtap" data-v="${h.id}">
+    return `<button class="hab ${on ? 'on' : ''}" data-act="habtap" data-v="${esc(h.id)}">
       <div class="row"><span class="hn">${esc(h.n)}</span><span class="sp"></span>${badge}</div>
       <div class="hs">${sub}</div></button>`;
   }).join('');
@@ -392,9 +393,9 @@ function tankEditor(D) {
     ${owned.map(c => {
       const P = pets(c.id);
       return `<div class="tset"><div class="row"><b class="sp">${c.name}</b></div>
-        ${P.map(p => `<div class="entry"><label class="row sp" style="gap:8px"><input type="checkbox" data-act="intank" data-v="${p.id}" ${inTank(p.id) ? 'checked' : ''}>
+        ${P.map(p => `<div class="entry"><label class="row sp" style="gap:8px"><input type="checkbox" data-act="intank" data-v="${esc(p.id)}" ${inTank(p.id) ? 'checked' : ''}>
           ${stageImg(c, stageOf(p.fed), 3)}<small>${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</small></label>
-          <button class="ghost" data-act="release" data-v="${p.id}">放生</button></div>`).join('')}</div>`;
+          <button class="ghost" data-act="release" data-v="${esc(p.id)}">放生</button></div>`).join('')}</div>`;
     }).join('') || '<div class="dim">還沒有生物，到商店買寶箱吧。</div>'}</section>`;
 }
 function tank(D) {
@@ -573,7 +574,7 @@ function shop(D) {
     ${items.length ? '' : '<div class="dim" style="margin-top:8px">還沒有獎勵，按「編輯」新增。</div>'}
     ${items.map(it => `<div class="it ${it === next ? 'next' : ''}"><span class="ic">${esc(it.icon)}</span><span class="sp">${esc(it.name)}</span>
       <span class="price">${it.price}${COIN}</span>
-      ${D.coins >= it.price ? `<button class="pri" data-act="redeem" data-v="${it.id}">兌換</button>`
+      ${D.coins >= it.price ? `<button class="pri" data-act="redeem" data-v="${esc(it.id)}">兌換</button>`
         : `<span class="dim need">約 ${daysFor(it.price - D.coins)} 天</span>`}
       ${it === next ? `<div class="nextbar2"><small>下一個目標・${D.coins} / ${it.price}</small><div class="bar c"><i style="width:${Math.max(0, D.coins / it.price * 100)}%"></i></div></div>` : ''}</div>`).join('')}
   </section>
