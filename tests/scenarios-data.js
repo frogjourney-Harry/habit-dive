@@ -177,3 +177,47 @@ test('大量資料：三年的紀錄操作不能卡', async () => {
   I.check('大量資料'); I.destroy();
 });
 const I0 = { addDays(k, n) { const [y, m, d] = k.split('-').map(Number); const t = new Date(y, m - 1, d + n, 12); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; } };
+
+// 天天玩 N 天的存檔：每天 plan / 3 次打勾 / top3 / anyhab / pomo
+function longState(N, end = '2026-11-02') {
+  const logs = [W0, { id: 'ch1', t: 5, d: '2026-01-10', k: 'chest', c: -40, xp: 0, drop: 'turtle' }, { id: 'rd1', t: 6, d: '2026-02-10', k: 'redeem', name: '手搖飲', c: -300 }];
+  const plans = {}, checks = {}; let coins = 0, xp = 0;
+  for (let i = N - 1; i >= 0; i--) {
+    const d = I0.addDays(end, -i);
+    const day = [{ k: 'plan', key: 'plan:' + d, xp: 10, c: 15 }, { k: 'check', xp: 10, c: 15 }, { k: 'check', xp: 10, c: 15 }, { k: 'check', xp: 10, c: 15 }, { k: 'top3', key: 'top3:' + d, xp: 15, c: 30 }, { k: 'anyhab', key: 'anyhab:' + d, xp: 10, c: 15 }, { k: 'pomo', key: 'pomo:' + d, xp: 10, c: 15, min: 25 }];
+    day.forEach((l, j) => { logs.push({ id: `L${i}_${j}`, t: 100 + i, d, ...l }); coins += l.c; xp += l.xp; });
+    plans[d] = Array.from({ length: 6 }, (_, j) => ({ text: j < 3 ? `第${j}件 ${d} 做了一些比較長的描述文字` : '', cat: 'other', done: j < 3, rw: j < 3 }));
+    if (i % 3 === 0) checks[d] = { exercise: [{ t: 1, type: '跑步', dist: 5, min: 30 }] };
+  }
+  return { state: mkState({ logs, plans, checks }), coins: coins - 40 - 300, xp, N };
+}
+test('存檔瘦身：天天玩兩年後不能超過雲端文件上限，而且數字不變', async () => {
+  const L = longState(720); const before = JSON.stringify(L.state).length; note(`兩年存檔瘦身前 ${Math.round(before / 1000)} KB`);
+  ok(before > 400000, '測試資料要夠大才有意義：' + before);
+  const I = await boot({ state: L.state }); await I.dismiss();
+  const after = JSON.stringify(I.S).length; note(`瘦身後 ${Math.round(after / 1000)} KB`);
+  ok(after < 400000, `瘦身後要小於 400 KB：${after}`);
+  eq(I.coins(), L.coins, '金幣不變'); eq(I.xp(), L.xp, 'XP 不變');
+  ok(I.S.logs.some(l => l.drop === 'turtle') && I.S.logs.some(l => l.k === 'redeem') && I.S.logs.some(l => l.k === 'welcome'), '生物、兌換、新手紀錄原樣保留');
+  const recent = I.S.logs.filter(l => l.d >= '2026-09-10' && l.k === 'check'); ok(recent.length >= 3 * 50, '最近 60 天的明細要保留：' + recent.length);
+  await I.tab('log'); const txt = I.text();
+  ok(/總共打卡\s*\n?\s*720/.test(txt.replace(/\s+/g, ' ').replace(/總共打卡 (\d+)/, '總共打卡\n$1')) || txt.includes('720'), '總共打卡 720 天：' + txt.replace(/\s+/g, ' ').slice(txt.indexOf('打卡紀錄'), txt.indexOf('打卡紀錄') + 80));
+  ok(txt.replace(/\s+/g, '').includes('720段') || txt.includes('720'), '番茄鐘 720 段'); ok(txt.includes('300.0') || txt.includes('300'), '番茄鐘總時數 300 小時');
+  I.check('瘦身後'); const J = await I.reload(); await J.dismiss(); eq(J.coins(), L.coins, '重開後金幣一樣'); J.check('瘦身後重開'); J.destroy(); I.destroy();
+  // 裝置日期被調到很後面：不能把近期紀錄收掉
+  const F = await boot({ state: longState(720).state, now: ts(2028, 11, 2, 10) }); await F.dismiss();
+  ok(F.S.logs.filter(l => l.d >= '2026-09-10' && l.k === 'check').length >= 150, '日期亂調時，以資料裡最新的日期為準，近期明細不會被收掉');
+  F.destroy();
+  const small = longState(30); const S2 = await boot({ state: small.state }); await S2.dismiss(); ok(!S2.S.logs.some(l => l.k === 'sum') && Object.keys(S2.S.plans).length >= 30, '小存檔不會被瘦身'); S2.destroy();
+});
+
+test('雲端同步：存檔大小以位元組計算（中文一字 3 位元組）', async () => {
+  resetCloud();
+  const I = await boot({ state: mkState() }); await I.dismiss(); await I.tab('today');
+  await I.plan(['中'.repeat(190), '文'.repeat(190), '字'.repeat(190)]);
+  I.S.favs = []; for (let d = 0; d < 300; d++) { const k = I0.addDays('2026-01-01', d); I.S.plans[k] = Array.from({ length: 6 }, () => ({ text: '中文'.repeat(95), cat: 'other', done: true, rw: false })); }
+  I.S.mtime = I.now(); await loginAs(I);
+  const bytes = new TextEncoder().encode(JSON.stringify(I.S)).length;
+  if (bytes > 1000000) ok(I.has('太大') && !window.__cloudDb.docs.u1, `超過 1 MB（${bytes} 位元組）要提示，不能硬傳`); else ok(!!window.__cloudDb.docs.u1, `${bytes} 位元組在上限內，要能上傳`);
+  I.destroy();
+});

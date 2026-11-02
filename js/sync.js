@@ -67,7 +67,9 @@ async function cloudPush() {
   if (!CLOUD.user) return;
   clearTimeout(CLOUD.timer); CLOUD.pending = false;
   const data = JSON.stringify(S);
-  if (data.length > 900000) { CLOUD.error = '紀錄太大，暫時無法同步'; renderCloud(); return; }
+  // 文件上限是 1 MiB（以位元組算）；中文一個字 3 位元組，所以不能用字元數
+  const bytes = typeof TextEncoder === 'function' ? new TextEncoder().encode(data).length : data.length * 3;
+  if (bytes > 1000000) { CLOUD.error = '紀錄太大，暫時無法同步'; renderCloud(); return; }
   try {
     await userDoc().set({ data, mtime: S.mtime || 0, v: S.v, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     CLOUD.last = Date.now(); CLOUD.error = '';

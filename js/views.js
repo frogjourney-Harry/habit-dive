@@ -595,7 +595,8 @@ function log(D) {
   // 「有打卡的日子」＝當天有完成任何事：習慣打卡、六件事打勾、寫好清單、完成一段番茄鐘
   const actDays = new Set(Object.keys(D.days).filter(k => H.some(h => D.days[k][h.id])));
   for (const [d, P] of Object.entries(S.plans)) if (P.some(x => x.done && x.text.trim())) actDays.add(d);
-  for (const l of S.logs) if (l.k === 'plan' || l.k === 'pomo') actDays.add(l.d);
+  for (const d of Object.keys(S.doneDays || {})) actDays.add(d);   // 瘦身後的舊六件事只剩「那天有做事」
+  for (const l of S.logs) if (l.k === 'plan' || l.k === 'pomo' || (l.k === 'sum' && (l.plan || l.pomo))) actDays.add(l.d);
   const active = k => actDays.has(k);
   const allDays = [...actDays].filter(k => k <= td).sort();
   let curRun = 0; for (let k = active(td) ? td : addDays(td, -1); active(k); k = addDays(k, -1)) curRun++;
@@ -604,7 +605,9 @@ function log(D) {
   const daysOf = k => Object.values(D.days).filter(x => x[k]).length;
   const rec = recentEntries();
   const runs = rec.filter(r => r.id === 'exercise' && r.e.type === '跑步' && r.e.dist > 0), runKm = runs.reduce((a, r) => a + +r.e.dist, 0);
-  const pomos = S.logs.filter(l => l.k === 'pomo'), pomoHours = pomos.reduce((a, l) => a + (l.min || CONFIG.pomodoroMin), 0) / 60;
+  const pomos = S.logs.filter(l => l.k === 'pomo'), pomoSums = S.logs.filter(l => l.k === 'sum' && l.pomo);
+  const pomoCount = pomos.length + pomoSums.reduce((a, l) => a + l.pomo, 0);
+  const pomoHours = (pomos.reduce((a, l) => a + (l.min || CONFIG.pomodoroMin), 0) + pomoSums.reduce((a, l) => a + (l.pomoMin || 0), 0)) / 60;
   return `<section class="px">${sh('等級', 'LEVEL')}
     <div class="row"><div class="big-lv"><span>Lv.</span>${lv}</div><div><b>${RANKS[ri][1]}</b><div class="mini" style="margin:0">共 ${D.xp} XP</div></div></div>
     <div class="bar"><i style="width:${Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100))}%"></i></div>
@@ -619,7 +622,7 @@ function log(D) {
   <section class="px">${sh('累積', 'TOTALS')}${(tot => tot ? `<div class="stat">${tot}</div>` : '<div class="dim">完成任務後，累積的數字會出現在這裡。</div>')([
     ...H.map(h => h.kind === 'vocus' ? D.articles && `<div><small>${esc(h.n)}</small><b>${D.articles}</b><small>篇文章</small></div>`
       : daysOf(h.id) && `<div><small>${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`),
-    pomos.length && `<div><small>番茄鐘</small><b>${pomos.length}</b><small>段・${pomoHours.toFixed(1)} 小時</small></div>`,
+    pomoCount && `<div><small>番茄鐘</small><b>${pomoCount}</b><small>段・${pomoHours.toFixed(1)} 小時</small></div>`,
     runs.length && `<div><small>跑步總距離</small><b>${runKm.toFixed(1)}</b><small>km・${runs.length} 次</small></div>`,
   ].filter(Boolean).join(''))}</section>`;
 }

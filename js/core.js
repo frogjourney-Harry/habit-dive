@@ -146,6 +146,36 @@ function syncFromStorage() {
   return true;
 }
 
+/* ========= 存檔瘦身 ========= */
+// 天天玩的話，存檔每天約長 1.5 KB；雲端文件上限 1 MB，大約一年半就會超過、同步會一直失敗。
+// 存檔超過一定大小時，把「很久以前」的零碎獎勵紀錄合併成一天一筆、舊的六件事文字只留「那天有做事」。
+// 金幣、XP、番茄鐘次數與時數、打卡天數、習慣連勝都不會變；抽到的生物、買寶箱、兌換、習慣打卡紀錄（checks）原樣保留。
+const COMPACT_LIMIT = 400000, COMPACT_KEEP_DAYS = 60;
+const FOLD_KINDS = new Set(['check', 'habit', 'plan', 'top3', 'pubchest', 'period', 'weekly', 'anyhab', 'pomo']);
+function compactIfLarge(s = S) {
+  if (JSON.stringify(s).length < COMPACT_LIMIT) return false;
+  // 以資料裡最新的日期為準（不是裝置現在的日期），裝置日期被調到很後面也不會把近期紀錄收掉
+  const dates = [...s.logs.map(l => l.d), ...Object.keys(s.checks), ...Object.keys(s.plans)].filter(Boolean).sort();
+  const latest = dates[dates.length - 1], today = dayKey(), cutoff = addDays(latest < today ? latest : today, -COMPACT_KEEP_DAYS);
+  const sums = {}, keep = [];
+  for (const l of s.logs) {
+    if (l.k === 'sum' && l.d < cutoff) { const x = sums[l.d] || (sums[l.d] = { id: 'sum_' + l.d, t: 0, d: l.d, k: 'sum', xp: 0, c: 0 }); x.xp += l.xp || 0; x.c += l.c || 0; if (l.plan) x.plan = true; if (l.pomo) { x.pomo = (x.pomo || 0) + l.pomo; x.pomoMin = (x.pomoMin || 0) + (l.pomoMin || 0); } continue; }
+    if (l.d && l.d < cutoff && !l.drop && !l.late && FOLD_KINDS.has(l.k)) {
+      const x = sums[l.d] || (sums[l.d] = { id: 'sum_' + l.d, t: 0, d: l.d, k: 'sum', xp: 0, c: 0 });
+      x.xp += l.xp || 0; x.c += l.c || 0;
+      if (l.k === 'plan') x.plan = true;
+      if (l.k === 'pomo') { x.pomo = (x.pomo || 0) + 1; x.pomoMin = (x.pomoMin || 0) + (l.min || CONFIG.pomodoroMin); }
+      continue;
+    }
+    keep.push(l);
+  }
+  s.logs = [...Object.values(sums), ...keep];
+  s.doneDays = s.doneDays || {};
+  for (const [d, P] of Object.entries(s.plans)) if (d < cutoff) { if (P.some(x => x.done && x.text && x.text.trim())) s.doneDays[d] = 1; delete s.plans[d]; }
+  for (const k of Object.keys(s.held || {})) { const m = k.match(/(\d{4}-\d\d-\d\d)/); if (m && m[1] < cutoff) delete s.held[k]; }
+  return true;
+}
+
 /* ========= 習慣與分類 ========= */
 const activeHabits = () => S.habits.filter(h => !h.off);
 const habit = id => S.habits.find(h => h.id === id && !h.off);

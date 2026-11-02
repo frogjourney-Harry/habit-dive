@@ -301,6 +301,7 @@ document.addEventListener('focusout', () => { if (syncPending) { syncPending = f
     const s = 3 + (i % 3) * 2;
     bub.insertAdjacentHTML('beforeend', `<i style="left:${(i * 37 + 7) % 100}%;width:${s}px;height:${s}px;animation-duration:${9 + (i * 7) % 11}s;animation-delay:-${(i * 3) % 13}s"></i>`);
   }
+  if (compactIfLarge()) save(false);   // 存檔太大時先瘦身（見 core.js）
   render(); tick();
   setInterval(tick, 500);
   if (!derive().claimed.has('welcome')) { grant('welcome', null, { key: 'welcome' }); save(); render(); nextChest(); }
