@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><title>習慣深潛・測驗</title>
+<style>body{font:14px/1.5 sans-serif;background:#10203a;color:#e6eefc;padding:16px}pre{white-space:pre-wrap;word-break:break-word}button{font:inherit;padding:6px 14px;margin-right:8px}</style></head>
+<body>
+<h3>習慣深潛・自動測驗</h3>
+<p>每個測驗都在獨立的 iframe 裡載入真正的網頁（獨立儲存、假時鐘、假雲端），用真實的點擊操作。網址加 <code>?run=關鍵字</code> 只跑符合的測驗，<code>?auto</code> 開啟就跑。</p>
+<button id="go">全部執行</button><span id="state"></span>
+<pre id="out"></pre>
+<script src="harness.js"></script>
+<script src="scenarios-core.js"></script>
+<script src="scenarios-game.js"></script>
+<script src="scenarios-data.js"></script>
+<script src="scenarios-env.js"></script>
+<script src="monkey.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+document.getElementById('go').onclick = () => runAll(q.get('run') || undefined);
+if (q.has('auto')) runAll(q.get('run') || undefined);
+</script>
+</body></html>

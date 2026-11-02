@@ -1,0 +1,245 @@
+// 遊戲系統：番茄鐘、寶箱、商店、升級、水族箱、圖鑑、運動紀錄、連勝與日期
+const W0 = { id: 'w0', t: 1, d: '2026-10-01', k: 'welcome', key: 'welcome', c: 0, xp: 0 };
+const base = (...logs) => mkState({ logs: [W0, ...logs] });
+const drops = (ids, d = '2026-10-02') => ids.map((id, i) => ({ id: 'dr' + i + id, t: 1000 + i, d, k: 'chest', drop: id, c: 0, xp: 0 }));
+const coinLog = n => ({ id: 'coin' + n, t: 2, d: '2026-10-02', k: 'bonus', c: n, xp: 0 });
+function stubRandom(I, seq, rest = 0.5) { const orig = I.win.Math.random; I.win.Math.random = () => seq.length ? seq.shift() : rest; return () => { I.win.Math.random = orig; }; }
+
+test('番茄鐘：開始→專注畫面蓋住遊戲→25 分鐘拿獎勵→第二次沒有', async () => {
+  const I = await boot({ state: mkState() }); await I.dismiss();
+  await I.click('[data-act=start]');
+  ok(!I.$('#focus').classList.contains('hidden'), '專注畫面要出現');
+  const why = I.blocked(I.$('#nav button')); ok(why && why.includes('focus'), '專注時分頁按鈕要被蓋住點不到：' + why);
+  await I.click('#focus [data-act=cancel]', {}); ok(!I.$('#askov').classList.contains('hidden'), '結束要先確認');
+  await I.click('#askno'); ok(I.S.timer, '按取消，計時繼續');
+  await I.advance(24 * 60e3 + 30e3); ok(I.S.timer && I.S.logs.every(l => l.k !== 'pomo'), '24.5 分鐘還沒完成');
+  await I.advance(40e3); await I.dismiss();
+  ok(!I.S.timer, '25 分鐘後計時結束'); ok(I.S.logs.some(l => l.key === 'pomo:' + D0 && l.pend), '拿到番茄鐘獎勵（待領取）');
+  ok(I.$('#focus').classList.contains('hidden'), '專注畫面消失');
+  await I.click('[data-act=start]'); await I.advance(26 * 60e3); await I.dismiss();
+  eq(I.S.logs.filter(l => l.k === 'pomo').length, 2, '第二段照樣記錄'); eq(I.S.logs.filter(l => l.key === 'pomo:' + D0).length, 1, '但獎勵只有一份');
+  I.check('番茄鐘'); I.destroy();
+});
+
+test('番茄鐘：90 分鐘分段、跳過休息、中途重開、離開很久回來', async () => {
+  const I = await boot({ state: mkState() }); await I.dismiss();
+  await I.click('[data-act=pomoset][data-v="90"]'); await I.click('[data-act=start]');
+  const segs = I.S.timer.segs.map(s => s.m[0] + s.min).join(','); eq(segs, 'f25,b5,f25,b5,f30', '90 分鐘的分段');
+  await I.advance(25 * 60e3 + 5e3); await I.dismiss();
+  ok(I.has('休息'), '專注完進入休息畫面'); await I.click('#focus [data-act=skipbreak]');
+  eq(I.S.timer.si, 2, '跳過休息直接進下一段專注');
+  const J = await I.reload(); await J.dismiss(); ok(!J.$('#focus').classList.contains('hidden'), '重開後還在專注中');
+  const left = J.$('#tclock').innerText; ok(/^\d\d:\d\d$/.test(left), '時間顯示格式：' + left);
+  await J.advance(5 * 3600e3); await J.dismiss();     // 離開 5 小時
+  ok(!J.S.timer, '離開很久回來，計時已結束'); eq(J.S.logs.filter(l => l.k === 'pomo').length, 3, '三段專注都有記錄');
+  J.check('離開很久'); J.destroy(); I.destroy();
+});
+
+test('番茄鐘：自訂分鐘的各種輸入', async () => {
+  const I = await boot({ state: mkState() }); await I.dismiss();
+  await I.click('[data-act=pomocustom]');
+  for (const [v, exp] of [['4', 25], ['121', 25], ['', 25], ['abc', 25], ['35', 35], ['37.5', 38], ['120', 120], ['5', 5]]) {
+    await I.type('#pomoMin', v);
+    const got = I.win.eval('pomoMin()'); ok(got === exp || (v === '37.5' && (got === 38 || got === 37)) , `自訂「${v}」→ ${got}（預期 ${exp}）`);
+  }
+  await I.click('[data-act=start]'); ok(I.S.timer.segs.reduce((a, s) => a + s.min, 0) === 5, '5 分鐘的工作階段');
+  await I.advance(6 * 60e3); await I.dismiss(); ok(!I.S.timer, '5 分鐘結束');
+  ok(!I.S.logs.some(l => l.key === 'pomo:' + D0), '不滿 25 分鐘沒有獎勵');
+  I.check('自訂分鐘'); I.destroy();
+});
+
+test('番茄鐘：系統時間被往回調時不會卡很久', async () => {
+  const I = await boot({ state: mkState() }); await I.dismiss();
+  await I.click('[data-act=start]');
+  await I.setTime(T0 - 3 * 3600e3);       // 手動把時鐘調早 3 小時
+  const txt = I.$('#tclock').innerText, mins = +txt.split(':')[0];
+  ok(mins <= 25, `時鐘往回調後，倒數不應超過 25 分鐘，現在顯示 ${txt}`);
+  I.destroy();
+});
+
+test('升級：彈窗、稱號、只慶祝一次、超大等級', async () => {
+  const I = await boot({ state: mkState({ logs: [W0, coinLog(0), { id: 'x1', t: 5, d: '2026-10-05', k: 'bonus', xp: 35, c: 0 }, { id: 'p1', t: 9, d: D0, k: 'plan', key: 'plan:' + D0, xp: 10, c: 15, pend: true }] }) });
+  await I.dismiss(); await I.claimAll();
+  eq(I.ev('levelOf(derive().xp)'), 3, '45 XP = Lv.3');
+  const sawTitle = I.S.lvSeen === 3; ok(sawTitle, '記下已慶祝到 Lv.3');
+  const J = await I.reload(); ok(J.$('#ov').classList.contains('hidden'), '重開不會再跳升級彈窗'); J.destroy();
+  const K = await boot({ state: mkState({ logs: [W0, coinLog(0), { id: 'p1', t: 9, d: D0, k: 'plan', key: 'plan:' + D0, xp: 100000, c: 15, pend: true }] }) });
+  await K.dismiss(); await K.tab('quest'); await K.click('.qall'); ok(K.has('Lv.'), '超大等級彈窗有顯示'); K.check('升級彈窗'); await K.dismiss();
+  for (const t of ['today', 'quest', 'tank', 'shop', 'log', 'about']) { await K.tab(t); K.check('Lv.' + K.ev('levelOf(derive().xp)') + ' ' + t); }
+  K.destroy(); I.destroy();
+});
+
+test('寶箱：五種價格、稀有度、重複換金幣', async () => {
+  const I = await boot({ state: base(coinLog(5000)) }); await I.dismiss(); await I.tab('shop');
+  const exp = [[0, 'clown', 40, 2], [1, 'turtle', 100, 5], [2, 'seahorse', 250, 15], [3, 'manta', 600, 40], [4, 'whaleshark', 1500, 100]];
+  const rest = stubRandom(I, [], 0);
+  for (const [i, id, price, dup] of exp) {
+    rest(); const un = stubRandom(I, [0.5, 0.99, 0, 0]);
+    const c0 = I.coins(); await I.click(`[data-act=buychest][data-v=c${i}]`); await I.dismiss(); un();
+    eq(I.coins(), c0 - price, `${price} 金幣的寶箱：第一次扣 ${price}`);
+    ok(I.ev('derive().col')[id] === 1, `c${i} 開出 ${id}：` + JSON.stringify(I.ev('derive().col')));
+    const un2 = stubRandom(I, [0.5, 0.99, 0, 0]); const c1 = I.coins(); await I.click(`[data-act=buychest][data-v=c${i}]`); await I.dismiss(); un2();
+    eq(I.coins(), c1 - price + dup, `重複的${id}要退 ${dup} 金幣`);
+    I.check('寶箱 c' + i);
+  }
+  I.destroy();
+});
+
+test('寶箱：普通寶箱的飼料機率；金幣不夠不能買', async () => {
+  const I = await boot({ state: base(coinLog(100)) }); await I.dismiss(); await I.tab('shop');
+  const un = stubRandom(I, [0.5, 0]);
+  await I.click('[data-act=buychest][data-v=c0]'); ok(I.has('飼料'), '開出飼料的畫面'); await I.dismiss(); un();
+  eq(I.S.feed, 5, '飼料 +5 顆'); eq(I.coins(), 60, '扣 40 金幣');
+  ok(!I.S.logs.some(l => l.drop && l.k === 'chest'), '開出飼料就沒有生物');
+  eq(I.$('[data-act=buychest][data-v=c1]').disabled, true, '60 金幣買不起少見寶箱（按鈕停用）');
+  ok(!(await I.tryClick('[data-act=buychest][data-v=c1]')), '停用的按鈕點不下去');
+  const draws = {};
+  for (let r = 0; r < 5; r++) for (let n = 0; n < 400; n++) { const c = I.ev(`rollCreature(CONFIG.chests[${r}].rates)`); (draws[r] = draws[r] || {})[c.id] = c.r; }
+  for (let r = 0; r < 5; r++) { const ids = Object.keys(draws[r]); ok(Object.values(draws[r]).every(x => x === r), `寶箱 ${r} 只會開出稀有度 ${r}`); const pool = I.ev('CREATURES').filter(c => c.r === r).length; eq(ids.length, pool, `寶箱 ${r} 每一種（${pool}）都抽得到`); }
+  I.check('飼料'); I.destroy();
+});
+
+test('寶箱：同種超過 5 隻要選一隻放生', async () => {
+  const I = await boot({ state: base(coinLog(500), ...drops(['clown', 'clown', 'clown', 'clown', 'clown'])) }); await I.dismiss(); await I.tab('shop');
+  const un = stubRandom(I, [0.5, 0.99, 0, 0]); await I.click('[data-act=buychest][data-v=c0]'); un();
+  await I.click('[data-act=openchest]'); await I.click('#modal [data-act=close]');
+  ok(I.has('已經有 5 隻了'), '第 6 隻要出現放生選單：' + I.$('#modal').innerText.slice(0, 40));
+  eq(I.$$('#modal [data-act=releasepick]').length, 6, '六隻都列出來');
+  const pickNew = I.$$('#modal .entry').find(e => e.innerText.includes('新抽到')); ok(pickNew, '標出哪一隻是新抽到的');
+  await I.click(pickNew.querySelector('[data-act=releasepick]'));
+  eq(I.ev("pets('clown').length"), 5, '放生後剩 5 隻'); ok(I.$('#ov').classList.contains('hidden'), '放生完彈窗關閉');
+  I.check('放生'); I.destroy();
+});
+
+test('獎勵商店：兌換、編輯、價格與名稱的怪輸入、XSS', async () => {
+  const I = await boot({ state: base(coinLog(299)) }); await I.dismiss(); await I.tab('shop');
+  ok(!I.$('[data-act=redeem]'), '299 金幣買不起 300 的手搖飲');
+  I.S.logs.push({ id: 'c1', t: 3, d: '2026-10-02', k: 'bonus', c: 1, xp: 0 }); I.win.render();
+  await I.click('[data-act=redeem]'); ok(!I.$('#askov').classList.contains('hidden'), '兌換要先確認');
+  await I.click('#askno'); eq(I.coins(), 300, '取消不扣金幣');
+  await I.click('[data-act=redeem]'); await I.click('#askyes'); eq(I.coins(), 0, '兌換扣 300'); ok(I.has('喝一杯手搖飲'), '兌換紀錄有寫');
+  I.S.logs.push(coinLog(10000)); I.win.render();
+  await I.click('[data-act=shopedit]');
+  await I.click('[data-act=shopadd]'); const idx = I.$$('[data-sf=name]').length - 1;
+  await I.type(`[data-sf=name][data-si="${idx}"]`, '<img src=x onerror=window.__xss=1>');
+  await I.type(`[data-sf=icon][data-si="${idx}"]`, '"><b>');
+  await I.type(`[data-sf=price][data-si="${idx}"]`, '-5');
+  await I.click('[data-act=shopadd]'); await I.type(`[data-sf=price][data-si="${idx + 1}"]`, '0');      // 沒名字，要被丟掉
+  await I.click('[data-act=shopadd]'); await I.type(`[data-sf=name][data-si="${idx + 2}"]`, '小數'); await I.type(`[data-sf=price][data-si="${idx + 2}"]`, '12.6');
+  await I.click('[data-act=shopadd]'); await I.type(`[data-sf=name][data-si="${idx + 3}"]`, '很貴'); await I.type(`[data-sf=price][data-si="${idx + 3}"]`, '1e9');
+  await I.click('[data-act=shopdone]');
+  ok(!I.win.__xss, 'XSS：獎勵名稱'); ok(!I.$('#main img[src=x]'), '獎勵名稱裡的 HTML 不能變成元素');
+  const names = I.ev('shopItems()').map(x => `${x.name}:${x.price}`);
+  ok(names.some(n => n.endsWith(':1') && n.includes('<img')), '負價錢要變成 1：' + names.join('|'));
+  ok(names.includes('小數:13'), '小數要四捨五入：' + names.join('|')); ok(!names.some(n => n.startsWith(':')), '沒名字的要被丟掉');
+  ok(I.has('很貴'), '超大價錢也要能顯示'); I.check('商店編輯');
+  for (let n = 0; n < 7; n++) { await I.click(`[data-act=redeem][data-v="${I.ev('shopItems()').find(x => x.price <= I.coins()).id}"]`); await I.click('#askyes'); }
+  const rows = I.$$('#main section:last-child .row').length; ok(rows <= 5, '兌換紀錄最多 5 筆：' + rows);
+  I.check('兌換很多次'); I.destroy();
+});
+
+test('水族箱：撒飼料、成長、設定、放生、圖鑑', async () => {
+  const all = I => I.win.CREATURES.map(c => c.id);
+  const I = await boot({ state: base(coinLog(500), ...drops(['clown', 'star', 'whaleshark', 'jelly', 'manta'])) }); await I.dismiss();
+  await I.tab('tank'); await flush(); await new Promise(r => setTimeout(r, 600));
+  const fish = () => I.ev('TANK.fish'); eq(fish().length, 5, '五隻都在水族箱裡');
+  const W = I.$('#tank').width, H = I.$('#tank').height;
+  for (const f of fish()) ok(f.x >= 0 && f.x <= W - f.w + 1 && f.y >= -2 && f.y <= H, `${f.c.id} 在水族箱範圍內 (${f.x | 0},${f.y | 0})`);
+  // 撒飼料：先用免費 3 顆，再用買的，再沒有
+  const cv = I.$('#tank'); const r = cv.getBoundingClientRect();
+  const drop = async () => { cv.dispatchEvent(new I.win.MouseEvent('click', { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + 20 })); await flush(); };
+  for (let i = 0; i < 3; i++) await drop(); eq(I.S.feedDay.used, 3, '免費飼料用掉 3 顆');
+  await drop(); ok(I.has('飼料用完了'), '沒飼料了要提示');
+  await I.click('[data-act=buyfeed]'); eq(I.S.feed, 10, '買 10 顆'); eq(I.coins(), 470, '扣 30 金幣');
+  await drop(); eq(I.S.feed, 9, '用了買的飼料');
+  // 讓小丑魚吃到飼料：直接把飼料放在牠身上
+  I.ev("S.fed = S.fed || {}; S.fed[Object.keys(S.fed)[0] || 'dr0clown'] = 9; S.fed['dr0clown'] = 9");
+  const f0 = fish().find(f => f.key === 'dr0clown');
+  I.ev(`TANK.food.push({ x: ${f0.x + 1}, y: ${f0.y + 1}, vy: 0, age: 0 })`);
+  await new Promise(r => setTimeout(r, 400));
+  ok(I.S.fed['dr0clown'] >= 10, '吃到飼料 fed=' + I.S.fed['dr0clown']);
+  ok(I.ev("stageOf(fedOf('dr0clown'))") >= 2, '吃滿 10 顆長成成體'); ok(I.S.seen && I.S.seen.clown >= 2, '圖鑑記下看過成體');
+  I.check('餵魚');
+  await I.click('[data-act=tankedit]'); await I.click('[data-act=intank][data-v="dr1star"]');
+  ok(I.S.outTank.dr1star, '取消勾選 = 不放進水族箱'); await I.click('[data-act=tankdone]'); await new Promise(r => setTimeout(r, 200));
+  eq(fish().length, 4, '水族箱少一隻');
+  await I.click('[data-act=tankedit]'); await I.click('[data-act=release][data-v="dr2whaleshark"]'); await I.click('#askyes'); await I.click('[data-act=tankdone]');
+  ok(I.S.released.dr2whaleshark, '放生'); ok(I.ev('derive().col').whaleshark === 1, '放生後圖鑑還在');
+  await I.click('[data-act=tankview][data-v=dex]'); ok(I.has('水下生物圖鑑'), '圖鑑'); ok(I.has('4 / 20') || I.has('5 / 20'), '圖鑑收集數');
+  await I.click('.dex .cell:not(.no)'); ok(!I.$('#sheetov').classList.contains('hidden'), '點生物看介紹');
+  I.doc.dispatchEvent(new I.win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); ok(I.$('#sheetov').classList.contains('hidden'), 'Esc 關閉介紹');
+  await I.click('.dex .cell:not(.no)'); await I.click('#sheetov', { force: true }); ok(I.$('#sheetov').classList.contains('hidden'), '點外面關閉介紹');
+  I.check('水族箱'); I.destroy();
+});
+
+test('水族箱：20 種 × 5 隻全部放進去也不會壞', async () => {
+  const ids = []; for (const c of ['clown','damsel','butterfly','star','hermit','urchin','turtle','octopus','nudi','lion','puffer','cuttle','seahorse','shark','moray','jelly','manta','mola','dolphin','whaleshark']) for (let k = 0; k < 5; k++) ids.push(c);
+  const I = await boot({ state: mkState({ logs: [W0, coinLog(100), ...drops(ids)], fed: Object.fromEntries(ids.map((c, i) => ['dr' + i + c, i % 3 === 0 ? 30 : i % 3 === 1 ? 10 : 0])) }) }); await I.dismiss();
+  await I.tab('tank'); await new Promise(r => setTimeout(r, 900));
+  eq(I.ev('TANK.fish.length'), 100, '100 隻');
+  const W = I.$('#tank').width; let off = 0; for (const f of I.ev('TANK.fish')) if (f.x < -1 || f.x > W - f.w + 2 || !Number.isFinite(f.x) || !Number.isFinite(f.y)) off++;
+  eq(off, 0, '沒有生物跑出水族箱或變成 NaN');
+  I.check('100 隻'); await I.click('[data-act=tankedit]'); I.check('100 隻設定頁'); await I.click('[data-act=tankdone]');
+  await I.click('[data-act=tankview][data-v=dex]'); I.check('圖鑑全收集'); ok(I.has('20 / 20'), '圖鑑 20/20');
+  for (const c of I.$$('.dex .cell')) { c.click(); await flush(2); if (!I.$('#sheetov').classList.contains('hidden')) { I.check('介紹 ' + c.dataset.v); I.doc.dispatchEvent(new I.win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); } }
+  I.destroy();
+});
+
+test('水族箱：視窗大小改變（手機轉橫向）後畫面不能變形', async () => {
+  const I = await boot({ state: base(coinLog(0), ...drops(['clown', 'shark'])), width: 375, height: 700 }); await I.dismiss();
+  await I.tab('tank'); await new Promise(r => setTimeout(r, 300));
+  const asp = () => { const c = I.$('#tank'); return [c.width / c.height, c.clientWidth / c.clientHeight]; };
+  let [a, b] = asp(); ok(Math.abs(a - b) / b < 0.06, `直式：畫布比例 ${a.toFixed(2)} 要接近畫面比例 ${b.toFixed(2)}`);
+  I.resize(760, 360); I.win.dispatchEvent(new I.win.Event('resize')); await new Promise(r => setTimeout(r, 600));
+  [a, b] = asp(); ok(Math.abs(a - b) / b < 0.06, `轉橫向後：畫布比例 ${a.toFixed(2)} 要接近畫面比例 ${b.toFixed(2)}（否則生物會被拉扁）`);
+  I.destroy();
+});
+
+test('運動紀錄：各種運動、怪數字、補登昨天', async () => {
+  const I = await boot({ state: mkState() }); await I.dismiss();
+  await I.click(['#habits .hab', '運動']);
+  await I.type('#exType', '跑步'); await I.type('#ex_dist', '5'); await I.type('#ex_min', '30'); ok(I.has("配速 6'00\"/km"), '跑步配速：' + I.$('#exPace').innerText);
+  await I.click('[data-act=exadd]'); ok(I.has('跑步・5 km・30 分'), '紀錄文字');
+  await I.type('#exType', '游泳'); await I.type('#ex_m', '200'); await I.type('#ex_min', '10'); ok(I.has("配速 5'00\"/100m"), '游泳配速：' + I.$('#exPace').innerText);
+  await I.click('[data-act=exadd]');
+  await I.type('#exType', '潛水'); await I.type('#ex_depth', '18'); await I.type('#ex_site', '<b>Manta Point</b>'); await I.type('#ex_note', '看到 5 隻');
+  await I.click('[data-act=exadd]'); ok(!I.$('#sheet .entry b'), '潛點裡的 HTML 要跳脫');
+  for (const bad of ['-5', '0', '1e999', '99999999999999999999']) {
+    await I.type('#exType', '跑步'); await I.type('#ex_dist', bad); await I.type('#ex_min', bad); await I.click('[data-act=exadd]');
+    I.check('輸入 ' + bad);
+  }
+  const txt = I.$('#sheet').innerText; ok(!/-5 km|-5 分|Infinity|e\+/.test(txt), '負數、無限大、科學記號不能直接出現在紀錄裡：' + txt.replace(/\n/g, ' ').slice(0, 200));
+  await I.type('#exType', '登山'); await I.type('#ex_dist', '12.3'); await I.type('#ex_gain', '800'); await I.click('[data-act=exadd]');
+  await I.click('[data-act=shday][data-v="-1"]'); await I.type('#exType', '重訓'); await I.type('#ex_min', '45');
+  const rBefore = I.S.logs.length; await I.click('[data-act=exadd]');
+  eq(I.S.logs.length, rBefore, '補登昨天沒有獎勵'); ok(I.S.checks['2026-11-01'] && I.S.checks['2026-11-01'].exercise.length === 1, '紀錄記在昨天');
+  const n = I.$$('#sheet [data-act=chkdel]').length; await I.click('#sheet [data-act=chkdel]'); ok(I.S.checks['2026-11-01'] === undefined, '刪掉昨天唯一的紀錄後，那天的資料夾也清掉');
+  I.check('運動紀錄'); I.destroy();
+});
+
+test('連勝：每天習慣漏一天不斷、連漏兩天歸零；每週習慣漏一週就斷', async () => {
+  const mk = days => Object.fromEntries(days.map(d => [d, { h1: [{ t: 1 }] }]));
+  const hab = { id: 'h1', n: '看書', kind: 'custom', weeks: 0, target: 1 };
+  const streakOf = async checks => { const I = await boot({ state: mkState({ habits: [{ id: 'vocus', n: 'Vocus', kind: 'vocus', weeks: 1, target: 1 }, { id: 'exercise', n: '運動', kind: 'exercise', weeks: 1, target: 3 }, hab], checks }) }); await I.dismiss(); const s = I.ev('streaks(derive()).h1'); I.destroy(); return s; };
+  eq((await streakOf(mk(['2026-11-02', '2026-11-01', '2026-10-31']))).n, 3, '連續 3 天');
+  eq((await streakOf(mk(['2026-11-02', '2026-10-31', '2026-10-30']))).n, 3, '中間漏一天不算斷（3 天）');
+  eq((await streakOf(mk(['2026-11-02', '2026-10-30', '2026-10-29']))).n, 1, '連漏兩天就斷：只剩今天');
+  const t = await streakOf(mk(['2026-11-01', '2026-10-31'])); eq(t.n, 2, '今天還沒做：昨天前天仍算 2');
+  eq((await streakOf(mk(['2026-10-25']))).n, 0, '很久以前做過的不算');
+});
+
+test('日期工具：跨年、閏日、週與兩週期間', async () => {
+  const I = await boot({ state: mkState() }); await I.dismiss();
+  const e = c => I.ev(c);
+  eq(e("addDays('2026-12-31', 1)"), '2027-01-01', '跨年'); eq(e("addDays('2028-02-28', 1)"), '2028-02-29', '閏日'); eq(e("addDays('2028-02-29', 1)"), '2028-03-01', '閏日後');
+  eq(e("addDays('2026-03-01', -1)"), '2026-02-28', '往前一天');
+  let bad = [];
+  for (let i = 0; i < 800; i++) {
+    const d = e(`addDays('2026-01-01', ${i})`), w = e(`weekKey('${d}')`), p = e(`periodKey('${d}', 2)`);
+    const wd = e(`parseKey('${w}').getDay()`); if (wd !== 1) bad.push(`weekKey(${d})=${w} 不是週一`);
+    const diff = e(`Math.round((parseKey('${d}') - parseKey('${w}')) / 864e5)`); if (diff < 0 || diff > 6) bad.push(`${d} 距離週一 ${diff}`);
+    const pd = e(`Math.round((parseKey('${d}') - parseKey('${p}')) / 864e5)`); if (pd < 0 || pd > 13) bad.push(`${d} 距離兩週期間開頭 ${pd}`);
+    if (e(`parseKey('${p}').getDay()`) !== 1) bad.push(`兩週期間 ${p} 不是週一`);
+  }
+  eq(bad.slice(0, 5), [], '800 天的週期計算都正確'); I.destroy();
+});

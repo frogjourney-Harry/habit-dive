@@ -152,9 +152,9 @@ function today(D) {
     const divider = i === CONFIG.rewardRows ? '<div class="divider">以下只做紀錄</div>' : '';
     const starred = it.text.trim() && favs.includes(it.text.trim());
     return `${divider}<div class="prow ${it.done ? 'done' : ''}">
-      <input type="checkbox" data-act="pdone" data-v="${i}" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
+      <input type="checkbox" data-act="pdone" data-v="${i}" aria-label="完成第 ${i + 1} 件" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
       <button class="ghost no ${UI.swap === i ? 'sel' : ''}" data-act="swap" data-v="${i}" title="按住拖曳排序，或點兩個編號交換">${i + 1}</button>
-      <input class="ptext" data-pf="text" data-i="${i}" maxlength="200" value="${esc(it.text)}" placeholder="${i === 0 ? '今天最重要的事' : ''}">
+      <input class="ptext" data-pf="text" data-i="${i}" aria-label="第 ${i + 1} 件事" maxlength="200" value="${esc(it.text)}" placeholder="${i === 0 ? '今天最重要的事' : ''}">
       <button class="ghost star" data-act="fav" data-v="${i}" title="${starred ? '從常用移除' : '存成常用'}">${starred ? '★' : '☆'}</button>
       ${i >= CONFIG.rewardRows && UI.pday >= 0 ? `<button class="ghost pdel" data-act="prowdel" data-v="${i}" title="刪掉這件">✕</button>` : '<span class="pdel"></span>'}</div>`;
   }).join('');
@@ -547,9 +547,9 @@ function shop(D) {
   if (UI.shopEdit) return `<section class="px shop">${sh('編輯獎勵', 'REWARDS', '<button class="pri" data-act="shopdone">完成</button>')}
     <div class="mini">設定你真的想要的獎勵。參考：每天大約能賺 ${CONFIG.coinsPerDay} 金幣。</div>
     ${S.shop.map((it, i) => `<div class="it">
-      <input data-sf="icon" data-si="${i}" maxlength="8" value="${esc(it.icon)}" style="width:52px;text-align:center" title="圖示（可貼 emoji）">
-      <input class="sp" data-sf="name" data-si="${i}" maxlength="40" value="${esc(it.name)}" placeholder="獎勵名稱，例如：吃甜點（100 元內）">
-      <input type="number" min="1" data-sf="price" data-si="${i}" value="${it.price}" style="width:90px">${COIN}
+      <input data-sf="icon" data-si="${i}" aria-label="圖示" maxlength="8" value="${esc(it.icon)}" style="width:52px;text-align:center" title="圖示（可貼 emoji）">
+      <input class="sp" data-sf="name" data-si="${i}" aria-label="獎勵名稱" maxlength="40" value="${esc(it.name)}" placeholder="獎勵名稱，例如：吃甜點（100 元內）">
+      <input type="number" min="1" data-sf="price" data-si="${i}" aria-label="價格" value="${it.price}" style="width:90px">${COIN}
       <button class="ghost" data-act="shopdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
     <div class="row" style="margin-top:8px"><button data-act="shopadd">＋ 新增獎勵</button></div></section>`;
   const since = addDays(dayKey(), -13), recent = S.logs.filter(l => l.d >= since && l.c > 0 && l.k !== 'welcome');
