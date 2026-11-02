@@ -5,37 +5,67 @@ const Q = [];
 const viewDay = () => addDays(dayKey(), UI.pday);
 const BONUS = {
   welcome: '歡迎下水！新手寶箱',
-  top3: '前三件事都完成了！額外寶箱',
+  top3: '前三件事都完成了！',
   pubchest: '今天發布了文章！',
-  period: '習慣達標！額外寶箱',
+  period: '習慣達標！',
   weekly: '本週運動達標！',
 };
 const filled = P => P.filter(x => x.text.trim());
 function getPlan(d) {
   return S.plans[d] || (S.plans[d] = Array.from({ length: 6 }, () => ({ text: '', cat: 'other', done: false, rw: false })));
 }
-function rollCreature() {
-  let x = Math.random() * CONFIG.rarityRates.reduce((a, b) => a + b, 0), r = 0;
-  while (x >= CONFIG.rarityRates[r] && r < 4) { x -= CONFIG.rarityRates[r]; r++; }
+const chestOf = id => CONFIG.chests.find(c => c.id === id);
+// 照寶箱的機率抽稀有度，再從那個稀有度裡隨機挑一種（同稀有度每種機率相同）
+function rollCreature(rates) {
+  let x = Math.random() * rates.reduce((a, b) => a + b, 0), r = 0;
+  while (x >= rates[r] && r < 4) { x -= rates[r]; r++; }
   const pool = CREATURES.filter(c => c.r === r);
   return pool[Math.floor(Math.random() * pool.length)];
 }
+// 完成事情的獎勵：XP 和金幣（生物改在商店用金幣買寶箱）。這一輪拿到的加總記在 GAIN，reward() 結束時一次顯示
+const GAIN = { xp: 0, c: 0, crit: false, title: '' };
 function grant(kind, tag, o = {}) {
-  const D = derive(), cr = rollCreature(), isNew = !D.col[cr.id];
-  let xp = o.xp ?? CONFIG.xp[kind] ?? 0, c, title = o.title || BONUS[kind], crit = false;
+  let xp = o.xp ?? CONFIG.xp[kind] ?? 0, c, crit = false;
   if (BONUS[kind]) c = CONFIG.coins[kind];
   else {
     c = CONFIG.coins.base + Math.floor(Math.random() * (CONFIG.coins.rand + 1));
     if (Math.random() < CONFIG.coins.critChance) { crit = true; c *= 2; }
   }
-  const dup = isNew ? 0 : CONFIG.dupCoins[cr.r];
-  const log = { id: rid(), t: Date.now(), d: o.d || dayKey(), k: kind, tag: tag || undefined, xp, c: c + dup, drop: cr.id, key: o.key, ...o.extra };
+  const log = { id: rid(), t: Date.now(), d: o.d || dayKey(), k: kind, tag: tag || undefined, xp, c, key: o.key, ...o.extra };
+  if (kind === 'welcome') return dropCreature(log, chestOf('shallow').rates, BONUS.welcome);
   S.logs.push(log);
-  Q.push({ title, cr, isNew, xp, c, dup, crit, owned: (D.col[cr.id] || 0) + 1 });
+  GAIN.xp += xp; GAIN.c += c; GAIN.crit = GAIN.crit || crit; GAIN.title = GAIN.title || o.title || BONUS[kind] || '';
+  return log;
+}
+// 在 log 上抽一隻生物（log.id 就是這隻的身分），排進開箱彈窗；超過上限時接著問要放生哪一隻
+function dropCreature(log, rates, title, tint = 0) {
+  const D = derive(), cr = rollCreature(rates), isNew = !D.col[cr.id], dup = isNew ? 0 : CONFIG.dupCoins[cr.r];
+  log.drop = cr.id; log.c = (log.c || 0) + dup;
+  S.logs.push(log);
+  Q.push({ title, cr, isNew, xp: log.xp || 0, c: log.c - dup, dup, tint });
   if (pets(cr.id).length > MAX_PETS) Q.push({ release: cr.id, newId: log.id });
   return log;
 }
-// 今天的寶箱（前三件、每個習慣的打卡、週期達標）跟著條件走：條件不再成立時把獎勵收進 S.held，
+// 商店買生物寶箱：金幣扣掉、開出生物（淺灘寶箱也可能開出飼料）
+function buyChest(id) {
+  const ch = chestOf(id);
+  if (!ch || derive().coins < ch.price) { toast('金幣不夠'); return; }
+  const log = { id: rid(), t: Date.now(), d: dayKey(), k: 'chest', name: ch.name, c: -ch.price, xp: 0 };
+  if (Math.random() * 100 < ch.feed) {
+    log.feedGot = CONFIG.chestFeed; S.logs.push(log);
+    S.feed = (S.feed || 0) + CONFIG.chestFeed;
+    Q.push({ title: ch.name, feed: CONFIG.chestFeed, tint: CONFIG.chests.indexOf(ch) });
+  } else dropCreature(log, ch.rates, ch.name, CONFIG.chests.indexOf(ch));
+  save(); render(); nextChest();
+}
+// 這一輪的 XP、金幣用一行提示顯示，不用彈窗
+function showGain() {
+  if (!GAIN.xp && !GAIN.c) return;
+  toast(`${GAIN.title ? GAIN.title + '　' : ''}+${GAIN.xp} XP　+${GAIN.c} 金幣${GAIN.crit ? '（爆擊 ×2）' : ''}`);
+  if (GAIN.c > 0) SFX.buy();
+  Object.assign(GAIN, { xp: 0, c: 0, crit: false, title: '' });
+}
+// 今天的獎勵（前三件、每個習慣的打卡、週期達標）跟著條件走：條件不再成立時把獎勵收進 S.held，
 // 條件恢復時原封不動還回來（不重抽，避免用取消再打卡刷稀有生物）
 function reconcile(allowGrant) {
   const d = dayKey(), P = S.plans[d] || [], R = CONFIG.rewardRows;
@@ -49,7 +79,7 @@ function reconcile(allowGrant) {
     if (h.weeks && h.kind !== 'vocus') {
       const p = periodKey(d, h.weeks);
       conds.push([h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`, 'period',
-        periodDone(derive(), h, p), `${h.e} ${h.n} ${periodWord(h)}達標！額外寶箱`]);
+        periodDone(derive(), h, p), `${h.e} ${h.n} ${periodWord(h)}達標！`]);
     }
   }
   for (const [key, kind, ok, title, xp] of conds) {
@@ -63,18 +93,19 @@ function reconcile(allowGrant) {
     }
   }
 }
-// 做完 fn 之後檢查寶箱與升級，再存檔、播寶箱。補登昨天時 allowGrant=false：只還原、不發新獎勵
+// 做完 fn 之後檢查獎勵與升級，再存檔、顯示獎勵。補登昨天時 allowGrant=false：只還原、不發新獎勵
 function reward(fn, allowGrant = true) {
   const before = levelOf(derive().xp);
   fn();
   reconcile(allowGrant);
   const after = levelOf(derive().xp);
-  if (after > before) Q.push({ level: after, title: rankIdx(after) > rankIdx(before) ? RANKS[rankIdx(after)][1] : '' });
-  save(); render(); renderSheet(); nextChest();
+  // 同一個等級只慶祝一次（取消再打勾讓等級掉下又回來時不重播）
+  if (after > before && after > (S.lvSeen || 0)) { Q.push({ level: after, title: rankIdx(after) > rankIdx(before) ? RANKS[rankIdx(after)][1] : '' }); S.lvSeen = after; }
+  save(); render(); renderSheet(); showGain(); nextChest();
 }
 
 /* ========= 番茄鐘 ========= */
-// 一段「專注工作階段」：選整段總長度，自動切成「專注 25 分＋休息」的段落；每段專注滿 pomoRewardMin 分鐘開一個寶箱
+// 一段「專注工作階段」：選整段總長度，自動切成「專注 25 分＋休息」的段落；每段專注滿 pomoRewardMin 分鐘有一次獎勵
 const pomoMin = () => S.pomoMin || CONFIG.pomodoroMin;
 function sessionPlan(total) {
   const segs = [];
@@ -134,8 +165,8 @@ function nextChest() {
     const c = CR[it.release], P = pets(c.id);
     if (P.length <= MAX_PETS) { UI.opened = false; nextChest(); return; }
     m.innerHTML = `<h2>${c.name}已經有 ${MAX_PETS} 隻了</h2><p class="dim">每種最多養 ${MAX_PETS} 隻，選一隻放生回大海。</p>
-      ${P.map((p, i) => `<div class="entry" style="text-align:left">${stageImg(c, stageOf(p.fed), 2)}
-        <span class="sp">${p.id === it.newId ? '<b class="new">新抽到的</b>' : `${i + 1} 號`}・${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</span>
+      ${P.map(p => `<div class="entry" style="text-align:left">${stageImg(c, stageOf(p.fed), 2)}
+        <span class="sp">${p.id === it.newId ? '<b class="new">新抽到的</b>・' : ''}${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</span>
         <button class="${p.id === it.newId ? 'pri' : ''}" data-act="releasepick" data-v="${p.id}">放生</button></div>`).join('')}`;
     return;
   }
@@ -145,20 +176,27 @@ function nextChest() {
       <button class="pri" data-act="close">繼續</button>`;
     SFX.rank(); return;
   }
-  m.innerHTML = `<h2>${esc(it.title)}</h2>${img(CHEST, 9, false, 'shake')}<p class="dim">點一下打開寶箱</p>
+  // 寶箱（新手寶箱、商店買的生物寶箱）
+  m.innerHTML = `<h2>${esc(it.title)}</h2><div style="filter:${CHEST_TINT[it.tint || 0]}">${img(CHEST, 9, false, 'shake')}</div><p class="dim">點一下打開寶箱</p>
     <button class="pri" data-act="openchest">開啟</button>`;
   SFX.shake();
 }
 function openChest() {
-  const it = UI.cur, cr = it.cr, R = RARITY[cr.r];
+  const it = UI.cur, cr = it.cr;
+  if (it.feed) {
+    document.getElementById('modal').innerHTML = `<div class="feedpile pop">${'<i></i>'.repeat(it.feed)}</div>
+      <h2>飼料 ${it.feed} 顆</h2><div class="dim" style="font-size:15px">這次開出的是飼料，拿去水族箱餵魚吧。</div>
+      <button class="pri" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
+    SFX.open(0); return;
+  }
+  const R = RARITY[cr.r];
   document.getElementById('modal').innerHTML = `
     <div><span class="rar" style="background:${R.color}">${R.name}</span></div>
     ${stageImg(cr, 1, Math.min(10, Math.floor(160 / stageCanvas(cr, 1).width)), false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
     <h2>${cr.name} <small>幼體</small> ${it.isNew ? '<span class="new">NEW</span>' : ''}</h2>
     <div class="dim" style="font-size:15px">${cr.fact}</div>
-    <div class="gain"><span style="color:var(--xp)">+${it.xp} XP</span>　<span class="coin">+${it.c + it.dup}${COIN}</span></div>
-    ${it.crit ? '<div class="new">爆擊！金幣 ×2</div>' : ''}
-    ${it.dup ? `<div class="dim" style="font-size:14px">重複的生物換成 ${it.dup} 金幣</div>` : ''}
+    ${it.xp || it.c > 0 ? `<div class="gain">${it.xp ? `<span style="color:var(--xp)">+${it.xp} XP</span>　` : ''}${it.c > 0 ? `<span class="coin">+${it.c}${COIN}</span>` : ''}</div>` : ''}
+    ${it.dup ? `<div class="dim" style="font-size:14px">已經有這種了，另外送 ${it.dup} 金幣</div>` : ''}
     <button class="pri" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
   SFX.open(cr.r);
 }

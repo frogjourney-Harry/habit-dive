@@ -2,16 +2,23 @@
 /* ========= 可自行調整的設定 ========= */
 const CONFIG = {
   pomodoroMin: 25,            // 一段專注的長度；使用者選的是「整段工作階段」的總長度（5–120 分）
-  pomoRewardMin: 20,          // 專注滿這麼多分鐘才開寶箱
+  pomoRewardMin: 20,          // 專注滿這麼多分鐘才有獎勵
   breakMin: 5, longBreakMin: 15, longBreakEvery: 4,   // 工作階段中：每段專注後短休息，每 4 段長休息
   dayStartHour: 4,            // 凌晨 4 點前都算「前一天」
   habitDays: 66,              // Lally et al. 2010：習慣自動化所需天數中位數
   maxCustom: 3,               // 自訂習慣最多幾個（不含內建的六件事、Vocus、運動）
   xp:    { check: 10, habit: 10, exercise: 20, plan: 10, pomo: 10, pubchest: 30, period: 30, top3: 15 },
-  coins: { base: 5, rand: 6, critChance: 0.1, period: 40, welcome: 20, top3: 20, pubchest: 25 },
-  rewardRows: 3,              // 六件事只有前幾項打勾會開寶箱，其餘只做紀錄
-  coinsPerDay: 60,            // 紀錄不夠時，商店用這個速度估計「要努力幾天」
-  rarityRates: [55, 28, 12, 4.5, 0.5],   // 普通 / 少見 / 稀有 / 史詩 / 傳說（%）
+  coins: { base: 8, rand: 8, critChance: 0.1, period: 60, welcome: 60, top3: 30, pubchest: 40 },
+  rewardRows: 3,              // 六件事每天只有前幾項打勾有獎勵，其餘只做紀錄
+  coinsPerDay: 90,            // 紀錄不夠時，商店用這個速度估計「要努力幾天」
+  // 生物寶箱：在商店用金幣買。rates＝普通 / 少見 / 稀有 / 史詩 / 傳說（%），feed＝開出飼料的機率（%）
+  chests: [
+    { id: 'shallow', name: '淺灘寶箱', price: 40,  feed: 25, rates: [85, 15, 0, 0, 0] },
+    { id: 'reef',    name: '珊瑚礁寶箱', price: 100, feed: 0,  rates: [45, 40, 15, 0, 0] },
+    { id: 'deep',    name: '深海寶箱', price: 250, feed: 0,  rates: [0, 45, 42, 12, 1] },
+    { id: 'abyss',   name: '傳說寶箱', price: 600, feed: 0,  rates: [0, 0, 50, 44, 6] },
+  ],
+  chestFeed: 5,               // 淺灘寶箱開出飼料時給幾顆
   dupCoins: [2, 5, 15, 40, 100],         // 抽到重複生物時換成的金幣
   shop: [
     { id: 'tea',     icon: '🧋', name: '喝一杯手搖飲',       price: 300 },
