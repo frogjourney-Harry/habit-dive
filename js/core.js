@@ -215,11 +215,19 @@ const rankIdx = lv => RANKS.reduce((a, r, i) => lv >= r[0] ? i : a, 0);
 
 /* ========= 音效 ========= */
 let AC;
-function ac() { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; }
+// 沒有音效引擎（舊瀏覽器、部分 App 內建瀏覽器）時回傳 null，不能丟錯誤：打勾、領取、買東西的流程都會先呼叫它
+function ac() {
+  try {
+    if (!AC) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; AC = new C(); }
+    if (AC.state === 'suspended') { const p = AC.resume(); if (p && p.catch) p.catch(() => {}); }
+    return AC;
+  } catch (e) { return null; }
+}
 function tone(f, t0, d, type = 'square', vol = .05) {
   if (S.mute) return;
   try {
-    const a = ac(), o = a.createOscillator(), g = a.createGain();
+    const a = ac(); if (!a) return;
+    const o = a.createOscillator(), g = a.createGain();
     o.type = type; o.frequency.value = f;
     g.gain.setValueAtTime(vol, a.currentTime + t0);
     g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + t0 + d);

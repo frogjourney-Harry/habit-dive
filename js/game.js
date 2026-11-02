@@ -61,7 +61,7 @@ function buyChest(id) {
 const TAP = { x: innerWidth / 2, y: innerHeight / 2 };
 document.addEventListener('pointerdown', e => { TAP.x = e.clientX; TAP.y = e.clientY; }, { capture: true, passive: true });
 function flyGain(text) {
-  const to = document.querySelector('#nav [data-v="quest"]'); if (!to) return;
+  const to = document.querySelector('#nav [data-v="quest"]'); if (!to || !Element.prototype.animate) return;   // 舊瀏覽器沒有動畫 API：略過動畫，不能影響後面的彈窗
   const r = to.getBoundingClientRect(), el = document.createElement('div');
   el.className = 'fly'; el.innerHTML = text + COIN; el.style.left = TAP.x + 'px'; el.style.top = TAP.y + 'px';
   document.body.appendChild(el);
@@ -74,7 +74,7 @@ function flyGain(text) {
 function showGain() {
   if (!GAIN.n) return;
   toast(`${GAIN.title ? GAIN.title + '　' : ''}+${GAIN.c} 金幣，到「任務」領取`);
-  flyGain(`+${GAIN.c}`);
+  try { flyGain(`+${GAIN.c}`); } catch (e) {}
   Object.assign(GAIN, { n: 0, title: '', c: 0 });
 }
 // 領取：把這些待領取的獎勵入帳，顯示拿到多少，檢查升級

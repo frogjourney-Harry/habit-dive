@@ -52,7 +52,7 @@ async function cloudPull(first) {
     if (!snap.exists) { await cloudPush(); return; }
     const cloud = JSON.parse(snap.data().data), cm = cloud.mtime || 0, lm = S.mtime || 0;
     if (cm === lm) { CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); return; }
-    if (!hasProgress(S)) { adopt(cloud, true); toast('已從雲端載入你的紀錄'); }
+    if (!hasProgress(S)) { adopt(cloud, first); if (first) toast('已從雲端載入你的紀錄'); }
     else if (!hasProgress(cloud)) await cloudPush();
     else if (first) {
       try { localStorage.setItem(PRE_KEY, JSON.stringify({ t: Date.now(), s: S })); } catch (e) {}
