@@ -51,7 +51,7 @@ function dailyTasks(D) {
     { id: 'plan1', name: '寫好明天的清單（獎勵 ×2）', how: `六件事切到「明天」，寫下至少 ${R} 件，按「寫好了」`, go: 'six:1', est: C.task * 2, ex: X.plan * 2, logs: byKey('plan:' + d1) },
     { id: 'rows', name: `完成前 ${R} 件事`, how: `六件事的第 1～${R} 件，每打勾一件就有獎勵`, go: 'six', n: checks.length, of: R, est: C.task * Math.max(R - checks.length, 0), ex: X.check * Math.max(R - checks.length, 0), logs: checks },
     { id: 'top3', name: `前 ${R} 件都完成`, how: `第 1～${R} 件全部打勾，再多一份獎勵`, go: 'six', est: C.top3, ex: X.top3, logs: byKey('top3:' + d) },
-    { id: 'anyhab', name: '完成任一個習慣', how: '「習慣」裡任選一張卡片打卡', go: 'habits', est: C.task, ex: X.anyhab, nx: '任選一個習慣打卡', logs: byKey('anyhab:' + d) },
+    { id: 'anyhab', name: '任一個習慣打卡', how: `上面「習慣」區的卡片${(h => h ? `（例如 ${h.n}）` : '')(activeHabits().find(h => !h.weeks))}任選一張打卡`, go: 'habits', est: C.task, ex: X.anyhab, nx: '「習慣」區任選一張卡片打卡', logs: byKey('anyhab:' + d) },
     { id: 'pomo', name: `專注一段番茄鐘`, how: `番茄鐘專注滿 ${CONFIG.pomoRewardMin} 分鐘`, go: 'pomo', est: C.task, ex: X.pomo, nx: `專注一段番茄鐘（${CONFIG.pomoRewardMin} 分鐘）`, logs: byKey('pomo:' + d) },
   ];
   for (const h of activeHabits()) {

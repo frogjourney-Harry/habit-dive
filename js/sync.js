@@ -51,7 +51,7 @@ async function cloudPull(first) {
     const snap = await userDoc().get();
     if (!snap.exists) { await cloudPush(); return; }
     const cloud = JSON.parse(snap.data().data), cm = cloud.mtime || 0, lm = S.mtime || 0;
-    if (cm === lm) { CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); return; }
+    if (cm === lm) { CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); return; }
     if (!hasProgress(S)) { adopt(cloud); toast('已從雲端載入你的紀錄'); }
     else if (!hasProgress(cloud)) await cloudPush();
     else if (first) {
@@ -60,7 +60,7 @@ async function cloudPull(first) {
     }
     else if (cm > lm) adopt(cloud);
     else await cloudPush();
-    CLOUD.last = Date.now(); CLOUD.error = ''; renderCloud();
+    CLOUD.last = Date.now(); CLOUD.error = ''; renderCloud(); catchUp();
   } catch (e) { CLOUD.error = '同步失敗，稍後會再試'; renderCloud(); }
 }
 async function cloudPush() {

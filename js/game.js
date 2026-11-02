@@ -117,6 +117,11 @@ function reconcile(allowGrant) {
     }
   }
 }
+// 打開網頁（或雲端同步完）時補檢查：條件早就成立、但還沒發的獎勵（例如新任務上線前就打過卡）
+function catchUp() {
+  const n = S.logs.length; reconcile(true);
+  if (S.logs.length !== n) { save(); render(); showGain(); }
+}
 // 做完 fn 之後檢查獎勵與升級，再存檔、顯示獎勵。補登昨天時 allowGrant=false：只還原、不發新獎勵
 function reward(fn, allowGrant = true) {
   const before = levelOf(derive().xp);

@@ -257,7 +257,7 @@ document.getElementById('importFile').addEventListener('change', async e => {
   setInterval(tick, 500);
   if (!derive().claimed.has('welcome')) { grant('welcome', null, { key: 'welcome' }); save(); render(); nextChest(); }
   // 這台裝置之前登入過雲端同步，就自動恢復登入
-  if (S.cloudUid) cloudInit();
+  if (S.cloudUid) cloudInit(); else catchUp();
   // 跨過換日時間時重新整理畫面
   let lastDay = dayKey();
   setInterval(() => { if (dayKey() !== lastDay) { lastDay = dayKey(); render(); } }, 30e3);
