@@ -62,9 +62,10 @@ document.addEventListener('click', async e => {
     case 'chk': {
       const d = sheetDay(), id = UI.sheet.id;
       if (dayChecks(d, id).length) { while (dayChecks(d, id).length) delCheck(d, id, 0); }
-      else { addCheck(d, id, {}); ac(); SFX.tap(); }
+      else { addCheck(d, id, {}); clearLeave(id, d); ac(); SFX.tap(); }
       reward(() => {}, UI.sheet.day === 0); break;
     }
+    case 'leave': { const msg = toggleLeave(UI.sheet.id, sheetDay()); save(); render(); renderSheet(); if (msg) toast(msg); break; }
     case 'exadd': {
       const type = document.getElementById('exType').value, e = { type };
       let skipped = false;

@@ -37,7 +37,7 @@ function habitEditor() {
       <button class="ghost" data-act="habdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
     <div class="row" style="margin-top:8px"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣 ${customCount()}/${CONFIG.maxCustom}</button>
       ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${esc(h.id)}">加回 ${esc(h.n)}</button>`).join('')}</div>
-    <div class="mini">每天的習慣漏兩天才斷；每週／每兩週的習慣沒達標就斷。</div>
+    <div class="mini">每天的習慣漏兩天才斷，每個月可以請 ${CONFIG.leavePerMonth} 天假（點習慣卡片裡的「請假」）；每週／每兩週的習慣沒達標就斷。</div>
     </section>`;
 }
 
@@ -60,7 +60,7 @@ function dailyTasks(D) {
   ];
   for (const h of activeHabits()) {
     const dayLogs = x => byKey(h.kind === 'vocus' ? 'art:' + x : `hab:${h.id}:${x}`);
-    if (!h.weeks) { T.push({ id: 'h_' + h.id, hab: true, name: h.n, go: 'habits', est: C.task, ex: h.kind === 'exercise' ? X.exercise : X.habit, logs: dayLogs(d) }); continue; }
+    if (!h.weeks) { T.push({ id: 'h_' + h.id, hab: true, name: h.n, how: onLeave(h.id, d) && !dayLogs(d).length ? '今天請假中（不算漏）' : '', go: 'habits', est: C.task, ex: h.kind === 'exercise' ? X.exercise : X.habit, logs: dayLogs(d) }); continue; }
     // 週期型（例如本週運動 3 天）：每次打卡和達標加碼合成一列，看得出這期的進度
     const p = periodKey(d, h.weeks), days = Array.from({ length: 7 * h.weeks }, (_, i) => addDays(p, i));
     const bonus = h.kind === 'vocus' ? [] : byKey(h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`);
@@ -134,9 +134,9 @@ function today(D) {
       const p = periodKey(td, h.weeks), cnt = perCount(D, h, p);
       on = periodDone(D, h, p); sub = `${periodWord(h)} ${cnt}/${h.target} ${countWord(h)}`;
     } else {
-      on = dayDone(D, td, h.id); sub = on ? '今天 ✓' : '今天還沒';
+      on = dayDone(D, td, h.id); sub = on ? '今天 ✓' : onLeave(h.id, td) ? '今天請假' : '今天還沒';
     }
-    return `<button class="hab ${on ? 'on' : ''}" data-act="habtap" data-v="${esc(h.id)}">
+    return `<button class="hab ${on ? 'on' : ''} ${!h.weeks && !on && onLeave(h.id, td) ? 'leave' : ''}" data-act="habtap" data-v="${esc(h.id)}">
       <div class="row"><span class="hn">${esc(h.n)}</span><span class="sp"></span>${badge}</div>
       <div class="hs">${sub}</div></button>`;
   }).join('');
@@ -274,9 +274,15 @@ function renderSheet() {
       ${list.map((e, i) => `<div class="entry"><span class="sp">${esc(e.title || '（無標題）')}</span><button class="ghost" data-act="chkdel" data-v="${i}">✕</button></div>`).join('')}
       <div class="form"><input id="artTitle" class="f-wide" maxlength="120" placeholder="發布的文章標題（可留空）"></div>
       <button class="pri wide" data-act="artadd">記錄發布的文章</button>`;
-  else body = list.length
+  else {
+    const lv = onLeave(h.id, d), left = leaveLeft(h.id, d), who = day < 0 ? '昨天' : '今天';
+    body = (list.length
       ? `<button class="wide" data-act="chk">✓ 已完成，點一下取消</button>`
-      : `<button class="pri wide" data-act="chk">完成打卡</button>`;
+      : `<button class="pri wide" data-act="chk">完成打卡</button>`)
+      + (list.length || h.weeks ? '' : lv ? `<button class="wide" data-act="leave">${who}請假中，點一下取消</button>`
+        : `<button class="wide" data-act="leave" ${left ? '' : 'disabled'}>${who}請假（本月還剩 ${left} 天）</button>`)
+      + (!list.length && !h.weeks ? `<div class="mini">請假的那天不算漏，連勝不會中斷，但沒有獎勵。每個月可以請 ${CONFIG.leavePerMonth} 天。</div>` : '');
+  }
   el.innerHTML = `<div class="row"><b style="font-size:18px">${esc(h.n)}</b><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
     <div class="mini">${goal}${s.n ? `・連續 ${s.n} ${h.weeks ? (h.weeks === 1 ? '週' : '次') : '天'}` : ''}</div>
     <div class="row" style="margin-top:10px"><span class="seg-switch">${[[0, '今天'], [-1, '昨天']].map(([o, n]) => `<button class="${day === o ? 'sel' : ''}" data-act="shday" data-v="${o}">${n}</button>`).join('')}</span>

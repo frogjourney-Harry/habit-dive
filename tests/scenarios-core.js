@@ -326,3 +326,60 @@ test('拖曳排序：判斷範圍寬鬆（拖過相鄰一列的 40% 就換、20%
   await drag(0, 8); eq(vals().length, 3, '往下拖過頭：不會壞'); ok(I.$$('#six .prow').length >= 3, '列還在');
   I.check('拖曳範圍'); I.destroy();
 });
+
+// 請假：每天的習慣每個月可以請 2 天假，那天不算漏、連勝接下去、沒有獎勵
+async function startWithWake(checkDays = []) {
+  const I = await startToday();
+  I.ev(`S.habits.push({ id: 'hwake', e: '', n: '8:00 起床', kind: 'custom', weeks: 0, target: 1 }); ${JSON.stringify(checkDays)}.forEach(d => addCheck(addDays(dayKey(), d), 'hwake', {})); save(); render()`);
+  return I;
+}
+const streakOf = I => I.ev("streaks(derive()).hwake");
+test('請假：連勝不中斷、不算漏', async () => {
+  const I = await startWithWake([-6, -5, -4, -3]);   // 連續 4 天，昨天和前天都沒做
+  eq(streakOf(I).n, 0, '連漏兩天（前天、昨天）：連勝歸零（沒請假的對照）');
+  ok(I.ev("toggleLeave('hwake', addDays(dayKey(), -2))") !== '', '前天請假');
+  eq(streakOf(I).n, 4, '前天請假：連勝還在（4 天），請假的那天不加天數');
+  ok(streakOf(I).risk === true, '昨天漏了、今天還沒做：還是會提醒');
+  I.ev("toggleLeave('hwake', addDays(dayKey(), -1))");
+  eq(streakOf(I).n, 4, '昨天也請假：連勝還在');
+  ok(streakOf(I).risk === false, '昨天請假不算漏，不用提醒');
+  I.ev("addCheck(dayKey(), 'hwake', {})"); eq(streakOf(I).n, 5, '今天做了就 +1');
+  I.ev('save()'); I.check('請假連勝'); I.destroy();
+});
+
+test('請假：每月額度、取消、打卡後自動恢復額度、月份分開算', async () => {
+  const I = await startWithWake([]);
+  const t = I.ev("dayKey()"), m = t.slice(0, 8), tog = d => I.ev(`toggleLeave('hwake', '${d}')`), left = d => I.ev(`leaveLeft('hwake', '${d}')`);
+  eq(left(t), 2, '一開始每月 2 天');
+  tog(m + '03'); tog(m + '04'); eq(left(t), 0, '請了 2 天：用完');
+  ok(/用完/.test(tog(m + '05')), '第 3 天被拒絕'); ok(!I.ev(`onLeave('hwake', '${m}05')`), '沒有真的請到');
+  eq(left('2026-10-20'), 2, '上個月的額度另外算');
+  ok(/取消/.test(tog(m + '03')), '再按一次取消'); eq(left(t), 1, '取消後額度回來');
+  // 當天打卡：請假自動取消、額度回來；已經打卡的日子不能請假
+  I.ev(`toggleLeave('hwake', '${t}')`); eq(left(t), 0, '今天請假，這個月用完');
+  I.ev(`addCheck('${t}', 'hwake', {}); clearLeave('hwake', '${t}')`); ok(!I.ev(`onLeave('hwake', '${t}')`) && left(t) === 1, '打卡後請假自動取消、額度還回來');
+  ok(/已經完成/.test(tog(t)), '已經打卡的那天不能請假');
+  // 沒有的習慣、每週型的習慣都不能請假
+  eq(I.ev("toggleLeave('nope', '2026-11-02')"), '', '不存在的習慣');
+  eq(I.ev("toggleLeave('exercise', '2026-11-02')"), '', '每週型的習慣不用請假');
+  I.ev('save()'); I.check('請假額度'); I.destroy();
+});
+
+test('請假：畫面操作、重開還在、壞資料不當掉', async () => {
+  const I = await startWithWake([]);
+  await I.tab('today');
+  await I.click(['#habits .hab', '8:00 起床']);
+  ok(I.has('今天請假（本月還剩 2 天）'), '面板有請假按鈕和剩餘天數');
+  await I.click('[data-act=leave]'); ok(I.has('今天請假中，點一下取消'), '請假後按鈕變成取消'); ok(I.has('請假了'), '有提示');
+  await I.click('[data-act=sheetclose]'); ok(I.$('#habits .hab.leave') && I.$('#habits .hab.leave').innerText.includes('今天請假'), '習慣卡片顯示「今天請假」');
+  ok(I.S.logs.filter(l => l.key && l.key.startsWith('hab:hwake')).length === 0, '請假沒有獎勵');
+  await I.click(['#habits .hab', '8:00 起床']); await I.click('[data-act=shday][data-v="-1"]'); ok(I.has('昨天請假（本月還剩 1 天）'), '昨天也能請假，額度共用');
+  await I.click('[data-act=leave]'); ok(I.has('昨天請假中'), '昨天請假了'); await I.click('[data-act=shday][data-v="0"]'); await I.click('[data-act=chk]');
+  ok(I.has('已完成') && !I.has('今天請假中'), '今天改成打卡：請假自動取消');
+  ok(!I.S.leaves.hwake['2026-11-02'], '紀錄裡今天的請假被清掉');
+  ok(I.ev("leaveLeft('hwake', dayKey())") === 1, '額度剩 1（昨天那天還在）');
+  await I.click('[data-act=sheetclose]'); await I.tab('quest'); I.check('請假畫面');
+  const J = await I.reload(); await J.dismiss(); ok(J.ev("onLeave('hwake', addDays(dayKey(), -1))"), '重開後請假還在');
+  for (const bad of ['"x"', '[1]', '{"hwake": 5}', '{"hwake": "x"}', 'null']) { J.ev(`S.leaves = ${bad}; save(); render()`); J.ev("toggleLeave('hwake', dayKey())"); J.ev('render()'); J.check('壞的 leaves ' + bad); }
+  J.destroy(); I.destroy();
+});

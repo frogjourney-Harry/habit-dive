@@ -211,6 +211,23 @@ function delCheck(d, id, i) {
   if (S.checks[d] && !Object.keys(S.checks[d]).length) delete S.checks[d];
 }
 
+/* ========= 請假 ========= */
+// 每天的習慣每個月可以請幾天假：那天不打卡也不算漏，連勝照樣接下去（沒有獎勵）。S.leaves[習慣 id][日期] = 1
+const leavesOf = id => { const L = S.leaves && typeof S.leaves === 'object' && S.leaves[id]; return L && typeof L === 'object' ? L : {}; };
+const onLeave = (id, d) => !!leavesOf(id)[d];
+const leaveLeft = (id, d) => Math.max(0, CONFIG.leavePerMonth - Object.keys(leavesOf(id)).filter(x => x.slice(0, 7) === d.slice(0, 7)).length);
+function clearLeave(id, d) { if (onLeave(id, d)) delete S.leaves[id][d]; }
+// 請假或取消請假，回傳要顯示的訊息
+function toggleLeave(id, d) {
+  const h = habit(id); if (!h || h.weeks) return '';
+  if (onLeave(id, d)) { delete S.leaves[id][d]; return '已取消請假'; }
+  if (dayChecks(d, id).length) return '這天已經完成了，不用請假';
+  if (!leaveLeft(id, d)) return `這個月的請假用完了（每月 ${CONFIG.leavePerMonth} 天）`;
+  if (!S.leaves || typeof S.leaves !== 'object') S.leaves = {};
+  if (!S.leaves[id] || typeof S.leaves[id] !== 'object') S.leaves[id] = {};
+  S.leaves[id][d] = 1; return '請假了，連勝不會中斷';
+}
+
 /* ========= 狀態推導 ========= */
 // XP、金幣、圖鑑由 logs 算（待領取的獎勵 pend 要領了才算，當天沒領的隔天自動算進來）；習慣完成由卡片打卡（S.checks）算，加上舊版的六件事打勾與紀錄
 function derive() {
@@ -240,20 +257,21 @@ const periodDone = (D, h, p) => perCount(D, h, p) >= h.target;
 
 // 每天的習慣「不連續漏兩次」：漏一次不斷，連續漏兩次才歸零；進行中的今天不算漏。
 // 週期型習慣漏一期就斷：週期本身已經是自己選的寬鬆度
-function chain(isDone, cur, step, first, maxMiss) {
+// 請假的那天不算漏，也不加天數：連勝照樣接下去
+function chain(isDone, cur, step, first, maxMiss, isLeave = () => false) {
   let n = isDone(cur) ? 1 : 0, miss = 0, k = step(cur);
-  const prevMissed = !isDone(k);
+  const prevMissed = !isDone(k) && !isLeave(k);
   while (k >= first) {
-    if (isDone(k)) { n++; miss = 0; } else if (++miss >= maxMiss) break;
+    if (isDone(k)) { n++; miss = 0; } else if (isLeave(k)) miss = 0; else if (++miss >= maxMiss) break;
     k = step(k);
   }
-  return { n, risk: maxMiss > 1 && n > 0 && !isDone(cur) && prevMissed };
+  return { n, risk: maxMiss > 1 && n > 0 && !isDone(cur) && !isLeave(cur) && prevMissed };
 }
 function streaks(D) {
   const today = dayKey(), first = Object.keys(D.days).sort()[0] || today, out = {};
   for (const h of activeHabits()) out[h.id] = h.weeks
     ? chain(p => periodDone(D, h, p), periodKey(today, h.weeks), p => addDays(p, -7 * h.weeks), periodKey(first, h.weeks), 1)
-    : chain(d => dayDone(D, d, h.id), today, d => addDays(d, -1), first, 2);
+    : chain(d => dayDone(D, d, h.id), today, d => addDays(d, -1), first, 2, d => onLeave(h.id, d));
   return out;
 }
 // 等級：升到 Lv.n 需要累積 10×(n−1)² XP

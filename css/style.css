@@ -362,3 +362,4 @@ body.focusing{overflow:hidden}
 }
 /* 用鍵盤操作時要看得到目前在哪一個（滑鼠點擊不會出現） */
 button:focus-visible,[role=button]:focus-visible,a:focus-visible,input[type=checkbox]:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
+.hab.leave .hs{color:var(--faint)}
