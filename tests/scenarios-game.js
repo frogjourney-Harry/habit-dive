@@ -348,21 +348,25 @@ test('幫魚取名字：存檔、顯示、放生、亂輸入', async () => {
   J.check('取名字全部'); J.destroy(); I.destroy();
 });
 
-test('水族箱全屏：沒有框、填滿到分頁列、不會捲動、沙地還在、讓牠游走', async () => {
-  for (const [w, h] of [[375, 812], [320, 568], [1024, 800]]) {
+test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不會捲動、沙地在分頁列上面、讓牠游走', async () => {
+  for (const [w, h] of [[375, 812], [320, 568], [1024, 800], [1600, 900]]) {
     const I = await boot({ state: base(...drops(['clown', 'hermit', 'star'])), width: w, height: h }); await I.dismiss();
+    ok(I.$('#nav [data-v=tank]').innerText.trim() === '大海', `${w}px：分頁叫「大海」`);
     await I.tab('tank'); await flush(); await new Promise(r => setTimeout(r, 300));
     const cv = I.$('#tank'), r = cv.getBoundingClientRect(), nav = I.$('#nav'), fixed = I.win.getComputedStyle(nav).position === 'fixed';
-    const bottom = fixed ? nav.getBoundingClientRect().top : h - 8;
-    ok(Math.abs(r.bottom - bottom) <= 3, `${w}px：畫布填到${fixed ? '分頁列' : '畫面底'}（畫布底 ${r.bottom | 0}，目標 ${bottom | 0}）`);
-    ok(I.doc.documentElement.scrollHeight <= h + 1, `${w}px：水族箱頁不會捲動（${I.doc.documentElement.scrollHeight} > ${h}）`);
+    ok(r.left <= 0.5 && r.top <= 0.5 && r.right >= w - 0.5 && r.bottom >= h - 0.5, `${w}px：海填滿整個視窗（${r.left | 0},${r.top | 0}–${r.right | 0},${r.bottom | 0}）`);
+    ok(I.doc.documentElement.scrollHeight <= h + 1, `${w}px：大海頁不會捲動（${I.doc.documentElement.scrollHeight} > ${h}）`);
     ok(!cv.closest('.px') && I.win.getComputedStyle(cv).boxShadow === 'none', `${w}px：沒有面板和外框`);
-    ok(!I.vis(I.$('.foot')), `${w}px：水族箱頁不顯示頁尾`);
-    if (w <= 600) ok(r.left <= 1 && r.right >= w - 1, `${w}px：手機上左右貼齊畫面（${r.left | 0}–${r.right | 0}）`);
-    const H = I.ev('TANK.H'); ok(I.ev('TANK.fish').filter(f => f.ground).every(f => Math.abs(f.y + f.h - 2 - (H - 16)) < 1), `${w}px：寄居蟹、海星站在沙地上`);
-    const px = cv.getContext('2d').getImageData(1, cv.height - 3, 1, 1).data; ok(px[3] === 255 && px[0] > 150, `${w}px：最底下是沙地：${[...px]}`);
+    ok(!I.vis(I.$('.foot')), `${w}px：大海頁不顯示頁尾`);
+    ok(!I.blocked(I.$('.lvchip')) && !I.blocked(I.$('#nav [data-v=today]')), `${w}px：頂端列和分頁列浮在海上面，點得到`);
+    const H = I.ev('TANK.H'), fy = I.ev('TANK.floorY'), sandTop = fy * r.height / H, floorLine = fixed ? nav.getBoundingClientRect().top : h;
+    ok(floorLine - sandTop >= 40 && floorLine - sandTop <= 56, `${w}px：沙地在${fixed ? '分頁列上面' : '畫面最底下'}看得到（沙地 ${sandTop | 0}，${floorLine | 0}）`);
+    ok(I.ev('TANK.fish').filter(f => f.ground).every(f => Math.abs(f.y + f.h - 2 - fy) < 1), `${w}px：寄居蟹、海星站在沙地上`);
+    const px = cv.getContext('2d').getImageData(1, Math.round((fy + 8) * cv.height / H), 1, 1).data; ok(px[3] === 255 && px[0] > 150, `${w}px：沙地有畫出來：${[...px]}`);
+    const top = I.$('.seahud.top').getBoundingClientRect(), brand = I.$('.brand').getBoundingClientRect(), col = I.$('.wrap').getBoundingClientRect();
+    ok(top.top >= brand.bottom - 1, `${w}px：上面那排按鈕在頂端列下面`); ok(top.left >= col.left && top.right <= col.right + 1, `${w}px：按鈕對齊內容欄`);
     for (const s of ['[data-act=tankview]', '[data-act=tankedit]', '[data-act=buyfeed]']) ok(!I.blocked(I.$(s)), `${w}px：浮在上面的按鈕點得到：${s}`);
-    await I.tab('today'); ok(I.vis(I.$('.foot')) && !I.doc.body.classList.contains('sea-on'), `${w}px：離開水族箱頁面恢復`);
+    await I.tab('today'); ok(I.vis(I.$('.foot')) && !I.doc.body.classList.contains('sea-on') && !I.$('#tank'), `${w}px：離開大海頁面恢復`);
     await I.tab('tank'); await I.click('[data-act=tankview][data-v=dex]'); ok(!I.doc.body.classList.contains('sea-on'), `${w}px：圖鑑是一般頁面`);
     I.check('全屏 ' + w); I.destroy();
   }

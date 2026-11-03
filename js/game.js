@@ -223,7 +223,7 @@ function openChest() {
   const it = UI.cur, cr = it.cr;
   if (it.feed) {
     document.getElementById('modal').innerHTML = `<div class="feedpile pop">${'<i></i>'.repeat(it.feed)}</div>
-      <h2>飼料 ${it.feed} 顆</h2><div class="dim" style="font-size:15px">這次開出的是飼料，拿去水族箱餵魚吧。</div>
+      <h2>飼料 ${it.feed} 顆</h2><div class="dim" style="font-size:15px">這次開出的是飼料，拿去大海餵魚吧。</div>
       <button class="pri" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
     SFX.open(0); return;
   }

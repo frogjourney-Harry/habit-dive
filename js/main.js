@@ -185,7 +185,7 @@ document.addEventListener('click', async e => {
       const lg = S.logs.find(l => l.id === v), c = lg && CR[lg.drop]; if (!c) break;
       const p = pets(c.id).find(x => x.id === v), st = p ? `（${stageName(c, stageOf(p.fed))}）` : '';
       const nm = petName(v);
-      if (!(await ask(`讓這隻${c.name}${nm ? `「${nm}」` : ''}${st}游走？\n牠會游回大海，不會再出現在水族箱。圖鑑的收集紀錄會保留。`, '讓牠游走'))) break;
+      if (!(await ask(`讓這隻${c.name}${nm ? `「${nm}」` : ''}${st}游走？\n牠會游走，不會再出現在你的大海裡。圖鑑的收集紀錄會保留。`, '讓牠游走'))) break;
       S.released = S.released || {}; S.released[v] = true; if (S.names) delete S.names[v]; save(); render(); renderSheet(); toast(`${nm || c.name}游走了`); break;
     }
     case 'releasepick': {
@@ -214,7 +214,7 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'petnamedone': UI.nameEdit = null; render(); break;
-    case 'tankdone': UI.tankEdit = false; UI.nameEdit = null; render(); toast('水族箱已更新'); break;
+    case 'tankdone': UI.tankEdit = false; UI.nameEdit = null; render(); toast('大海已更新'); break;
     case 'buyfeed': {
       if (derive().coins < FEED.price) { toast(`金幣不夠，飼料要 ${FEED.price} 金幣`); break; }
       S.logs.push({ id: rid(), t: Date.now(), d: dayKey(), k: 'redeem', name: `飼料 ${FEED.pack} 顆`, c: -FEED.price });
