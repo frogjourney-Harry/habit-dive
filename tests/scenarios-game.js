@@ -354,7 +354,7 @@ test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不�
     ok(I.$('#nav [data-v=tank]').innerText.trim() === '大海', `${w}px：分頁叫「大海」`);
     await I.tab('tank'); await flush(); await new Promise(r => setTimeout(r, 300));
     const cv = I.$('#tank'), r = cv.getBoundingClientRect(), nav = I.$('#nav'), fixed = I.win.getComputedStyle(nav).position === 'fixed';
-    ok(r.left <= 0.5 && r.top <= 0.5 && r.right >= w - 20 && r.bottom >= h - 0.5, `${w}px：海填滿整個視窗（右邊只留捲軸的位置）（${r.left | 0},${r.top | 0}–${r.right | 0},${r.bottom | 0}）`);
+    ok(r.left <= 0.5 && r.top <= 0.5 && r.right >= w - 0.5 && r.bottom >= h - 0.5, `${w}px：海填滿整個視窗，連捲軸那一條都是海（${r.left | 0},${r.top | 0}–${r.right | 0},${r.bottom | 0}）`);
     ok(I.doc.documentElement.scrollHeight <= h + 1, `${w}px：大海頁不會捲動（${I.doc.documentElement.scrollHeight} > ${h}）`);
     ok(!cv.closest('.px') && I.win.getComputedStyle(cv).boxShadow === 'none', `${w}px：沒有面板和外框`);
     ok(!I.vis(I.$('.foot')), `${w}px：大海頁不顯示頁尾`);
@@ -378,10 +378,10 @@ test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不�
 test('各頁頂端列的位置一樣（大海頁不會捲動也不能左右跳）', async () => {
   for (const w of [1024, 1600]) {   // 手機的捲軸浮在畫面上、不佔位置，不會跳
     const I = await boot({ state: base(coinLog(500), ...drops(['clown'])), width: w, height: 600 }); await I.dismiss();
-ok(/linear-gradient/.test(I.win.getComputedStyle(I.doc.documentElement).backgroundImage) && I.win.getComputedStyle(I.doc.documentElement).scrollbarGutter === 'stable', `${w}px：留給捲軸的那一條也畫著海`);
+    const cs = () => I.win.getComputedStyle(I.doc.documentElement).overflowY;
     const pos = () => ['.brand', '#stat', '#nav'].map(s => { const r = I.$(s).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right)]; });
     await I.tab('today'); ok(I.doc.documentElement.scrollHeight > 600, `${w}px：今日頁比畫面長（會捲動）`); const ref = pos();
-    for (const t of ['tank', 'quest', 'shop', 'log', 'about']) { await I.tab(t); eq(pos(), ref, `${w}px：「${t}」頁的頂端列、金幣、分頁列跟今日頁對齊`); }
+    for (const t of ['tank', 'quest', 'shop', 'log', 'about']) { await I.tab(t); eq(pos(), ref, `${w}px：「${t}」頁的頂端列、金幣、分頁列跟今日頁對齊`); eq(cs(), t === 'tank' ? 'hidden' : 'scroll', `${w}px：「${t}」頁${t === 'tank' ? '沒有捲軸（海畫到最右邊）' : '一律有捲軸（內容短也有）'}`); }
     I.destroy();
   }
 });

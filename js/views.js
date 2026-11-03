@@ -16,7 +16,7 @@ function render() {
   const pendN = dailyTasks(D).filter(t => t.pend.length).length;
   document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? `<i class="badge">${pendN}</i>` : ''}</button>`).join('');
   document.getElementById('main').innerHTML = ({ today, quest: quests, tank, shop, log, about })[UI.tab](D);
-  document.body.classList.toggle('sea-on', seaOn());
+  document.body.classList.toggle('sea-on', seaOn()); document.documentElement.classList.toggle('sea-on', seaOn());
   if (UI.tab === 'tank') tankStart();
   for (const i of document.querySelectorAll('#main input:not([type]), #main input[type=text], #sheet input:not([type]), #sheet input[type=text]')) { i.setAttribute('autocomplete', 'off'); i.setAttribute('autocapitalize', 'off'); i.setAttribute('spellcheck', 'false'); }
   // 不是按鈕的可點元素（圖鑑格子、寶箱名稱、任務名稱…）：讓鍵盤和螢幕閱讀器也用得到
@@ -500,9 +500,18 @@ function tank(D) {
 }
 // 大海畫面時：頁尾藏起來、整頁不捲動，海填滿整個視窗
 const seaOn = () => UI.tab === 'tank' && !UI.tankEdit && UI.tankView !== 'dex';
+// 量這台電腦的捲軸有多寬（手機是 0）：大海頁拿掉捲軸時，內容欄要往左挪半條，才跟其他頁對齊（見 style.css 的 html.sea-on）
+function measureScrollbar() {
+  const p = document.createElement('div'); p.className = 'sbprobe';
+  p.style.cssText = 'position:absolute;top:-999px;width:100px;height:100px;overflow:scroll';
+  document.body.appendChild(p);
+  document.documentElement.style.setProperty('--sbw', (p.offsetWidth - p.clientWidth) + 'px'); p.remove();
+}
+measureScrollbar();
 // 視窗大小改變（手機轉橫向、電腦拉視窗）時重新量水族箱，不然畫面會被拉扁；每一隻留在原位
 let tankResizeTimer = 0;
 window.addEventListener('resize', () => {
+  measureScrollbar();
   clearTimeout(tankResizeTimer);
   tankResizeTimer = setTimeout(() => { if (UI.tab === 'tank' && !UI.tankEdit && UI.tankView !== 'dex' && document.getElementById('tank')) tankStart(); }, 120);
 });
