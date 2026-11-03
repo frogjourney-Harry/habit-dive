@@ -219,7 +219,7 @@ document.addEventListener('click', async e => {
       if (derive().coins < FEED.price) { toast(`金幣不夠，飼料要 ${FEED.price} 金幣`); break; }
       S.logs.push({ id: rid(), t: Date.now(), d: dayKey(), k: 'redeem', name: `飼料 ${FEED.pack} 顆`, c: -FEED.price });
       S.feed = (S.feed || 0) + FEED.pack; save(); SFX.buy(); toast(`買了 ${FEED.pack} 顆飼料`);
-      if (UI.tab === 'tank') { renderStat(); const el = document.getElementById('feedInfo'); if (el) el.textContent = tankFeedText(); }
+      if (UI.tab === 'tank') { renderStat(); const el = document.getElementById('feedInfo'); if (el) el.innerHTML = tankFeedHTML(); }
       else render();
       break;
     }

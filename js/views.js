@@ -469,9 +469,10 @@ function steer(f, tvx, tvy, dt, vertical = true) {
   // 魚頭朝實際游的方向（不是朝目的地），掉頭時不會倒著滑
   if (vertical && Math.abs(f.mx) > Math.abs(f.vx) * .15) f.vx = Math.sign(f.mx) * Math.abs(f.vx);
 }
-function tankFeedText() {
+// 底下的飼料：小蝦圖示＋還有幾顆，小字寫其中免費的還有幾顆
+function tankFeedHTML() {
   const f = freeLeft(), b = S.feed || 0;
-  return `飼料：今天免費 ${f}/${FEED.free}${b ? `・另有 ${b} 顆` : ''}`;
+  return `${img(SHRIMP, 2, false, 'feedic')}<b>${f + b}</b><small>${f ? `今天免費 ${f}` : '免費的用完了'}${b ? `・買的 ${b}` : ''}</small>`;
 }
 function tankEditor(D) {
   const owned = CREATURES.filter(c => pets(c.id).length);
@@ -495,7 +496,7 @@ function tank(D) {
   return `<div class="sea"><canvas id="tank" class="tank" aria-label="大海，點水裡撒飼料"></canvas>
     <div class="seahud top"><b>大海</b><small>${n} 種</small><span class="sp"></span><button data-act="tankview" data-v="dex">圖鑑</button><button data-act="tankedit">設定</button></div>
     <div class="seahud hint"><small>點水裡撒飼料，吃到的那一隻會長大</small></div>
-    <div class="seahud bot"><small id="feedInfo">${tankFeedText()}</small><span class="sp"></span><button data-act="buyfeed">買飼料 ${FEED.pack} 顆・${FEED.price}${COIN}</button></div></div>`;
+    <div class="seahud bot"><div class="feedchip" id="feedInfo" title="飼料">${tankFeedHTML()}</div><span class="sp"></span><button class="feedbuy" data-act="buyfeed" title="用 ${FEED.price} 金幣買 ${FEED.pack} 顆飼料">買 ${FEED.pack} 顆<span class="price">${FEED.price}${COIN}</span></button></div></div>`;
 }
 // 大海畫面時：頁尾藏起來、整頁不捲動，海填滿整個視窗
 const seaOn = () => UI.tab === 'tank' && !UI.tankEdit && UI.tankView !== 'dex';
@@ -546,13 +547,29 @@ function tankStart() {
     });
   }
   TANK.fish.sort((a, b) => b.w * b.h - a.w * a.h);   // 大的畫在後面，小的在前面
+  // 海底的沙：顏色壓暗一點、邊緣起伏、往上淡淡地融進海水，不要像一條亮色的地板。只畫一次，每一格直接貼上去
+  const sand = document.createElement('canvas'), sx = sand.getContext('2d'), FADE = 6;
+  sand.width = W; sand.height = H - floorY + FADE;
+  const hash = i => { const s = Math.sin(i * 127.1) * 43758.5453; return s - Math.floor(s); };   // 固定的亂數：每次重畫長得一樣
+  for (let i = 0; i < FADE; i++) { sx.fillStyle = `rgba(110,102,77,${(i + 1) / FADE * .22})`; sx.fillRect(0, i, W, 1); }
+  for (let c = 0; c < W; c++) {
+    const top = FADE + Math.round(Math.sin(c / 11) * .8 + Math.sin(c / 29 + 1) * .7);   // 平緩的沙丘
+    sx.fillStyle = '#857a5b'; sx.fillRect(c, top, 1, 1);
+    sx.fillStyle = '#6b634b'; sx.fillRect(c, top + 1, 1, 6);
+    sx.fillStyle = '#58523f'; sx.fillRect(c, top + 7, 1, sand.height);
+    if (hash(c) < .18) { sx.fillStyle = hash(c + .5) < .5 ? '#4a4435' : '#94896a'; sx.fillRect(c, top + 2 + Math.floor(hash(c + .3) * 9), 1, 1); }
+  }
+  for (let k = 0; k < Math.max(2, Math.floor(W / 70)); k++) {   // 幾顆石頭
+    const rx = Math.floor(hash(k + 9) * (W - 8)), rw = 3 + Math.floor(hash(k + 3) * 4);
+    sx.fillStyle = '#3e4a56'; sx.fillRect(rx, FADE - 1, rw, 3); sx.fillStyle = '#56636f'; sx.fillRect(rx + 1, FADE - 2, rw - 2, 1);
+  }
   const weeds = Array.from({ length: Math.max(3, Math.floor(W / 60)) }, (_, i) => ({ x: 12 + i * (W - 24) / Math.max(1, Math.floor(W / 60) - 1), h: 18 + (i * 7) % 20 }));
   cv.onclick = e => {
     const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width, py = (e.clientY - r.top) * H / r.height;
     if (py >= floorY - 4) return;
     if (!useFeed()) { toast('飼料用完了，明天會再送 3 顆，也可以用金幣買'); return; }
     TANK.food.push({ x: px, y: py, vy: .25 }); ac(); SFX.tap();
-    const el = document.getElementById('feedInfo'); if (el) el.textContent = tankFeedText();
+    const el = document.getElementById('feedInfo'); if (el) el.innerHTML = tankFeedHTML();
   };
   let last = performance.now();
   const frame = now => {
@@ -561,9 +578,7 @@ function tankStart() {
     x.setTransform(K, 0, 0, K, 0, 0);
     // 背景：海水是透明的（直接看到網站背景的海），只畫沙地和海草
     x.clearRect(0, 0, W, H);
-    x.fillStyle = '#c2a36b'; x.fillRect(0, floorY, W, H - floorY);
-    x.fillStyle = '#d8bd85'; x.fillRect(0, floorY, W, 1);   // 沙地邊緣亮一點
-    x.fillStyle = '#a3864f'; for (let i = 0; i < W; i += 7) x.fillRect(i, floorY + 3 + (i % 3) + (i % 11 > 6 ? 5 : 0), 2, 2);
+    x.drawImage(sand, 0, floorY - FADE);
     weeds.forEach((w, i) => { for (let j = 0; j < w.h; j += 3) { const sway = rp(Math.sin(now / 700 + i + j / 6) * 2); x.fillStyle = j % 6 ? '#38b764' : '#257179'; x.fillRect(w.x + sway, floorY - j, 3, 3); } });
     if (Math.random() < .03 * dt) TANK.bub.push({ x: Math.random() * W, y: floorY, s: 1 + Math.round(Math.random()) });
     TANK.bub = TANK.bub.filter(b => (b.y -= .5 * dt) > 0);

@@ -7,12 +7,16 @@
 }
 *{box-sizing:border-box}
 /* 宣告本來就是深色頁面：Samsung 網際網路、Chrome 的「網頁強制深色」就不會再把顏色反轉；也不讓瀏覽器自動放大字 */
-html{color-scheme:dark;-webkit-text-size-adjust:100%;text-size-adjust:100%;scrollbar-gutter:stable}   /* 不會捲動的頁面（大海）也留著捲軸的位置，各頁的內容才不會左右跳 */
+/* 電腦上：不會捲動的頁面（大海）也留著捲軸的位置，各頁的內容才不會左右跳；留下來的那一條也畫上同樣的海（html 的背景）。
+   手機的捲軸浮在畫面上、不佔位置，不需要 */
+@media (min-width:601px){ html{scrollbar-gutter:stable} }
+html{color-scheme:dark;-webkit-text-size-adjust:100%;text-size-adjust:100%;
+  --sea:linear-gradient(180deg,#174673 0 12%,#133c66 12% 28%,#0f3157 28% 46%,#0b2646 46% 66%,#081b36 66% 84%,#06152b 84%);
+  background:var(--sea) fixed var(--bg)}
 html,body{margin:0}
-body{color:var(--ink);background:var(--bg);min-height:100vh;
+body{color:var(--ink);min-height:100vh;
   font:16px/1.6 "Cascadia Mono",Consolas,"Microsoft JhengHei UI","Microsoft JhengHei",monospace}
-body::before{content:"";position:fixed;top:0;right:0;bottom:0;left:0;inset:0;z-index:-2;background:linear-gradient(180deg,
-  #174673 0 12%,#133c66 12% 28%,#0f3157 28% 46%,#0b2646 46% 66%,#081b36 66% 84%,#06152b 84%)}
+body::before{content:"";position:fixed;top:0;right:0;bottom:0;left:0;inset:0;z-index:-2;background:var(--sea)}   /* 手機不支援 fixed 背景，靠這一層 */
 .bubbles i{position:fixed;bottom:-12px;width:6px;height:6px;background:rgba(115,239,247,.2);z-index:-1;animation:rise linear infinite}
 @keyframes rise{to{transform:translateY(-110vh)}}
 @media (prefers-reduced-motion:reduce){.bubbles{display:none}}
@@ -175,8 +179,16 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .seahud > *{pointer-events:auto}
 .seahud.top b{font-size:17px;letter-spacing:.04em}
 .seahud.hint small{color:var(--dim);pointer-events:none}
-.seahud.bot small{color:var(--ink);background:rgba(11,37,70,.78);padding:5px 8px}
-.seahud button{margin:0;padding:6px 12px;font-size:14px;background:rgba(11,37,70,.78)}
+/* 底下的飼料：小蝦＋數字的小牌子，右邊是買飼料；跟上面的按鈕同一種像素框 */
+.feedchip,.seahud button{background:rgba(9,30,58,.82);box-shadow:0 -2px 0 var(--edge-hi),0 2px 0 var(--edge-hi),-2px 0 0 var(--edge-hi),2px 0 0 var(--edge-hi)}
+.feedchip{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 8px;text-shadow:none}
+.feedchip .feedic{margin:0;display:block}
+.feedchip b{font-size:17px;line-height:1}
+.feedchip small{color:var(--dim);font-size:12px}
+.seahud button.feedbuy{display:flex;align-items:center;gap:8px}
+.feedbuy .price{color:var(--coin);font-weight:bold}
+@media (max-width:360px){ .feedchip small{display:none} }
+.seahud button{margin:0;padding:6px 12px;font-size:14px}
 body.sea-on .foot{display:none}
 body.sea-on .wrap{padding-bottom:0}
 body.sea-on .brand,body.sea-on #banner{position:relative;z-index:3}

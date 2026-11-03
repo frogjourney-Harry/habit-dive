@@ -362,7 +362,7 @@ test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不�
     const H = I.ev('TANK.H'), fy = I.ev('TANK.floorY'), sandTop = fy * r.height / H, floorLine = fixed ? nav.getBoundingClientRect().top : h;
     ok(floorLine - sandTop >= 40 && floorLine - sandTop <= 56, `${w}px：沙地在${fixed ? '分頁列上面' : '畫面最底下'}看得到（沙地 ${sandTop | 0}，${floorLine | 0}）`);
     ok(I.ev('TANK.fish').filter(f => f.ground).every(f => Math.abs(f.y + f.h - 2 - fy) < 1), `${w}px：寄居蟹、海星站在沙地上`);
-    const px = cv.getContext('2d').getImageData(1, Math.round((fy + 8) * cv.height / H), 1, 1).data; ok(px[3] === 255 && px[0] > 150, `${w}px：沙地有畫出來：${[...px]}`);
+    const px = cv.getContext('2d').getImageData(1, Math.round((fy + 8) * cv.height / H), 1, 1).data; ok(px[3] === 255 && px[0] > 60 && px[0] > px[2], `${w}px：沙地有畫出來（壓暗的沙色）：${[...px]}`);
     const top = I.$('.seahud.top').getBoundingClientRect(), brand = I.$('.brand').getBoundingClientRect(), col = I.$('.wrap').getBoundingClientRect();
     ok(top.top >= brand.bottom - 1, `${w}px：上面那排按鈕在頂端列下面`); ok(top.left >= col.left && top.right <= col.right + 1, `${w}px：按鈕對齊內容欄`);
     for (const s of ['[data-act=tankview]', '[data-act=tankedit]', '[data-act=buyfeed]']) ok(!I.blocked(I.$(s)), `${w}px：浮在上面的按鈕點得到：${s}`);
@@ -376,8 +376,9 @@ test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不�
 });
 
 test('各頁頂端列的位置一樣（大海頁不會捲動也不能左右跳）', async () => {
-  for (const w of [1024, 375]) {
+  for (const w of [1024, 1600]) {   // 手機的捲軸浮在畫面上、不佔位置，不會跳
     const I = await boot({ state: base(coinLog(500), ...drops(['clown'])), width: w, height: 600 }); await I.dismiss();
+ok(/linear-gradient/.test(I.win.getComputedStyle(I.doc.documentElement).backgroundImage) && I.win.getComputedStyle(I.doc.documentElement).scrollbarGutter === 'stable', `${w}px：留給捲軸的那一條也畫著海`);
     const pos = () => ['.brand', '#stat', '#nav'].map(s => { const r = I.$(s).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right)]; });
     await I.tab('today'); ok(I.doc.documentElement.scrollHeight > 600, `${w}px：今日頁比畫面長（會捲動）`); const ref = pos();
     for (const t of ['tank', 'quest', 'shop', 'log', 'about']) { await I.tab(t); eq(pos(), ref, `${w}px：「${t}」頁的頂端列、金幣、分頁列跟今日頁對齊`); }
