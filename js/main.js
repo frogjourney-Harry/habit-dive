@@ -107,6 +107,7 @@ document.addEventListener('click', async e => {
       if (sel[v] && onbCustomCount() > CONFIG.maxCustom) { sel[v] = false; toast(`自訂型的習慣最多 ${CONFIG.maxCustom} 個`); }
       renderOnb(); break;
     }
+    case 'onbvocus': UI.onbVocus = !UI.onbVocus; renderOnb(); break;
     case 'onbdone': if (finishOnb()) toast('設定好了，先寫下今天最重要的事吧'); break;
     case 'vdrop':
       S.habits = S.habits.filter(h => h.id !== 'vocus'); S.vocusSet = true; save(); render(); toast('已移除 Vocus 習慣'); break;
@@ -291,7 +292,7 @@ document.addEventListener('input', e => {
     if (p) p.textContent = paceText({ type: document.getElementById('exType').value, dist: g('dist'), m: g('m'), min: g('min') });
     return;
   }
-  if (el.dataset.onb) { UI[el.dataset.onb === 'name' ? 'onbName' : 'onbFreq'] = el.value; if (el.dataset.onb === 'name') renderOnbButton(); return; }
+  if (el.dataset.onb) { UI.onbName = el.value; renderOnbButton(); return; }
   if (el.dataset.nf) { setPetName(el.dataset.nf, el.value); return; }
   if (el.dataset.sf) { const it = S.shop && S.shop[el.dataset.si]; if (it) { it[el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); } return; }
   if (el.dataset.gf) { const g = S.gcats && S.gcats[el.dataset.gi]; if (g) { g[el.dataset.gf] = el.value; save(); } return; }

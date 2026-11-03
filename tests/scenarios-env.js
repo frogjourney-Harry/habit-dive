@@ -291,7 +291,7 @@ test('第一次打開：先問綁定 Google（可跳過，要說資料可能不�
   ok(!I.S.logs.some(l => l.k === 'welcome') && I.$('#ov').classList.contains('hidden'), '引導做完之前不發新手禮物、不跳寶箱');
   ok(!I.$('#onb').textContent.includes('Vocus'), '引導的第一頁沒有 Vocus');
   await I.click('#onb [data-act=onbskip]'); ok(I.$('#onb').textContent.includes('你想養成什麼習慣'), '跳過後選習慣');
-  eq(I.$$('#onb [data-act=onbpick]').map(b => b.dataset.v), ['exercise', 'write', 'read', 'meditate', 'vocus'], '選項：運動、寫作、閱讀、冥想、Vocus 發文'); ok(I.$('#onb [data-onb=name]'), '還有自訂');
+  eq(I.$$('#onb [data-act=onbpick]').map(b => b.dataset.v), ['exercise', 'write', 'read', 'meditate'], '選項：運動、寫作、閱讀、冥想（Vocus 不是獨立選項）'); ok(I.$('#onb [data-onb=name]') && !I.$('#onb [data-onb=freq]'), '還有自訂（頻率之後在編輯改）'); ok(!I.$('#onb [data-act=onbvocus]'), '還沒選寫作：沒有 Vocus 的選項');
   ok(I.$('#onb [data-act=onbdone]').textContent.includes('先不選'), '一個都沒選時按鈕寫「先不選」');
   await I.click('#onb [data-act=onbpick][data-v=exercise]'); await I.click('#onb [data-act=onbpick][data-v=write]');
   ok(I.$('#onb [data-act=onbpick][data-v=write]').classList.contains('sel'), '選到的有標示'); ok(I.$('#onb [data-act=onbdone]').textContent === '開始', '有選時按鈕寫「開始」');
@@ -306,7 +306,7 @@ test('第一次打開：先問綁定 Google（可跳過，要說資料可能不�
 
 test('引導：Vocus 只留給選的人；不選也能開始；自訂習慣和上限；用過的存檔不引導', async () => {
   resetCloud();
-  const A = await boot({ onb: true }); await A.click('#onb [data-act=onbskip]'); await A.click('#onb [data-act=onbpick][data-v=vocus]'); await A.click('#onb [data-act=onbdone]'); await A.dismiss();
+  const A = await boot({ onb: true }); await A.click('#onb [data-act=onbskip]'); await A.click('#onb [data-act=onbpick][data-v=write]'); await A.click('#onb [data-act=onbvocus]'); ok(A.$('#onb [data-act=onbvocus]').classList.contains('sel'), '勾了 Vocus'); await A.click('#onb [data-act=onbdone]'); await A.dismiss();
   eq(activeIds(A), ['vocus'], '選了 Vocus'); ok(A.has('Vocus 發文節奏'), '選了 Vocus 才會問發文節奏'); ok(A.has('我不寫 Vocus'), '節奏卡上可以直接移除');
   await A.click('[data-act=vdrop]'); eq(activeIds(A), [], '移除 Vocus'); ok(!A.$('#main').innerText.includes('Vocus'), '移除後畫面上沒有 Vocus'); A.check('移除 Vocus'); A.destroy();
   const B = await boot({ onb: true }); await B.click('#onb [data-act=onbskip]'); await B.click('#onb [data-act=onbdone]'); await B.dismiss();
@@ -314,14 +314,14 @@ test('引導：Vocus 只留給選的人；不選也能開始；自訂習慣和�
   await B.click('[data-act=habedit]'); ok(B.has('加回 運動') && !B.has('加回 Vocus'), '編輯畫面只能加回運動'); B.check('空習慣'); B.destroy();
   const C = await boot({ onb: true }); await C.click('#onb [data-act=onbskip]');
   for (const id of ['write', 'read', 'meditate']) await C.click(`#onb [data-act=onbpick][data-v=${id}]`);
-  await C.type('#onb [data-onb=name]', '  喝水  '); await C.type('#onb [data-onb=freq]', '1');
+  await C.type('#onb [data-onb=name]', '  喝水  ');
   await C.click('#onb [data-act=onbdone]'); ok(onbOpen(C) && !C.S.onb, '自訂型習慣超過 ' + C.CONFIG.maxCustom + ' 個：不能開始'); ok(C.has('最多'), '要說明原因');
   await C.type('#onb [data-onb=name]', ''); await C.click('#onb [data-act=onbdone]');
   eq(activeIds(C), ['write', 'read', 'meditate'], '拿掉自訂就能開始'); eq(C.S.habits.find(h => h.id === 'read').target, 3, '閱讀每週 3 天'); eq(C.S.habits.find(h => h.id === 'meditate').weeks, 0, '冥想每天'); C.destroy();
-  const D = await boot({ onb: true }); await D.click('#onb [data-act=onbskip]'); await D.click('#onb [data-act=onbpick][data-v=read]'); await D.type('#onb [data-onb=name]', '<img src=x onerror=window.__xss=1>喝'); await D.type('#onb [data-onb=freq]', '1');
+  const D = await boot({ onb: true }); await D.click('#onb [data-act=onbskip]'); await D.click('#onb [data-act=onbpick][data-v=read]'); await D.type('#onb [data-onb=name]', '<img src=x onerror=window.__xss=1>喝');
   await D.click('#onb [data-act=onbdone]'); await D.dismiss(); const my = D.S.habits.find(h => h.kind === 'custom' && h.id !== 'read');
-  ok(my && my.n.length === 20 && my.weeks === 1 && my.target === 3, '自訂習慣：名稱最多 20 字、每週 3 天：' + JSON.stringify(my)); ok(!D.win.__xss && !D.$('#main img[src=x]'), 'XSS：自訂習慣名稱'); D.check('自訂習慣'); D.destroy();
-  const used = { checks: { [D0]: { exercise: [{ t: 1 }] } } };   // 舊存檔（沒有 onb 欄位）但用過了
+  ok(my && my.n.length === 20 && my.weeks === 0 && my.target === 1, '自訂習慣：名稱最多 20 字、預設每天：' + JSON.stringify(my)); ok(!D.win.__xss && !D.$('#main img[src=x]'), 'XSS：自訂習慣名稱'); D.check('自訂習慣'); D.destroy();
+const V = await boot({ onb: true }); await V.click('#onb [data-act=onbskip]'); for (const id of ['write', 'read', 'meditate']) await V.click(`#onb [data-act=onbpick][data-v=${id}]`);  await V.click('#onb [data-act=onbvocus]'); await V.type('#onb [data-onb=name]', '喝水'); await V.click('#onb [data-act=onbdone]'); await V.dismiss();  eq(activeIds(V), ['vocus', 'read', 'meditate', V.S.habits[V.S.habits.length - 1].id], '寫作＋Vocus 只留 Vocus（不重複），也不佔自訂名額'); ok(!V.S.habits.some(h => h.id === 'write'), '沒有一般的寫作'); ok(V.has('Vocus 發文節奏'), '要問發文節奏'); V.check('寫作加 Vocus'); V.destroy();  const used = { checks: { [D0]: { exercise: [{ t: 1 }] } } };   // 舊存檔（沒有 onb 欄位）但用過了
   const E = await boot({ onb: true, state: mkState(used) }); await E.dismiss(); ok(!onbOpen(E), '用過的舊存檔不會被問'); eq(E.S.onb, true, '補上做過了'); ok(E.has('Vocus'), '舊存檔的習慣不動'); E.destroy();
   const F = await boot({ onb: true, state: mkState() }); ok(onbOpen(F), '只有新手禮物、沒做過任何事的存檔還是要引導'); F.destroy();
 });

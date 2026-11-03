@@ -211,7 +211,7 @@ function renderFocus() {
 
 /* ========= 第一次打開的引導 ========= */
 // 步驟 1：綁定 Google（可以先跳過，但要說清楚資料可能會不見）；步驟 2：勾選想養成的習慣。做完才會發新手禮物（見 startGame）
-const onbCustomCount = () => customCount() + ONB_HABITS.filter(h => h.kind === 'custom' && (UI.onbSel || {})[h.id] && !habit(h.id)).length + ((UI.onbName || '').trim() ? 1 : 0);
+const onbCustomCount = () => customCount() + ONB_HABITS.filter(h => h.kind === 'custom' && (UI.onbSel || {})[h.id] && !habit(h.id) && !(h.id === 'write' && UI.onbVocus)).length + ((UI.onbName || '').trim() ? 1 : 0);
 const onbLabel = () => ONB_HABITS.some(h => (UI.onbSel || {})[h.id]) || (UI.onbName || '').trim() ? '開始' : '先不選，直接開始';
 function renderOnbButton() { const b = document.querySelector('#onbbox [data-act=onbdone]'); if (b) b.textContent = onbLabel(); }   // 打字時只換按鈕上的字，不重畫（輸入框會失去焦點）
 function renderOnb() {
@@ -236,9 +236,10 @@ function renderOnb() {
     html =`<div class="label">${FIREBASE_CONFIG ? 'STEP 2・' : ''}HABITS</div><h2>你想養成什麼習慣？</h2>
       ${CLOUD.user ? `<div class="mini" style="margin:0 0 6px">已綁定 ${esc(CLOUD.user.email || '')}</div>` : ''}
       <div class="mini" style="margin:0 0 10px">可以複選，也可以先不選。之後在「今日」的習慣區按「編輯」隨時修改。</div>
-      <div class="onbgrid">${ONB_HABITS.map(h => `<button class="onbopt ${sel[h.id] ? 'sel' : ''}" data-act="onbpick" data-v="${h.id}" aria-pressed="${!!sel[h.id]}"><span class="oe">${h.e}</span><b>${esc(h.n)}</b><small>${esc(h.desc)}</small></button>`).join('')}</div>
-      <div class="row onbcustom"><span aria-hidden="true">⭐</span><input class="sp" data-onb="name" maxlength="20" placeholder="自訂，例如：喝水" aria-label="自訂習慣名稱" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(UI.onbName || '')}">
-        <select data-onb="freq" aria-label="頻率"><option value="0" ${UI.onbFreq === '1' ? '' : 'selected'}>每天</option><option value="1" ${UI.onbFreq === '1' ? 'selected' : ''}>每週 3 天</option></select></div>
+      <div class="onbgrid">${ONB_HABITS.map(h => `<button class="onbopt ${sel[h.id] ? 'sel' : ''}" data-act="onbpick" data-v="${h.id}" aria-pressed="${!!sel[h.id]}"><b>${esc(h.n)}</b><small>${esc(h.desc)}</small></button>`).join('')}</div>
+      ${sel.write ? `<button class="onbvocus ${UI.onbVocus ? 'sel' : ''}" data-act="onbvocus" aria-pressed="${!!UI.onbVocus}">${UI.onbVocus ? '☑' : '☐'} 我會發布到 Vocus<small>記錄文章標題，發文有額外獎勵</small></button>` : ''}
+      <div class="row onbcustom"><input class="sp" data-onb="name" maxlength="20" placeholder="自訂，例如：喝水" aria-label="自訂習慣名稱" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(UI.onbName || '')}"></div>
+      <div class="mini" style="margin:0 0 12px">自訂的習慣預設每天，可以在「編輯」改成每週或每兩週、每週幾天。</div>
       <button class="pri wide" data-act="onbdone">${onbLabel()}</button>`;
   }
   const box = document.getElementById('onbbox');
@@ -247,17 +248,17 @@ function renderOnb() {
 function finishOnb() {
   const sel = UI.onbSel || {}, name = (UI.onbName || '').trim().slice(0, 20);
   if (onbCustomCount() > CONFIG.maxCustom) { toast(`自訂型的習慣最多 ${CONFIG.maxCustom} 個，少選一個吧`); return false; }
-  const out = [];
+  const out = [], vocus = !!(sel.write && UI.onbVocus), mk = o => { const old = S.habits.find(h => h.id === o.id); return old ? { ...old, off: false } : { id: o.id, e: o.e, n: o.n, kind: o.kind, weeks: o.weeks, target: o.target, ...(o.unit ? { unit: o.unit } : {}) }; };
   for (const o of ONB_HABITS) {
-    const old = S.habits.find(h => h.id === o.id);
-    if (sel[o.id]) out.push(old ? { ...old, off: false } : { id: o.id, e: o.e, n: o.n, kind: o.kind, weeks: o.weeks, target: o.target, ...(o.unit ? { unit: o.unit } : {}) });
-    else if (old && o.kind === 'exercise') out.push({ ...old, off: true });   // 運動沒選也留著（編輯畫面可以加回）；沒選的 Vocus 和其他習慣直接不放進來
+    if (o.id === 'write' && vocus) out.push(mk(ONB_VOCUS));   // 勾了 Vocus：用 Vocus 習慣取代一般的寫作
+    else if (sel[o.id]) out.push(mk(o));
+    else if (o.kind === 'exercise') { const old = S.habits.find(h => h.id === o.id); if (old) out.push({ ...old, off: true }); }   // 運動沒選也留著（編輯畫面可以加回）；沒選的 Vocus 和其他習慣直接不放進來
   }
-  const mine = S.habits.filter(h => !ONB_HABITS.some(o => o.id === h.id));   // 引導以外、舊存檔裡自己加的習慣原樣保留
-  if (name) mine.push({ id: 'h' + rid(), e: '⭐', n: name, kind: 'custom', weeks: UI.onbFreq === '1' ? 1 : 0, target: UI.onbFreq === '1' ? 3 : 1 });
+  const mine = S.habits.filter(h => h.id !== ONB_VOCUS.id && !ONB_HABITS.some(o => o.id === h.id));   // 引導以外、舊存檔裡自己加的習慣原樣保留
+  if (name) mine.push({ id: 'h' + rid(), e: '⭐', n: name, kind: 'custom', weeks: 0, target: 1 });
   S.habits = [...out, ...mine];
-  if (!sel.vocus) S.vocusSet = true;   // 選了 Vocus 就留著「發文節奏」設定卡讓他選
-  S.onb = true; Object.assign(UI, { onbStep: 0, onbSel: null, onbName: '', onbFreq: '0' });
+  if (!vocus) S.vocusSet = true;   // 選了 Vocus 就留著「發文節奏」設定卡讓他選
+  S.onb = true; Object.assign(UI, { onbStep: 0, onbSel: null, onbName: '', onbVocus: false });
   save(); render();
   return true;
 }

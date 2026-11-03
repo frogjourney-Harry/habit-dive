@@ -53,8 +53,9 @@ const ONB_HABITS = [
   { id: 'write',    e: '📝', n: '寫作', kind: 'custom',   weeks: 1, target: 1, unit: '篇', desc: '每週 1 篇' },
   { id: 'read',     e: '📚', n: '閱讀', kind: 'custom',   weeks: 1, target: 3, desc: '每週 3 天' },
   { id: 'meditate', e: '🧘', n: '冥想', kind: 'custom',   weeks: 0, target: 1, desc: '每天' },
-  { id: 'vocus',    e: '✍️', n: 'Vocus', kind: 'vocus',   weeks: 1, target: 1, desc: '記錄發布的文章，發文有額外獎勵' },
 ];
+// 勾了「寫作」之後可以再勾：我會發布到 Vocus。勾了就用 Vocus 習慣（記文章標題、發文有額外獎勵）取代一般的寫作
+const ONB_VOCUS = { id: 'vocus', e: '✍️', n: 'Vocus', kind: 'vocus', weeks: 1, target: 1 };
 const ETAGS =['跑步', '游泳', '重訓', '潛水', '登山', '其他'];
 const RARITY = [
   { name: '普通', color: 'var(--r0)' }, { name: '少見', color: 'var(--r1)' }, { name: '稀有', color: 'var(--r2)' },
