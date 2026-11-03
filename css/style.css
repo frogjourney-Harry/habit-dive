@@ -167,8 +167,21 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .grp{margin:16px 0 8px}
 
 /* 水族箱 */
-.tank{display:block;width:100%;height:340px;image-rendering:pixelated;cursor:pointer;touch-action:manipulation;
-  box-shadow:0 0 0 2px var(--edge)}
+.tank{display:block;width:100%;height:340px;image-rendering:pixelated;cursor:pointer;touch-action:manipulation}
+/* 沒有框的水族箱：左右貼齊畫面邊緣、往下填滿，按鈕浮在上面 */
+.sea{position:relative;margin:0 -16px}
+.seahud{position:absolute;left:12px;right:12px;display:flex;align-items:center;gap:8px;pointer-events:none;text-shadow:0 1px 2px #04101f}
+.seahud > *{pointer-events:auto}
+.seahud.top{top:4px}
+.seahud.top b{font-size:17px;letter-spacing:.04em}
+.seahud.hint{top:40px}
+.seahud.hint small{color:var(--dim);pointer-events:none}
+.seahud.bot{bottom:6px}
+.seahud.bot small{color:var(--ink);background:rgba(11,37,70,.78);padding:5px 8px}
+.seahud button{margin:0;padding:6px 12px;font-size:14px;background:rgba(11,37,70,.78)}
+body.sea-on .foot{display:none}
+body.sea-on .wrap{padding-bottom:0}
+@media (min-width:601px){ .sea .tank{-webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)} }
 
 /* 商店 */
 .shop .it{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
@@ -242,7 +255,8 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
   .clock{font-size:50px}
   .stat{grid-template-columns:1fr 1fr}
   .dex{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-  .tank{height:360px}
+  .sea{margin:0 -10px}
+  body.sea-on .wrap{padding-bottom:0}
   .toast{bottom:calc(76px + env(safe-area-inset-bottom))}
 }
 

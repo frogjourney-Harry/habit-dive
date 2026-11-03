@@ -34,7 +34,7 @@ function grant(kind, tag, o = {}) {
   GAIN.n++; GAIN.c += c; GAIN.title = GAIN.title || o.title || BONUS[kind] || '';
   return log;
 }
-// 在 log 上抽一隻生物（log.id 就是這隻的身分），排進開箱彈窗；超過上限時接著問要放生哪一隻
+// 在 log 上抽一隻生物（log.id 就是這隻的身分），排進開箱彈窗；超過上限時接著問要讓哪一隻游走
 // fixed：直接給這一隻（新手的小丑魚），不抽
 function dropCreature(log, rates, title, tint = 0, fixed = null) {
   const D = derive(), cr = fixed || rollCreature(rates), isNew = !D.col[cr.id], dup = isNew ? 0 : CONFIG.dupCoins[cr.r];
@@ -200,10 +200,10 @@ function nextChest() {
   if (it.release) {
     const c = CR[it.release], P = pets(c.id);
     if (P.length <= MAX_PETS) { UI.opened = false; nextChest(); return; }
-    m.innerHTML = `<h2>${c.name}已經有 ${MAX_PETS} 隻了</h2><p class="dim">每種最多養 ${MAX_PETS} 隻，選一隻放生回大海。</p>
+    m.innerHTML = `<h2>${c.name}已經有 ${MAX_PETS} 隻了</h2><p class="dim">每種最多養 ${MAX_PETS} 隻，選一隻讓牠游走。</p>
       ${P.map(p => `<div class="entry" style="text-align:left">${stageImg(c, stageOf(p.fed), 2)}
         <span class="sp">${p.id === it.newId ? '<b class="new">新抽到的</b>・' : ''}${petName(p.id) ? esc(petName(p.id)) + '・' : ''}${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</span>
-        <button class="${p.id === it.newId ? 'pri' : ''}" data-act="releasepick" data-v="${p.id}">放生</button></div>`).join('')}`;
+        <button class="${p.id === it.newId ? 'pri' : ''}" data-act="releasepick" data-v="${p.id}">讓牠游走</button></div>`).join('')}`;
     return;
   }
   if (it.level !== undefined) {

@@ -16,6 +16,7 @@ function render() {
   const pendN = dailyTasks(D).filter(t => t.pend.length).length;
   document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? `<i class="badge">${pendN}</i>` : ''}</button>`).join('');
   document.getElementById('main').innerHTML = ({ today, quest: quests, tank, shop, log, about })[UI.tab](D);
+  document.body.classList.toggle('sea-on', seaOn());
   if (UI.tab === 'tank') tankStart();
   for (const i of document.querySelectorAll('#main input:not([type]), #main input[type=text], #sheet input:not([type]), #sheet input[type=text]')) { i.setAttribute('autocomplete', 'off'); i.setAttribute('autocapitalize', 'off'); i.setAttribute('spellcheck', 'false'); }
   // 不是按鈕的可點元素（圖鑑格子、寶箱名稱、任務名稱…）：讓鍵盤和螢幕閱讀器也用得到
@@ -301,7 +302,7 @@ function renderSheet() {
       <h2>${c.name}</h2>${c.alias ? `<div class="alias">俗稱 ${c.alias}</div>` : ''}<p class="dim" style="margin:0 0 8px">${c.fact}</p>
       <div class="stages">${[1, 2, 3].map(s => `<div>${stageImg(c, s, 3, s > seen)}<small class="${s > seen ? 'dim' : ''}">${s > seen ? '？？？' : stageName(c, s)}</small></div>`).join('')}</div>
       <div class="mini">吃到 ${GROW[1]} 顆長成成體、${GROW[2]} 顆變成特殊型態</div>
-      <div class="sub">${P.length ? `擁有 ${P.length}/${MAX_PETS} 隻` : derive().col[c.id] ? '都放生了，再抽到會回來。' : '還沒抽到，可以從商店的寶箱開出來。'}</div>`;
+      <div class="sub">${P.length ? `擁有 ${P.length}/${MAX_PETS} 隻` : derive().col[c.id] ? '都游走了，再抽到會回來。' : '還沒抽到，可以從商店的寶箱開出來。'}</div>`;
     return;
   }
   el.style.textAlign = '';
@@ -475,14 +476,14 @@ function tankFeedText() {
 function tankEditor(D) {
   const owned = CREATURES.filter(c => pets(c.id).length);
   return `<section class="px">${sh('水族箱設定', 'AQUARIUM', '<button class="pri" data-act="tankdone">完成</button>')}
-    <div class="mini">勾選要放進水族箱的個體，不想養的可以放生。點「取名」幫牠取名字，名字會顯示在水族箱裡。</div>
+    <div class="mini">勾選要放進水族箱的個體，不想養的可以讓牠游走。點「取名」幫牠取名字，名字會顯示在水族箱裡。</div>
     ${owned.map(c => {
       const P = pets(c.id);
       return `<div class="tset"><div class="row"><b class="sp">${c.name}</b></div>
         ${P.map(p => `<div class="entry"><label class="row sp" style="gap:8px"><input type="checkbox" data-act="intank" data-v="${esc(p.id)}" ${inTank(p.id) ? 'checked' : ''}>
           ${stageImg(c, stageOf(p.fed), 3)}<small>${petName(p.id) ? `<b>${esc(petName(p.id))}</b>・` : ''}${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</small></label>
           <button class="ghost" data-act="petname" data-v="${esc(p.id)}">${petName(p.id) ? '改名' : '取名'}</button>
-          <button class="ghost" data-act="release" data-v="${esc(p.id)}">放生</button>
+          <button class="ghost" data-act="release" data-v="${esc(p.id)}">讓牠游走</button>
           ${UI.nameEdit === p.id ? `<div class="pname"><input data-nf="${esc(p.id)}" value="${esc(petName(p.id))}" maxlength="${PET_NAME_MAX}" placeholder="幫牠取個名字" aria-label="${esc(c.name)}的名字"><button class="pri" data-act="petnamedone">完成</button></div>` : ''}</div>`).join('')}</div>`;
     }).join('') || '<div class="dim">還沒有生物，到商店買寶箱吧。</div>'}</section>`;
 }
@@ -490,12 +491,14 @@ function tank(D) {
   if (UI.tankEdit) return tankEditor(D);
   if (UI.tankView === 'dex') return dex(D);
   const n = CREATURES.filter(c => pets(c.id).some(p => inTank(p.id))).length;
-  return `<section class="px">${sh('水族箱', 'AQUARIUM', `<small class="dim">${n} 種</small><button class="sm" data-act="tankview" data-v="dex">圖鑑</button><button class="sm" data-act="tankedit">設定</button>`)}
-    <canvas id="tank" class="tank"></canvas>
-    <div class="row" style="margin-top:8px"><span class="dim" id="feedInfo">${tankFeedText()}</span><span class="sp"></span>
-      <button data-act="buyfeed">買飼料 ${FEED.pack} 顆・${FEED.price}${COIN}</button></div>
-    <div class="mini">點水面撒飼料，吃到的那一隻會長大（幼體 → 成體 → 特殊型態）。</div></section>`;
+  // 沒有框：畫布透明、填滿到畫面底，魚直接游在網站背景的海裡；按鈕和說明浮在上面
+  return `<div class="sea"><canvas id="tank" class="tank" aria-label="水族箱，點水裡撒飼料"></canvas>
+    <div class="seahud top"><b>水族箱</b><small>${n} 種</small><span class="sp"></span><button data-act="tankview" data-v="dex">圖鑑</button><button data-act="tankedit">設定</button></div>
+    <div class="seahud hint"><small>點水裡撒飼料，吃到的那一隻會長大</small></div>
+    <div class="seahud bot"><small id="feedInfo">${tankFeedText()}</small><span class="sp"></span><button data-act="buyfeed">買飼料 ${FEED.pack} 顆・${FEED.price}${COIN}</button></div></div>`;
 }
+// 水族箱畫面時：頁尾藏起來、底下不留空白，畫布剛好填到分頁列上面
+const seaOn = () => UI.tab === 'tank' && !UI.tankEdit && UI.tankView !== 'dex';
 // 視窗大小改變（手機轉橫向、電腦拉視窗）時重新量水族箱，不然畫面會被拉扁；每一隻留在原位
 let tankResizeTimer = 0;
 window.addEventListener('resize', () => {
@@ -505,12 +508,14 @@ window.addEventListener('resize', () => {
 function tankStart() {
   cancelAnimationFrame(TANK.raf);
   const cv = document.getElementById('tank'); if (!cv) return;
+  const nav = document.getElementById('nav'), navH = getComputedStyle(nav).position === 'fixed' ? nav.offsetHeight : 0;   // 手機的分頁列固定在底下
+  cv.style.height = Math.max(260, Math.floor(innerHeight - (cv.getBoundingClientRect().top + scrollY) - (navH || 8))) + 'px';
   const W = Math.floor(cv.clientWidth / 3), H = Math.floor(cv.clientHeight / 3);   // 每一格固定 3 個螢幕像素，手機上也看得清楚
   // 畫布用裝置的實際像素畫（遊戲裡一格＝ K 個裝置像素），位置可以對到裝置像素：慢的魚不再一格一格跳
   const K = Math.round(3 * Math.min(3, Math.max(1, window.devicePixelRatio || 1))), rp = v => Math.round(v * K) / K;
   cv.width = W * K; cv.height = H * K; TANK.W = W; TANK.H = H;
   const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
-  const floorY = H - 12;
+  const floorY = H - 16;   // 沙地（寄居蟹、海星這些海底生物走在上面）；底下的飼料列浮在沙地上
   const prev = new Map((TANK.fish || []).map(f => [f.key, f]));   // 重畫（例如買飼料）時，每一隻留在原位
   TANK.food = TANK.food || []; TANK.bub = TANK.bub || [];
   // 外觀和體型跟著型態走：物種大小 × 型態大小
@@ -548,11 +553,11 @@ function tankStart() {
     if (!document.body.contains(cv)) return;
     const dt = Math.min(3, (now - last) / 16.7); last = now;
     x.setTransform(K, 0, 0, K, 0, 0);
-    // 背景：一層層的海水、沙地、海草
-    const bands = ['#1d5a8c', '#174c7a', '#123f68', '#0e3356', '#0b2846'];
-    bands.forEach((c, i) => { x.fillStyle = c; x.fillRect(0, Math.floor(i * floorY / bands.length), W, Math.ceil(floorY / bands.length) + 1); });
+    // 背景：海水是透明的（直接看到網站背景的海），只畫沙地和海草
+    x.clearRect(0, 0, W, H);
     x.fillStyle = '#c2a36b'; x.fillRect(0, floorY, W, H - floorY);
-    x.fillStyle = '#a3864f'; for (let i = 0; i < W; i += 7) x.fillRect(i, floorY + 3 + (i % 3), 2, 2);
+    x.fillStyle = '#d8bd85'; x.fillRect(0, floorY, W, 1);   // 沙地邊緣亮一點
+    x.fillStyle = '#a3864f'; for (let i = 0; i < W; i += 7) x.fillRect(i, floorY + 3 + (i % 3) + (i % 11 > 6 ? 5 : 0), 2, 2);
     weeds.forEach((w, i) => { for (let j = 0; j < w.h; j += 3) { const sway = rp(Math.sin(now / 700 + i + j / 6) * 2); x.fillStyle = j % 6 ? '#38b764' : '#257179'; x.fillRect(w.x + sway, floorY - j, 3, 3); } });
     if (Math.random() < .03 * dt) TANK.bub.push({ x: Math.random() * W, y: floorY, s: 1 + Math.round(Math.random()) });
     TANK.bub = TANK.bub.filter(b => (b.y -= .5 * dt) > 0);

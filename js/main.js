@@ -185,13 +185,13 @@ document.addEventListener('click', async e => {
       const lg = S.logs.find(l => l.id === v), c = lg && CR[lg.drop]; if (!c) break;
       const p = pets(c.id).find(x => x.id === v), st = p ? `（${stageName(c, stageOf(p.fed))}）` : '';
       const nm = petName(v);
-      if (!(await ask(`放生這隻${c.name}${nm ? `「${nm}」` : ''}${st}？\n牠會回到大海，不會再出現在水族箱。圖鑑的收集紀錄會保留。`, '放生'))) break;
-      S.released = S.released || {}; S.released[v] = true; if (S.names) delete S.names[v]; save(); render(); renderSheet(); toast(`${nm || c.name}回到大海了`); break;
+      if (!(await ask(`讓這隻${c.name}${nm ? `「${nm}」` : ''}${st}游走？\n牠會游回大海，不會再出現在水族箱。圖鑑的收集紀錄會保留。`, '讓牠游走'))) break;
+      S.released = S.released || {}; S.released[v] = true; if (S.names) delete S.names[v]; save(); render(); renderSheet(); toast(`${nm || c.name}游走了`); break;
     }
     case 'releasepick': {
       const lg = S.logs.find(l => l.id === v), nm = petName(v);
       S.released = S.released || {}; S.released[v] = true; if (S.names) delete S.names[v]; save();
-      UI.opened = false; render(); nextChest(); toast(`${nm || CR[lg.drop].name}回到大海了`); break;
+      UI.opened = false; render(); nextChest(); toast(`${nm || CR[lg.drop].name}游走了`); break;
     }
     case 'fav': {
       const it = getPlan(viewDay())[v], t = it.text.trim();

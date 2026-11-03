@@ -342,8 +342,31 @@ test('幫魚取名字：存檔、顯示、放生、亂輸入', async () => {
   // 放生會一起清掉名字
   J.ev("S.names = { dr0clown: '小橘' }; save()"); await J.click('[data-act=tankedit]');
   await J.click('[data-act=release][data-v="dr0clown"]'); ok(J.$('#askmsg').textContent.includes('「小橘」'), '放生確認會寫名字'); await J.click('#askyes');
-  ok(!J.S.names.dr0clown, '放生後名字清掉'); ok(J.has('小橘回到大海了'), '放生提示用名字');
+  ok(!J.S.names.dr0clown, '放生後名字清掉'); ok(J.has('小橘游走了'), '游走提示用名字');
   // 不是自己的個體 id 不能亂寫
   J.ev("setPetName('not-a-pet', 'x')"); ok(!('not-a-pet' in (J.S.names || {})), '不存在的個體不能取名');
   J.check('取名字全部'); J.destroy(); I.destroy();
+});
+
+test('水族箱全屏：沒有框、填滿到分頁列、不會捲動、沙地還在、讓牠游走', async () => {
+  for (const [w, h] of [[375, 812], [320, 568], [1024, 800]]) {
+    const I = await boot({ state: base(...drops(['clown', 'hermit', 'star'])), width: w, height: h }); await I.dismiss();
+    await I.tab('tank'); await flush(); await new Promise(r => setTimeout(r, 300));
+    const cv = I.$('#tank'), r = cv.getBoundingClientRect(), nav = I.$('#nav'), fixed = I.win.getComputedStyle(nav).position === 'fixed';
+    const bottom = fixed ? nav.getBoundingClientRect().top : h - 8;
+    ok(Math.abs(r.bottom - bottom) <= 3, `${w}px：畫布填到${fixed ? '分頁列' : '畫面底'}（畫布底 ${r.bottom | 0}，目標 ${bottom | 0}）`);
+    ok(I.doc.documentElement.scrollHeight <= h + 1, `${w}px：水族箱頁不會捲動（${I.doc.documentElement.scrollHeight} > ${h}）`);
+    ok(!cv.closest('.px') && I.win.getComputedStyle(cv).boxShadow === 'none', `${w}px：沒有面板和外框`);
+    ok(!I.vis(I.$('.foot')), `${w}px：水族箱頁不顯示頁尾`);
+    if (w <= 600) ok(r.left <= 1 && r.right >= w - 1, `${w}px：手機上左右貼齊畫面（${r.left | 0}–${r.right | 0}）`);
+    const H = I.ev('TANK.H'); ok(I.ev('TANK.fish').filter(f => f.ground).every(f => Math.abs(f.y + f.h - 2 - (H - 16)) < 1), `${w}px：寄居蟹、海星站在沙地上`);
+    const px = cv.getContext('2d').getImageData(1, cv.height - 3, 1, 1).data; ok(px[3] === 255 && px[0] > 150, `${w}px：最底下是沙地：${[...px]}`);
+    for (const s of ['[data-act=tankview]', '[data-act=tankedit]', '[data-act=buyfeed]']) ok(!I.blocked(I.$(s)), `${w}px：浮在上面的按鈕點得到：${s}`);
+    await I.tab('today'); ok(I.vis(I.$('.foot')) && !I.doc.body.classList.contains('sea-on'), `${w}px：離開水族箱頁面恢復`);
+    await I.tab('tank'); await I.click('[data-act=tankview][data-v=dex]'); ok(!I.doc.body.classList.contains('sea-on'), `${w}px：圖鑑是一般頁面`);
+    I.check('全屏 ' + w); I.destroy();
+  }
+  const I = await boot({ state: base(...drops(['clown'])) }); await I.dismiss(); await I.tab('tank'); await I.click('[data-act=tankedit]');
+  ok(I.has('讓牠游走') && !I.has('放生'), '設定裡的按鈕是「讓牠游走」');
+  await I.click('[data-act=release]'); ok(I.$('#askmsg').textContent.includes('游走'), '確認框也寫游走'); await I.click('#askyes'); ok(I.has('小丑魚游走了'), '提示：小丑魚游走了'); I.destroy();
 });
