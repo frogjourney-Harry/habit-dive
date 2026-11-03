@@ -7,7 +7,7 @@
 }
 *{box-sizing:border-box}
 /* 宣告本來就是深色頁面：Samsung 網際網路、Chrome 的「網頁強制深色」就不會再把顏色反轉；也不讓瀏覽器自動放大字 */
-html{color-scheme:dark;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html{color-scheme:dark;-webkit-text-size-adjust:100%;text-size-adjust:100%;scrollbar-gutter:stable}   /* 不會捲動的頁面（大海）也留著捲軸的位置，各頁的內容才不會左右跳 */
 html,body{margin:0}
 body{color:var(--ink);background:var(--bg);min-height:100vh;
   font:16px/1.6 "Cascadia Mono",Consolas,"Microsoft JhengHei UI","Microsoft JhengHei",monospace}

@@ -354,7 +354,7 @@ test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不�
     ok(I.$('#nav [data-v=tank]').innerText.trim() === '大海', `${w}px：分頁叫「大海」`);
     await I.tab('tank'); await flush(); await new Promise(r => setTimeout(r, 300));
     const cv = I.$('#tank'), r = cv.getBoundingClientRect(), nav = I.$('#nav'), fixed = I.win.getComputedStyle(nav).position === 'fixed';
-    ok(r.left <= 0.5 && r.top <= 0.5 && r.right >= w - 0.5 && r.bottom >= h - 0.5, `${w}px：海填滿整個視窗（${r.left | 0},${r.top | 0}–${r.right | 0},${r.bottom | 0}）`);
+    ok(r.left <= 0.5 && r.top <= 0.5 && r.right >= w - 20 && r.bottom >= h - 0.5, `${w}px：海填滿整個視窗（右邊只留捲軸的位置）（${r.left | 0},${r.top | 0}–${r.right | 0},${r.bottom | 0}）`);
     ok(I.doc.documentElement.scrollHeight <= h + 1, `${w}px：大海頁不會捲動（${I.doc.documentElement.scrollHeight} > ${h}）`);
     ok(!cv.closest('.px') && I.win.getComputedStyle(cv).boxShadow === 'none', `${w}px：沒有面板和外框`);
     ok(!I.vis(I.$('.foot')), `${w}px：大海頁不顯示頁尾`);
@@ -373,4 +373,14 @@ test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不�
   const I = await boot({ state: base(...drops(['clown'])) }); await I.dismiss(); await I.tab('tank'); await I.click('[data-act=tankedit]');
   ok(I.has('讓牠游走') && !I.has('放生'), '設定裡的按鈕是「讓牠游走」');
   await I.click('[data-act=release]'); ok(I.$('#askmsg').textContent.includes('游走'), '確認框也寫游走'); await I.click('#askyes'); ok(I.has('小丑魚游走了'), '提示：小丑魚游走了'); I.destroy();
+});
+
+test('各頁頂端列的位置一樣（大海頁不會捲動也不能左右跳）', async () => {
+  for (const w of [1024, 375]) {
+    const I = await boot({ state: base(coinLog(500), ...drops(['clown'])), width: w, height: 600 }); await I.dismiss();
+    const pos = () => ['.brand', '#stat', '#nav'].map(s => { const r = I.$(s).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right)]; });
+    await I.tab('today'); ok(I.doc.documentElement.scrollHeight > 600, `${w}px：今日頁比畫面長（會捲動）`); const ref = pos();
+    for (const t of ['tank', 'quest', 'shop', 'log', 'about']) { await I.tab(t); eq(pos(), ref, `${w}px：「${t}」頁的頂端列、金幣、分頁列跟今日頁對齊`); }
+    I.destroy();
+  }
 });
