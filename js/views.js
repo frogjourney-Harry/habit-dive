@@ -683,6 +683,7 @@ const SALON = { name: 'Frog Journey｜兩棲類的冒險生活', url: 'https://v
 const ABOUT_LINKS = [
   { title: '潛水日誌 #1｜印尼・Nusa Penida・Manta Point：5 隻鬼蝠魟從頭頂飛過', sub: '圖鑑裡的鬼蝠魟，就是從這裡來的', url: 'https://vocus.cc/article/6a8ec287fd897800012e765a' },
   { title: '潛水日誌 #2｜印尼・Nusa Penida・Crystal Bay：沒看到翻車魚！', sub: '想抽到翻車魚？先看看我在海裡等了多久', url: 'https://vocus.cc/article/6ad986a9fd89780001033212' },
+  { title: '潛水日誌 #3｜印尼・Nusa Penida・PED：蘇眉魚、桶狀海綿與一整片珊瑚花園', sub: '珊瑚、大魚、小生物通通有的一潛', url: 'https://vocus.cc/article/6ae17a47fd89780001bf3b6f' },
   { title: 'OW 潛水考照心得｜課程都在學什麼？我的完整考照紀錄', sub: '從零開始學潛水的紀錄', url: 'https://vocus.cc/article/6a45ddadfd89780001dff50b' },
 ];
 // 「更多」：設定、雲端同步在最上面，下面是關於和沙龍
