@@ -1,5 +1,5 @@
 // 雲端同步（選擇性）：用 Google 登入後，紀錄存到 Firebase，換手機、換瀏覽器都能接續。
-// 沒登入過的人不會載入任何外部程式；登入過的裝置下次打開會自動恢復登入。
+// 沒看到登入畫面的人不會載入任何外部程式；看到登入畫面時先載入登入程式（不送出紀錄）；登入過的裝置下次打開會自動恢復登入。
 // 資料放在 Firestore 的 users/{uid}，整份紀錄存成一個 JSON 字串；以 S.mtime（最後修改時間）決定哪一份比較新。
 const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const CLOUD = { ready: false, loading: null, user: null, last: 0, timer: 0, pending: false, error: '' };
@@ -84,20 +84,24 @@ function cloudSchedule() {
   CLOUD.timer = setTimeout(cloudPush, 3000);
 }
 const WEBKIT = /iP(hone|ad|od)/.test(navigator.userAgent) || (/Safari/.test(navigator.userAgent) && !/Chrome|Chromium|Android|Edg|OPR/.test(navigator.userAgent));
+// 看得到登入按鈕時就先把登入程式載好：Safari 只讓「按下去的那一瞬間」開彈出視窗，按了才開始載就來不及，要按第二次
+function cloudWarm() { if (FIREBASE_CONFIG && !IN_APP && !CLOUD.loading && !CLOUD.error && !CLOUD.user) cloudInit(); }
 async function cloudLogin() {
   if (IN_APP) { toast('App 內建瀏覽器無法用 Google 登入，請用 Chrome 或 Safari 開啟'); return; }
-  if (WEBKIT && !CLOUD.ready) {   // iPhone、Mac Safari：載入完之後要使用者再按一次，彈出視窗才不會被擋
-    CLOUD.busy = true; renderCloud();
-    const okLoad = await cloudInit(); CLOUD.busy = false; CLOUD.armed = !!okLoad; renderCloud();
-    if (!okLoad) toast('無法連線到登入服務，請稍後再試'); return;
+  if (!CLOUD.ready) {   // 還沒載好（網路慢、剛打開）
+    if (WEBKIT) {   // iPhone、Mac Safari：載好之後要使用者再按一次，彈出視窗才不會被擋
+      CLOUD.busy = true; renderCloud();
+      const okLoad = await cloudInit(); CLOUD.busy = false; CLOUD.armed = !!okLoad; renderCloud();
+      if (!okLoad) toast('無法連線到登入服務，請稍後再試'); return;
+    }
+    if (!(await cloudInit())) { toast('無法連線到登入服務，請稍後再試'); return; }
   }
-  if (!(await cloudInit())) { toast('無法連線到登入服務，請稍後再試'); return; }
   CLOUD.armed = false;
   const p = new firebase.auth.GoogleAuthProvider();
   try { await firebase.auth().signInWithPopup(p); }
   catch (e) {
     if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') await firebase.auth().signInWithRedirect(p);
-    else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') toast('登入失敗，請再試一次');
+    else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') toast('登入失敗。如果在無痕模式，請改用一般分頁再試一次');
   }
 }
 async function cloudLogout() {
@@ -130,6 +134,7 @@ const GOOGLE_G = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="t
 function cloudSection() {
   if (!FIREBASE_CONFIG) return '';
   let body;
+  cloudWarm();
   if (CLOUD.user) body = `<div class="mini">已登入 ${esc(CLOUD.user.email || '')}</div>
       <div class="mini" id="cloudStatus">${cloudStatusText()}</div>
       ${preLogin() ? `<div class="mini" style="margin-top:8px">這台裝置登入前的紀錄（${summary(preLogin().s)}）另外存著。</div>
@@ -146,7 +151,7 @@ function cloudStatusText() {
   return CLOUD.last ? `已同步・${new Date(CLOUD.last).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}` : '同步中…';
 }
 // 只重畫雲端區塊（狀態、錯誤訊息），不動整個頁面
-function renderCloud() { const el = document.getElementById('cloudBox'); if (el) el.outerHTML = cloudSection(); }
+function renderCloud() { const el = document.getElementById('cloudBox'); if (el) el.outerHTML = cloudSection(); renderOnb(); }
 
 // 專注中每 30 秒看一下雲端：在別台裝置按了「結束」，這台也會跟著結束
 setInterval(() => { if (CLOUD.user && S.timer && document.visibilityState === 'visible') cloudPull(false); }, 30e3);

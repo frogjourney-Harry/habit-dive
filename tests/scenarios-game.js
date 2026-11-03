@@ -10,9 +10,10 @@ test('番茄鐘：開始→專注畫面蓋住遊戲→25 分鐘拿獎勵→第�
   await I.click('[data-act=start]');
   ok(!I.$('#focus').classList.contains('hidden'), '專注畫面要出現');
   const why = I.blocked(I.$('#nav button')); ok(why && why.includes('focus'), '專注時分頁按鈕要被蓋住點不到：' + why);
+  await I.advance(70e3);   // 開始超過一分鐘：結束要先確認（一分鐘內按結束不用確認，另有測驗）
   await I.click('#focus [data-act=cancel]', {}); ok(!I.$('#askov').classList.contains('hidden'), '結束要先確認');
   await I.click('#askno'); ok(I.S.timer, '按取消，計時繼續');
-  await I.advance(24 * 60e3 + 30e3); ok(I.S.timer && I.S.logs.every(l => l.k !== 'pomo'), '24.5 分鐘還沒完成');
+  await I.advance(23 * 60e3 + 20e3); ok(I.S.timer && I.S.logs.every(l => l.k !== 'pomo'), '24.5 分鐘還沒完成');
   await I.advance(40e3); await I.dismiss();
   ok(!I.S.timer, '25 分鐘後計時結束'); ok(I.S.logs.some(l => l.key === 'pomo:' + D0 && l.pend), '拿到番茄鐘獎勵（待領取）');
   ok(I.$('#focus').classList.contains('hidden'), '專注畫面消失');

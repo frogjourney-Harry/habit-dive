@@ -107,7 +107,7 @@ test('版面：彈窗（寶箱、升級、放生、確認、專注）在小螢�
     await I.tab('shop'); const un = (() => { const o = I.win.Math.random; let q = [0.5, 0.99, 0, 0]; I.win.Math.random = () => q.length ? q.shift() : 0.5; return () => { I.win.Math.random = o; }; })();
     await I.click('[data-act=buychest][data-v=c0]'); un(); modalAudit(I, `${w}px 寶箱`); await I.click('[data-act=openchest]'); modalAudit(I, `${w}px 開箱結果`); await I.click('#modal [data-act=close]'); modalAudit(I, `${w}px 放生選單`);
     await I.click('[data-act=releasepick]'); await I.tab('quest'); await I.click('.qall'); modalAudit(I, `${w}px 升級`); await I.dismiss();
-    await I.tab('today'); await I.click('[data-act=start]'); layoutAudit(I, `${w}px 專注畫面`); modalAudit(I, `${w}px 專注畫面`, '#focus .fbox'); await I.click('#focus [data-act=cancel]'); modalAudit(I, `${w}px 確認框`, '#askov .modal'); await I.click('#askno');
+    await I.tab('today'); await I.click('[data-act=start]'); layoutAudit(I, `${w}px 專注畫面`); modalAudit(I, `${w}px 專注畫面`, '#focus .fbox'); await I.advance(70e3); await I.click('#focus [data-act=cancel]'); modalAudit(I, `${w}px 確認框`, '#askov .modal'); await I.click('#askno');
     I.destroy();
   }
 });
@@ -245,15 +245,20 @@ test('舊資料的六件事：沒有獎勵欄位的打勾不能每次開啟都�
   const J = await I.reload(); await J.dismiss(); eq(J.S.plans[D0].filter(x => x.rw).length, 3, '重開後獎勵名額仍是 3'); J.check('重開'); J.destroy(); I.destroy();
 });
 
-test('Safari（iPhone）登入：第一次按只載入，再按一次才開登入視窗', async () => {
+test('Safari（iPhone）登入：登入程式先載好，一次就登入；來不及載好才要按第二次', async () => {
   resetCloud();
   const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
-  const I = await boot({ state: mkState(), ua }); await I.dismiss(); await I.tab('about');
-  ok(!I.has('App 內建的瀏覽器'), 'Safari 不是 App 內建瀏覽器');
-  await I.click('.gbtn'); await flush(10);
-  ok(!I.S.cloudUid, '第一次按：還沒登入（只是把登入程式載好）'); ok(I.has('再按一次'), '按鈕要提示再按一次：' + I.$('.gbtn').innerText);
-  await I.click('.gbtn'); await flush(12); ok(I.S.cloudUid === 'u1', '第二次按：登入成功');
-  I.check('Safari 登入'); I.destroy();
+  const I = await boot({ state: mkState(), ua }); await I.dismiss();
+  ok(!I.ev('CLOUD.loading'), '還沒看到登入按鈕：不載入登入程式');
+  await I.tab('about'); await flush(6);
+  ok(!I.has('App 內建的瀏覽器'), 'Safari 不是 App 內建瀏覽器'); ok(I.ev('CLOUD.ready'), '看到登入按鈕就先把登入程式載好');
+  await I.click('.gbtn'); await flush(12); ok(I.S.cloudUid === 'u1', '一次就登入（不用再按第二次）'); I.check('Safari 登入'); I.destroy();
+  const J = await boot({ state: mkState(), ua }); await J.dismiss(); await J.tab('about'); await flush(6);
+  J.ev('CLOUD.ready = false; CLOUD.loading = null');   // 手指比網路快：按下去時還沒載好
+  await J.click('.gbtn'); await flush(10);
+  ok(!J.S.cloudUid, '來不及載好：這次只載入，還沒登入'); ok(J.has('再按一次'), '按鈕要提示再按一次：' + J.$('.gbtn').innerText);
+  await J.click('.gbtn'); await flush(12); ok(J.S.cloudUid === 'u1', '第二次按：登入成功');
+  J.check('Safari 登入（慢）'); J.destroy();
   const C = await boot({ state: mkState(), ua: 'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/120 Safari/537.36' }); await C.dismiss(); await C.tab('about');
   await C.click('.gbtn'); await flush(12); ok(C.S.cloudUid === 'u1', 'Chrome 一次就登入'); C.destroy();
 });
@@ -272,3 +277,76 @@ test('鍵盤：所有可點的東西都能用 Tab 聚焦、Enter 觸發', async 
   await I.tab('quest'); const row = I.$('.qc .sp[data-act=goto]'); if (row) { row.focus(); ok(I.doc.activeElement === row, '任務名稱可以聚焦'); row.dispatchEvent(new I.win.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await flush(); eq(I.UI.tab, 'today', 'Enter 觸發「前往」'); }
   I.check('鍵盤'); I.destroy();
 });
+
+// ---- 第一次打開的引導、專注畫面的結束 ----
+const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+const onbOpen = I => { const e = I.$('#onb'); return !!e && !e.classList.contains('hidden'); };
+const activeIds = I => I.ev('activeHabits().map(h => h.id)');
+
+test('第一次打開：先問綁定 Google（可跳過，要說資料可能不見）→ 選習慣 → 才發新手禮物', async () => {
+  resetCloud();
+  const I = await boot({ onb: true });
+  ok(onbOpen(I), '新存檔一打開就是引導'); ok(I.$('#onb').textContent.includes('可能會消失'), '步驟 1 要說清楚不綁定紀錄可能會不見');
+  ok(I.$('#onb [data-act=login]') && I.$('#onb [data-act=onbskip]'), '有登入按鈕，也能先跳過');
+  ok(!I.S.logs.some(l => l.k === 'welcome') && I.$('#ov').classList.contains('hidden'), '引導做完之前不發新手禮物、不跳寶箱');
+  ok(!I.$('#onb').textContent.includes('Vocus'), '引導的第一頁沒有 Vocus');
+  await I.click('#onb [data-act=onbskip]'); ok(I.$('#onb').textContent.includes('你想養成什麼習慣'), '跳過後選習慣');
+  eq(I.$$('#onb [data-act=onbpick]').map(b => b.dataset.v), ['exercise', 'write', 'read', 'meditate', 'vocus'], '選項：運動、寫作、閱讀、冥想、Vocus 發文'); ok(I.$('#onb [data-onb=name]'), '還有自訂');
+  ok(I.$('#onb [data-act=onbdone]').textContent.includes('先不選'), '一個都沒選時按鈕寫「先不選」');
+  await I.click('#onb [data-act=onbpick][data-v=exercise]'); await I.click('#onb [data-act=onbpick][data-v=write]');
+  ok(I.$('#onb [data-act=onbpick][data-v=write]').classList.contains('sel'), '選到的有標示'); ok(I.$('#onb [data-act=onbdone]').textContent === '開始', '有選時按鈕寫「開始」');
+  ok(!I.S.onb, '還沒按開始，不算做完');
+  await I.click('#onb [data-act=onbdone]');
+  ok(!onbOpen(I), '開始後引導關掉'); eq(I.S.onb, true, '記下做過了'); eq(activeIds(I), ['exercise', 'write'], '習慣就是選的那兩個');
+  ok(!I.S.habits.some(h => h.id === 'vocus'), '沒選 Vocus：習慣裡沒有 Vocus'); eq(I.S.habits.find(h => h.id === 'write').unit, '篇', '寫作的單位是篇');
+  ok(I.has('寫作') && !I.has('Vocus'), '今日頁有寫作、完全沒有 Vocus 字樣'); ok(I.has('本週 0/1 篇'), '寫作寫「本週 0/1 篇」：' + I.$('#habits').innerText.replace(/\s+/g, ' '));
+  ok(!I.$('#ov').classList.contains('hidden'), '引導完成後才出現新手禮物'); await I.dismiss(); ok(I.S.logs.some(l => l.k === 'welcome'), '新手禮物發了');
+  I.check('引導'); const J = await I.reload({ onb: true }); await J.dismiss(); ok(!onbOpen(J), '重開不會再問'); eq(activeIds(J), ['exercise', 'write'], '習慣還在'); J.check('引導後重開'); J.destroy(); I.destroy();
+});
+
+test('引導：Vocus 只留給選的人；不選也能開始；自訂習慣和上限；用過的存檔不引導', async () => {
+  resetCloud();
+  const A = await boot({ onb: true }); await A.click('#onb [data-act=onbskip]'); await A.click('#onb [data-act=onbpick][data-v=vocus]'); await A.click('#onb [data-act=onbdone]'); await A.dismiss();
+  eq(activeIds(A), ['vocus'], '選了 Vocus'); ok(A.has('Vocus 發文節奏'), '選了 Vocus 才會問發文節奏'); ok(A.has('我不寫 Vocus'), '節奏卡上可以直接移除');
+  await A.click('[data-act=vdrop]'); eq(activeIds(A), [], '移除 Vocus'); ok(!A.$('#main').innerText.includes('Vocus'), '移除後畫面上沒有 Vocus'); A.check('移除 Vocus'); A.destroy();
+  const B = await boot({ onb: true }); await B.click('#onb [data-act=onbskip]'); await B.click('#onb [data-act=onbdone]'); await B.dismiss();
+  eq(activeIds(B), [], '什麼都沒選也能開始'); ok(!B.has('Vocus'), '沒有 Vocus'); ok(B.S.habits.some(h => h.id === 'exercise' && h.off), '運動留著，可以到編輯畫面加回');
+  await B.click('[data-act=habedit]'); ok(B.has('加回 運動') && !B.has('加回 Vocus'), '編輯畫面只能加回運動'); B.check('空習慣'); B.destroy();
+  const C = await boot({ onb: true }); await C.click('#onb [data-act=onbskip]');
+  for (const id of ['write', 'read', 'meditate']) await C.click(`#onb [data-act=onbpick][data-v=${id}]`);
+  await C.type('#onb [data-onb=name]', '  喝水  '); await C.type('#onb [data-onb=freq]', '1');
+  await C.click('#onb [data-act=onbdone]'); ok(onbOpen(C) && !C.S.onb, '自訂型習慣超過 ' + C.CONFIG.maxCustom + ' 個：不能開始'); ok(C.has('最多'), '要說明原因');
+  await C.type('#onb [data-onb=name]', ''); await C.click('#onb [data-act=onbdone]');
+  eq(activeIds(C), ['write', 'read', 'meditate'], '拿掉自訂就能開始'); eq(C.S.habits.find(h => h.id === 'read').target, 3, '閱讀每週 3 天'); eq(C.S.habits.find(h => h.id === 'meditate').weeks, 0, '冥想每天'); C.destroy();
+  const D = await boot({ onb: true }); await D.click('#onb [data-act=onbskip]'); await D.click('#onb [data-act=onbpick][data-v=read]'); await D.type('#onb [data-onb=name]', '<img src=x onerror=window.__xss=1>喝'); await D.type('#onb [data-onb=freq]', '1');
+  await D.click('#onb [data-act=onbdone]'); await D.dismiss(); const my = D.S.habits.find(h => h.kind === 'custom' && h.id !== 'read');
+  ok(my && my.n.length === 20 && my.weeks === 1 && my.target === 3, '自訂習慣：名稱最多 20 字、每週 3 天：' + JSON.stringify(my)); ok(!D.win.__xss && !D.$('#main img[src=x]'), 'XSS：自訂習慣名稱'); D.check('自訂習慣'); D.destroy();
+  const used = { checks: { [D0]: { exercise: [{ t: 1 }] } } };   // 舊存檔（沒有 onb 欄位）但用過了
+  const E = await boot({ onb: true, state: mkState(used) }); await E.dismiss(); ok(!onbOpen(E), '用過的舊存檔不會被問'); eq(E.S.onb, true, '補上做過了'); ok(E.has('Vocus'), '舊存檔的習慣不動'); E.destroy();
+  const F = await boot({ onb: true, state: mkState() }); ok(onbOpen(F), '只有新手禮物、沒做過任何事的存檔還是要引導'); F.destroy();
+});
+
+test('引導：綁定 Google 一次點擊（iPhone）；雲端已有紀錄就直接進遊戲', async () => {
+  resetCloud();
+  const A = await boot({ state: mkState({ checks: { [D0]: { exercise: [{ t: 1 }] } } }), ua: IPHONE }); await A.dismiss(); await loginAs(A); ok(window.__cloudDb.docs.u1, '準備好另一台裝置的雲端紀錄');
+  const B = await boot({ onb: true, seed: {}, ua: IPHONE }); await flush(6);
+  ok(onbOpen(B) && B.ev('CLOUD.ready'), 'B：引導一出現就把登入程式載好');
+  window.__cloudDb.nextUser = { uid: 'u1' }; await B.click('#onb [data-act=login]'); await flush(14);
+  ok(B.S.cloudUid === 'u1', 'iPhone 一次點擊就登入'); ok(!onbOpen(B), '雲端已有做過引導的紀錄：直接進遊戲，不再問'); eq(B.S.onb, true, '換成雲端的紀錄'); ok(B.S.checks[D0], '雲端的打卡紀錄到了'); B.check('引導登入'); B.destroy();
+  const C = await boot({ onb: true, seed: {}, ua: IPHONE }); await flush(6);
+  window.__cloudDb.nextUser = { uid: 'u2' }; await C.click('#onb [data-act=login]'); await flush(14);
+  ok(C.S.cloudUid === 'u2' && onbOpen(C), '全新的帳號：登入後接著選習慣'); ok(C.$('#onb').textContent.includes('已綁定') && C.$('#onb').textContent.includes('你想養成什麼習慣'), '顯示已綁定、進到選習慣');
+  await C.click('#onb [data-act=onbdone]'); await C.dismiss(); await hide(C, true); ok(C.S.onb, '做完'); ok(JSON.parse(window.__cloudDb.docs.u2.data).onb === true, '雲端上也記著做過了'); C.destroy(); A.destroy();
+  const M = await boot({ onb: true, ua: 'Mozilla/5.0 TikTok_26.0' }); ok(M.$('#onb').textContent.includes('App 內建') && !M.$('#onb [data-act=login]'), 'App 內建瀏覽器：說明無法登入，沒有登入按鈕'); ok(M.$('#onb [data-act=onbskip]'), '但可以先跳過'); M.destroy();
+});
+
+test('專注畫面的結束：一分鐘內直接結束，之後才確認；按鈕夠大', async () => {
+  const I = await boot({ state: mkState() }); await I.dismiss();
+  await I.click('[data-act=start]'); await I.advance(20e3);
+  const r = I.$('#focus [data-act=cancel]').getBoundingClientRect(); ok(r.height >= 44 && r.width >= 100, `結束按鈕至少 44px 高：${r.width}×${r.height}`);
+  await I.click('#focus [data-act=cancel]'); ok(I.$('#askov').classList.contains('hidden'), '剛開始按結束：不用確認'); ok(!I.S.timer && I.$('#focus').classList.contains('hidden'), '直接結束、回到遊戲');
+  await I.click('[data-act=start]'); await I.advance(61e3); await I.click('#focus [data-act=cancel]'); ok(!I.$('#askov').classList.contains('hidden'), '超過一分鐘：要確認'); await I.click('#askyes'); ok(!I.S.timer, '確認後結束');
+  await I.click('[data-act=pomoset][data-v="90"]'); await I.click('[data-act=start]'); await I.advance(25 * 60e3 + 5e3); await I.dismiss(); await I.click('#focus [data-act=cancel]'); ok(!I.$('#askov').classList.contains('hidden'), '第二段（休息）時結束：要確認');
+  I.check('結束'); I.destroy();
+});
+

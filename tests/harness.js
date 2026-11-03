@@ -29,6 +29,7 @@ function SHIM(o, P) {
   window.__clock = { set(ms) { ck.off = ms - R.now(); }, advance(ms) { ck.off += ms; }, now: () => R.now() + ck.off };
   // 2. 錯誤收集
   window.__errors = []; window.__downloads = [];
+  window.__noOnb = !o.onb;   // 第一次打開的引導會蓋住畫面；測驗預設略過，要測引導時傳 onb: true
   // 測驗頁在背景時瀏覽器會停掉 requestAnimationFrame，改成計時器驅動，水族箱才會動
   window.requestAnimationFrame = cb => setTimeout(() => cb(performance.now()), 16); window.cancelAnimationFrame = id => clearTimeout(id);
   window.addEventListener('error', e => window.__errors.push('error: ' + e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
@@ -94,7 +95,7 @@ async function boot(o = {}) {
     if (o.state) m.set('habitdive.v1', typeof o.state === 'string' ? o.state : JSON.stringify(o.state));
     window.__stores[storeId] = m;
   }
-  const opts = { now: o.now == null ? T0 + (Date.now() - SIM0) : o.now, storeId, storage: o.storage, noAudio: o.noAudio, noAnimate: o.noAnimate, ua: o.ua, cloudUser: o.cloudUser, noShare: o.noShare, skew: o.skew };
+  const opts = { now: o.now == null ? T0 + (Date.now() - SIM0) : o.now, storeId, storage: o.storage, noAudio: o.noAudio, noAnimate: o.noAnimate, ua: o.ua, cloudUser: o.cloudUser, noShare: o.noShare, skew: o.skew, onb: o.onb };
   const html = boot.html.replace('<head>', `<head><base href="${base}"><script>(${SHIM.toString()})(${JSON.stringify(opts)}, window.parent)<\/script>`);
   const frame = document.createElement('iframe');
   const w = o.width || 375, h = o.height || 812;

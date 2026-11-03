@@ -50,9 +50,11 @@ document.addEventListener('click', async e => {
     case 'tipsix': S.tipSix = true; save(); render(); break;
     case 'pomocustom': UI.pomoCustom = true; render(); document.getElementById('pomoMin')?.focus(); break;
     case 'pomoset': S.pomoMin = +v; UI.pomoCustom = false; save(); render(); break;
-    case 'cancel':
-      if (await ask('結束這段工作階段？\n目前這段專注不會有獎勵，已完成的段落會保留。', '結束', '繼續')) { S.timer = null; save(); render(); tick(); }
+    case 'cancel': {
+      const T = S.timer, early = T && T.si === 0 && Date.now() - T.start < 60e3;   // 剛開始一分鐘內，多半是按錯或不想用，直接結束不用再問
+      if (early || await ask('結束這段工作階段？\n目前這段專注不會有獎勵，已完成的段落會保留。', '結束', '繼續')) { S.timer = null; save(); render(); tick(); }
       break;
+    }
     case 'askyes': ask.res && ask.res(true); break;
     case 'askno': ask.res && ask.res(false); break;
     case 'habtap':
@@ -98,6 +100,16 @@ document.addEventListener('click', async e => {
     case 'habrestore': { const h = S.habits.find(x => x.id === v); if (!h) break; h.off = false; save(); render(); break; }
     case 'gcatadd': S.gcats.push({ id: 'g' + rid(), e: '🔖', n: '' }); save(); render(); break;
     case 'gcatdel': S.gcats[+v].off = true; save(); render(); break;
+    case 'onbskip': UI.onbStep = 2; renderOnb(); break;
+    case 'onbpick': {
+      const sel = UI.onbSel || (UI.onbSel = {});
+      sel[v] = !sel[v];
+      if (sel[v] && onbCustomCount() > CONFIG.maxCustom) { sel[v] = false; toast(`自訂型的習慣最多 ${CONFIG.maxCustom} 個`); }
+      renderOnb(); break;
+    }
+    case 'onbdone': if (finishOnb()) toast('設定好了，先寫下今天最重要的事吧'); break;
+    case 'vdrop':
+      S.habits = S.habits.filter(h => h.id !== 'vocus'); S.vocusSet = true; save(); render(); toast('已移除 Vocus 習慣'); break;
     case 'vcfg': {
       const V = habit('vocus');
       V.weeks = +document.getElementById('vW').value; V.target = +document.getElementById('vT').value;
@@ -138,7 +150,8 @@ document.addEventListener('click', async e => {
         }
         if (it.held) { S.logs.push(it.held); delete it.held; SFX.tap(); toast('已恢復這一項的獎勵'); return; }
         // 名額照「今天已經發出去的打勾獎勵」算（含先收起來的），不是看哪幾列有標記：不然把有獎勵的那件換到後面再刪掉，就能多拿
-        const given = S.logs.filter(l => l.k === 'check' && l.d === d).length + getPlan(d).filter(x => x.held).length;
+        // （存檔裡有「標記有獎勵、但找不到那筆紀錄」的項目時，也要算進名額）
+        const given = Math.max(S.logs.filter(l => l.k === 'check' && l.d === d).length + getPlan(d).filter(x => x.held).length, getPlan(d).filter(x => x.rw).length);
         if (it.rw || +v >= CONFIG.rewardRows || given >= CONFIG.rewardRows) { SFX.tap(); return; }
         it.rw = true;
         it.lid = grant('check', c.n, { title: `✔ ${it.text}`, xp: CONFIG.xp.check }).id;
@@ -278,6 +291,7 @@ document.addEventListener('input', e => {
     if (p) p.textContent = paceText({ type: document.getElementById('exType').value, dist: g('dist'), m: g('m'), min: g('min') });
     return;
   }
+  if (el.dataset.onb) { UI[el.dataset.onb === 'name' ? 'onbName' : 'onbFreq'] = el.value; if (el.dataset.onb === 'name') renderOnbButton(); return; }
   if (el.dataset.nf) { setPetName(el.dataset.nf, el.value); return; }
   if (el.dataset.sf) { const it = S.shop && S.shop[el.dataset.si]; if (it) { it[el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); } return; }
   if (el.dataset.gf) { const g = S.gcats && S.gcats[el.dataset.gi]; if (g) { g[el.dataset.gf] = el.value; save(); } return; }
@@ -319,6 +333,14 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 document.addEventListener('focusout', () => { if (syncPending) { syncPending = false; setTimeout(() => { render(); renderSheet(); tick(); }, 0); } });
 
 /* ========= 啟動 ========= */
+// 新手禮物、恢復雲端登入、補發每日獎勵：一次性，引導做完才開始
+let GAME_STARTED = false, GAME_READY = false;
+function startGame() {
+  if (GAME_STARTED) return; GAME_STARTED = true;
+  if (!derive().claimed.has('welcome')) { grant('welcome', null, { key: 'welcome' }); save(); render(); nextChest(); }
+  // 這台裝置之前登入過雲端同步，就自動恢復登入
+  if (S.cloudUid) cloudInit(); else catchUp();
+}
 (function init() {
   document.getElementById('logo').innerHTML = img(CR.clown.px, 3);
   const bub = document.getElementById('bubbles');
@@ -329,9 +351,8 @@ document.addEventListener('focusout', () => { if (syncPending) { syncPending = f
   if (compactIfLarge()) save(false);   // 存檔太大時先瘦身（見 core.js）
   render(); tick();
   setInterval(tick, 500);
-  if (!derive().claimed.has('welcome')) { grant('welcome', null, { key: 'welcome' }); save(); render(); nextChest(); }
-  // 這台裝置之前登入過雲端同步，就自動恢復登入
-  if (S.cloudUid) cloudInit(); else catchUp();
+  GAME_READY = true;
+  if (!needOnb()) startGame();   // 第一次打開要先做引導（選習慣、綁定 Google），做完才會 startGame（render 會在引導結束時接手）
   // 跨過換日時間時重新整理畫面
   let lastDay = dayKey();
   setInterval(() => { if (dayKey() !== lastDay) { lastDay = dayKey(); render(); } }, 30e3);

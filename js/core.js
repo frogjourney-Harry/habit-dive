@@ -45,7 +45,7 @@ function migrate(s) {
   if (s.pomoMin != null) { const m = Math.round(num(s.pomoMin)); if (m >= 5 && m <= 120) s.pomoMin = m; else delete s.pomoMin; }
   if (s.feedDay != null) { if (typeof s.feedDay === 'object' && !Array.isArray(s.feedDay)) s.feedDay = { d: String(s.feedDay.d || ''), used: Math.max(0, Math.floor(num(s.feedDay.used))) }; else delete s.feedDay; }
   if (s.favs != null) s.favs = (Array.isArray(s.favs) ? s.favs : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 12);
-  if (s.habits) for (const h of s.habits) { h.n = String(h.n ?? ''); h.weeks = Math.max(0, Math.min(2, Math.round(num(h.weeks)))); h.target = Math.max(1, Math.min(14, Math.round(num(h.target)) || 1)); }
+  if (s.habits) for (const h of s.habits) { if (h.unit != null) h.unit = String(h.unit).slice(0, 4); h.n = String(h.n ?? ''); h.weeks = Math.max(0, Math.min(2, Math.round(num(h.weeks)))); h.target = Math.max(1, Math.min(14, Math.round(num(h.target)) || 1)); }
   if (s.habits && !Array.isArray(s.habits)) delete s.habits;
   if (s.habits) s.habits = s.habits.filter(h => h && typeof h === 'object' && h.id);
   for (const P of Object.values(s.plans)) for (const it of P) {
@@ -118,8 +118,11 @@ function migrate(s) {
   // v7：新手禮物改成一隻小丑魚；已經玩過的（新手紀錄上沒有生物）補送
   if (s.v < 7) { const w = s.logs.find(l => l.k === 'welcome'); if (w && !w.drop) w.drop = 'clown'; }
   s.v = 7;
+  // 第一次打開的引導（選習慣、登入）：還沒用過的新存檔要做；用過的（有紀錄、打卡或寫過六件事）當作做過了
+  if (typeof s.onb !== 'boolean') s.onb = s.logs.some(l => l.k !== 'welcome' && l.k !== 'login') || Object.keys(s.checks).length > 0 || Object.values(s.plans).some(P => P.some(x => x.text.trim()));
   return s;
 }
+const needOnb = () => S.onb === false && !window.__noOnb;   // __noOnb：自動測驗用，略過引導
 let STORAGE_OK = true;   // 這個瀏覽器存不存得了紀錄（無痕模式、封鎖網站資料、容量滿了都會變 false）
 function load() {
   let raw = null;
@@ -197,7 +200,7 @@ function catOf(id) {
 const catList = () => gcats();
 const placeholder = c => c.ph || `${c.n}：今天要做什麼？`;
 const periodWord = h => h.weeks === 1 ? '本週' : '這兩週';
-const countWord = h => h.kind === 'vocus' ? '篇' : '天';
+const countWord = h => h.unit || (h.kind === 'vocus' ? '篇' : '天');
 
 // 習慣打卡紀錄：S.checks[日期][習慣 id] = [{ t, title?, type?, dist?, min?, note? }]
 const dayChecks = (d, id) => (S.checks[d] && S.checks[d][id]) || [];

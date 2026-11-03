@@ -155,7 +155,7 @@ test('雲端：在另一台按結束，這台的番茄鐘也要結束', async ()
   const B = await boot({ seed: {} }); await B.dismiss(); await loginAs(B);
   await A.tab('today'); await A.click('[data-act=start]'); await hide(A, true); await hide(B, false);
   ok(B.S.timer, 'B 看到 A 開始的專注');
-  await B.click('#focus [data-act=cancel]'); await B.click('#askyes'); await hide(B, true); await hide(A, false);
+  await B.advance(70e3); await B.click('#focus [data-act=cancel]'); await B.click('#askyes'); await hide(B, true); await hide(A, false);
   ok(!A.S.timer, 'A 跟著結束'); A.check('A'); B.check('B'); A.destroy(); B.destroy();
 });
 

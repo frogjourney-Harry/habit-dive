@@ -21,6 +21,7 @@ function render() {
   // 不是按鈕的可點元素（圖鑑格子、寶箱名稱、任務名稱…）：讓鍵盤和螢幕閱讀器也用得到
   for (const e of document.querySelectorAll('#main [data-act]')) if (!e.matches('button, input, select, a, [tabindex]')) { e.setAttribute('role', 'button'); e.setAttribute('tabindex', '0'); }
   renderFocus();
+  renderOnb();
 }
 
 const freqOpts = (h, sel) => (h.kind === 'custom' ? [[0, '每天']] : []).concat([[1, '每週'], [2, '每兩週']])
@@ -146,7 +147,8 @@ function today(D) {
       <div class="mini">不用每天發。選一個做得到的節奏，之後可以在「習慣・編輯」修改。</div>
       <div class="row" style="margin-top:8px">每 <select id="vW"><option value="1">1 週</option><option value="2">2 週</option></select>
         至少 <select id="vT">${targetOpts(1)}</select> 篇
-        <button class="pri" data-act="vcfg">確定</button></div></section>`;
+        <button class="pri" data-act="vcfg">確定</button></div>
+      <div class="row" style="margin-top:6px"><button class="ghost" data-act="vdrop">我不寫 Vocus，移除這個習慣</button></div></section>`;
   const hint = UI.pday < 0 ? '補登昨天：只算完成，沒有獎勵'
     : UI.pday > 0 ? `先寫好明天的（至少 ${CONFIG.rewardRows} 件），獎勵 ×2`
     : `前 ${CONFIG.rewardRows} 件有獎勵・按住編號上下拖曳排順序`;
@@ -204,7 +206,60 @@ function renderFocus() {
     <div>${br ? '休息一下，站起來動一動' : '專注中，先把手機放下'}</div>
     <div class="clock" id="tclock">--:--</div><div class="bar c"><i id="tbar" style="width:0"></i></div>
     <div class="segs">${segLine(T, T.segs)}</div>
-    <div class="row" style="justify-content:center;margin-top:14px">${br ? '<button class="pri" data-act="skipbreak">跳過休息</button>' : ''}<button class="ghost" data-act="cancel">結束</button></div></div>`;
+    <div class="row" style="justify-content:center;margin-top:14px">${br ? '<button class="pri" data-act="skipbreak">跳過休息</button>' : ''}<button class="fend" data-act="cancel">結束</button></div></div>`;
+}
+
+/* ========= 第一次打開的引導 ========= */
+// 步驟 1：綁定 Google（可以先跳過，但要說清楚資料可能會不見）；步驟 2：勾選想養成的習慣。做完才會發新手禮物（見 startGame）
+const onbCustomCount = () => customCount() + ONB_HABITS.filter(h => h.kind === 'custom' && (UI.onbSel || {})[h.id] && !habit(h.id)).length + ((UI.onbName || '').trim() ? 1 : 0);
+const onbLabel = () => ONB_HABITS.some(h => (UI.onbSel || {})[h.id]) || (UI.onbName || '').trim() ? '開始' : '先不選，直接開始';
+function renderOnbButton() { const b = document.querySelector('#onbbox [data-act=onbdone]'); if (b) b.textContent = onbLabel(); }   // 打字時只換按鈕上的字，不重畫（輸入框會失去焦點）
+function renderOnb() {
+  let el = document.getElementById('onb');
+  if (!needOnb()) { if (el) el.classList.add('hidden'); if (GAME_READY) startGame(); return; }   // 引導做完（或雲端換成做過引導的紀錄）：開始遊戲
+  if (!el) { el = document.createElement('div'); el.id = 'onb'; el.className = 'ov'; el.innerHTML = '<div class="px modal" id="onbbox"></div>'; document.body.appendChild(el); }
+  el.classList.remove('hidden');
+  const step = UI.onbStep || (CLOUD.user || !FIREBASE_CONFIG ? 2 : 1), sel = UI.onbSel || {};
+  let html;
+  if (step === 1) {
+    cloudWarm();
+    html = `<div class="label">WELCOME</div><h2>歡迎來到習慣深潛</h2>
+      <p class="dim" style="margin:0 0 14px">每天做一點事就賺金幣，開寶箱收集海裡的生物。</p>
+      ${IN_APP ? '<div class="warn">你在 App 內建的瀏覽器裡，無法用 Google 登入。請用 Chrome 或 Safari 開啟網站再綁定。</div>'
+        : `<b>先綁定 Google 帳號</b><div class="mini">紀錄會備份到雲端，換手機、換瀏覽器都能接續。</div>
+      <button class="gbtn" data-act="login" ${CLOUD.busy ? 'disabled' : ''}>${GOOGLE_G}${CLOUD.busy ? '準備中…' : CLOUD.armed ? '再按一次，選擇 Google 帳戶' : '用 Google 帳戶登入'}</button>
+      ${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div>` : ''}`}
+      <div class="warn" style="margin:16px 0 8px">不綁定的話，紀錄只存在這個瀏覽器。換手機、清除瀏覽資料，或用無痕模式時，紀錄可能會消失。</div>
+      <button data-act="onbskip">先不綁定，之後再說</button>
+      <div class="mini">之後隨時可以到「更多」頁綁定。</div>`;
+  } else {
+    html =`<div class="label">${FIREBASE_CONFIG ? 'STEP 2・' : ''}HABITS</div><h2>你想養成什麼習慣？</h2>
+      ${CLOUD.user ? `<div class="mini" style="margin:0 0 6px">已綁定 ${esc(CLOUD.user.email || '')}</div>` : ''}
+      <div class="mini" style="margin:0 0 10px">可以複選，也可以先不選。之後在「今日」的習慣區按「編輯」隨時修改。</div>
+      <div class="onbgrid">${ONB_HABITS.map(h => `<button class="onbopt ${sel[h.id] ? 'sel' : ''}" data-act="onbpick" data-v="${h.id}" aria-pressed="${!!sel[h.id]}"><span class="oe">${h.e}</span><b>${esc(h.n)}</b><small>${esc(h.desc)}</small></button>`).join('')}</div>
+      <div class="row onbcustom"><span aria-hidden="true">⭐</span><input class="sp" data-onb="name" maxlength="20" placeholder="自訂，例如：喝水" aria-label="自訂習慣名稱" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(UI.onbName || '')}">
+        <select data-onb="freq" aria-label="頻率"><option value="0" ${UI.onbFreq === '1' ? '' : 'selected'}>每天</option><option value="1" ${UI.onbFreq === '1' ? 'selected' : ''}>每週 3 天</option></select></div>
+      <button class="pri wide" data-act="onbdone">${onbLabel()}</button>`;
+  }
+  const box = document.getElementById('onbbox');
+  if (box.dataset.h !== html) { box.innerHTML = html; box.dataset.h = html; }   // 內容沒變就不重畫，免得打字到一半失去焦點
+}
+function finishOnb() {
+  const sel = UI.onbSel || {}, name = (UI.onbName || '').trim().slice(0, 20);
+  if (onbCustomCount() > CONFIG.maxCustom) { toast(`自訂型的習慣最多 ${CONFIG.maxCustom} 個，少選一個吧`); return false; }
+  const out = [];
+  for (const o of ONB_HABITS) {
+    const old = S.habits.find(h => h.id === o.id);
+    if (sel[o.id]) out.push(old ? { ...old, off: false } : { id: o.id, e: o.e, n: o.n, kind: o.kind, weeks: o.weeks, target: o.target, ...(o.unit ? { unit: o.unit } : {}) });
+    else if (old && o.kind === 'exercise') out.push({ ...old, off: true });   // 運動沒選也留著（編輯畫面可以加回）；沒選的 Vocus 和其他習慣直接不放進來
+  }
+  const mine = S.habits.filter(h => !ONB_HABITS.some(o => o.id === h.id));   // 引導以外、舊存檔裡自己加的習慣原樣保留
+  if (name) mine.push({ id: 'h' + rid(), e: '⭐', n: name, kind: 'custom', weeks: UI.onbFreq === '1' ? 1 : 0, target: UI.onbFreq === '1' ? 3 : 1 });
+  S.habits = [...out, ...mine];
+  if (!sel.vocus) S.vocusSet = true;   // 選了 Vocus 就留著「發文節奏」設定卡讓他選
+  S.onb = true; Object.assign(UI, { onbStep: 0, onbSel: null, onbName: '', onbFreq: '0' });
+  save(); render();
+  return true;
 }
 
 /* ========= 習慣打卡面板 ========= */
@@ -705,6 +760,7 @@ function about() {
       <span class="sp"><b>${esc(l.title)}</b><br><small>${esc(l.sub)}</small></span><span class="dim">↗</span></a>`).join('')}</section>
   <section class="px">${sh('資料與隱私', 'PRIVACY')}
     <div class="mini">沒登入時，紀錄只存在你自己的瀏覽器裡，不會上傳到任何地方。</div>
+    ${FIREBASE_CONFIG ? '<div class="mini">看到登入按鈕時，網頁會先向 Google 載入登入用的程式，讓登入一次就成功；這一步不會送出你的任何紀錄。</div>' : ''}
     ${FIREBASE_CONFIG ? `<div class="mini">如果你選擇用 Google 登入，紀錄（六件事、打卡、遊戲進度）會存到 Google 的 Firebase 雲端，用來在不同裝置間同步。只會取得你的 Google 名稱和 email 來辨識帳號，不會發信、不會發文，也看不到你的其他 Google 資料。資料庫規則讓每個人只能讀寫自己的資料；身為網站管理者，我在技術上看得到資料庫，但不會查看或使用你的紀錄。你隨時可以在「紀錄 → 雲端同步」刪除雲端資料和帳號。</div>` : ''}
     <div class="mini">本工具為個人作品，與方格子 vocus 官方無關。</div></section>`;
 }

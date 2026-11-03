@@ -12,7 +12,7 @@ async function monkey(seed, steps, o = {}) {
   let I = await boot(st ? { state: st, width: o.width || (seed % 2 ? 375 : 1024), height: 800 } : { seed: {}, width: o.width || 375, height: 800 });
   const trail = [], found = new Map(); let n = 0;
   const label = el => { const t = (el.innerText || el.value || el.title || '').replace(/\s+/g, ' ').slice(0, 14); return `${el.dataset && el.dataset.act ? el.dataset.act + (el.dataset.v !== undefined ? '(' + el.dataset.v + ')' : '') : el.id || el.tagName.toLowerCase()}${t ? '「' + t + '」' : ''}`; };
-  const record = (msg) => { if (!found.has(msg)) found.set(msg, { seed, step: n, trail: trail.slice(-14) }); };
+  const record = (msg) => { if (!found.has(msg)) found.set(msg, { seed, step: n, snap: (() => { try { return JSON.stringify({ plans: I.S.plans, checks: I.S.logs.filter(l => l.k === "check") }); } catch (e) { return ""; } })(), trail: trail.slice(-(+new URLSearchParams(location.search).get("trail") || 14)) }); };
   const verify = (tag) => {
     const before = REPORT.fail; const bad = checkInvariants(I, ''); if (I.win.__xss) { bad.push('XSS 執行了'); I.win.__xss = 0; }
     for (const b of bad) record(b); return bad.length;
