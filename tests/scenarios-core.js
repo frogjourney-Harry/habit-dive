@@ -95,20 +95,21 @@ test('寫好清單的規則：至少 3 件、明天 ×2、不能重複領', asyn
 });
 
 test('換日：沒領的隔天自動入帳；凌晨 4 點才換日', async () => {
-  const I = await startToday();
-  const f = async t => { await I.setTime(t); return I.ev('dayKey()'); };
+  const Z = await startToday();   // 換日判斷另開一個（來回跳時間會多發當天的登入獎勵，不要混進後面的金額）
+  const f = async t => { await Z.setTime(t); return Z.ev('dayKey()'); };
   eq(await f(ts(2026, 11, 3, 3, 59)), '2026-11-02', '03:59 還是前一天');
   eq(await f(ts(2026, 11, 3, 4, 0)), '2026-11-03', '04:00 換日');
   eq(await f(ts(2026, 11, 2, 0, 0)), '2026-11-01', '00:00 算前一天');
-  await I.setTime(T0);
+  Z.destroy();
+  const I = await startToday();
   await I.plan(['A', 'B', 'C']); await I.tick(0);
   eq(I.coins(), 60, '還沒領');
   await I.setTime(ts(2026, 11, 3, 3, 30));
   eq(I.coins(), 60, '凌晨 3:30 還是同一天，還沒領的不入帳');
   await I.setTime(ts(2026, 11, 3, 4, 1));
-  eq(I.coins(), 75, '換日後沒領的自動入帳');
-  const J = await I.reload(); await J.dismiss(); eq(J.coins(), 75, '重開也一樣');
-  await J.tab('quest'); ok(!J.$('.qc.pend'), '昨天的獎勵不會一直掛在待領取');
+  eq(I.coins(), 90, '換日後沒領的自動入帳（含昨天的登入獎勵 15）');
+  const J = await I.reload(); await J.dismiss(); eq(J.coins(), 90, '重開也一樣');
+  await J.tab('quest'); ok(![...J.$$('.qc.pend')].some(e => !/每日登入/.test(e.innerText)), '昨天的獎勵不會一直掛在待領取（只剩今天新的登入獎勵）');
   J.check('換日'); J.destroy(); I.destroy();
 });
 
@@ -254,4 +255,36 @@ test('獎勵名額：打勾拿獎勵→換到後面→刪掉→再打勾，不�
   await J.tick(0); await J.tick(1); await J.tick(2);
   ok(rewardLogs(J).length <= 3, `取消後刪除也不能多拿：${rewardLogs(J).length} 份`);
   I.check('A'); J.check('B'); I.destroy(); J.destroy();
+});
+
+test('每日登入獎勵：每天一份、要手動領、隔天自動入帳、不算進每日任務', async () => {
+  const I = await startToday();
+  const logins = () => I.S.logs.filter(l => l.k === 'login');
+  eq(logins().length, 1, '打開就有一份登入獎勵');
+  eq(logins()[0].key, 'login:' + D0, '以日期當 key');
+  ok(logins()[0].pend, '還沒領');
+  const c0 = I.coins(), x0 = I.xp();   // 起始金幣（歡迎禮物）
+  await I.tab('quest');
+  ok(/每日登入/.test(I.$('.qc.pend').innerText), '任務頁看得到待領取的登入獎勵');
+  const total = I.ev('questCount(dailyTasks(derive())).daily.length');
+  ok(!I.ev("questCount(dailyTasks(derive())).daily.some(t => t.id === 'login')"), '登入不算進「每日任務 x/y」(y=' + total + ')');
+  await I.click(['[data-act=claim]', '領取']); await I.dismiss();
+  eq(I.coins(), c0 + 15, '領了 +15 金幣');
+  eq(I.xp(), x0 + 5, '領了 +5 XP');
+  ok(!logins()[0].pend, '領過就不再待領');
+  // 同一天重開、時間往前走都不會再發
+  const J = await I.reload(); await J.dismiss();
+  eq(J.S.logs.filter(l => l.k === 'login').length, 1, '同一天重開不會再發');
+  eq(J.coins(), c0 + 15, '金幣不變');
+  // 隔天：新的一份；昨天沒領的自動入帳
+  await J.setTime(T0 + 24 * 3600e3);
+  J.win.tick(); await flush(3);
+  eq(J.S.logs.filter(l => l.k === 'login').length, 2, '隔天發新的一份');
+  ok(J.S.logs.find(l => l.key === 'login:2026-11-03').pend, '新的一份待領取');
+  await J.setTime(T0 + 48 * 3600e3); await flush(3);
+  const K = await J.reload(); await K.dismiss();
+  eq(K.S.logs.filter(l => l.k === 'login').length, 3, '三天各一份，沒有重複');
+  eq(K.coins(), c0 + 15 * 2, '前兩天的自動入帳（第一天領過、第二天自動）');
+  ok(K.ev('hasProgress(S)') === false, '只有歡迎禮物和登入獎勵不算「用過」（新裝置要能接雲端存檔）');
+  K.check('每日登入'); K.destroy(); J.destroy(); I.destroy();
 });

@@ -7,8 +7,8 @@ const CONFIG = {
   dayStartHour: 4,            // 凌晨 4 點前都算「前一天」
   habitDays: 66,              // Lally et al. 2010：習慣自動化所需天數中位數
   maxCustom: 3,               // 自訂習慣最多幾個（不含內建的六件事、Vocus、運動）
-  xp:    { check: 10, habit: 10, exercise: 20, plan: 10, anyhab: 10, pomo: 10, pubchest: 30, period: 30, top3: 15 },
-  coins: { task: 15, period: 60, welcome: 60, top3: 30, pubchest: 30 },   // 都是 15 的倍數，好記
+  xp:    { check: 10, habit: 10, exercise: 20, plan: 10, anyhab: 10, pomo: 10, pubchest: 30, period: 30, top3: 15, login: 5 },
+  coins: { task: 15, period: 60, welcome: 60, top3: 30, pubchest: 30, login: 15 },   // 都是 15 的倍數，好記
   rewardRows: 3,              // 六件事每天只有前幾項打勾有獎勵，其餘只做紀錄
   coinsPerDay: 120,            // 紀錄不夠時，商店用這個速度估計「要努力幾天」
   // 生物寶箱：在商店用金幣買，一種稀有度一種寶箱，開出那個稀有度裡隨機一種生物。

@@ -49,6 +49,7 @@ function dailyTasks(D) {
   const d = dayKey(), d1 = addDays(d, 1), byKey = k => S.logs.filter(l => l.key === k), R = CONFIG.rewardRows;
   const checks = S.logs.filter(l => l.k === 'check' && l.d === d);
   const T = [
+    { id: 'login', name: '每日登入', go: 'six', est: C.login, ex: X.login, logs: byKey('login:' + d) },
     // how＝一小句提示（名稱看得懂就不寫）；go＝點了跳到「今日」頁的哪一區
     { id: 'plan', name: '寫好今天的清單', how: `寫至少 ${R} 件，按「寫好了」`, go: 'six', est: C.task, ex: X.plan, nx: `寫好今天的清單（至少 ${R} 件）`, logs: byKey('plan:' + d) },
     { id: 'plan1', name: '寫好明天的清單（獎勵 ×2）', how: '六件事切到「明天」寫', go: 'six:1', est: C.task * 2, ex: X.plan * 2, logs: byKey('plan:' + d1) },
@@ -106,9 +107,9 @@ function quests(D) {
 
 // 首頁最上面一條：今天完成幾項、下一步做什麼（點了直接跳過去）、有幾份獎勵待領
 // 每日任務完成幾項：只算「每日任務」那一區，任務頁和首頁共用
-function questCount(T) { const daily = T.filter(t => !t.hab && t.id !== 'misc'); return { daily, done: daily.filter(t => t.full).length }; }
+function questCount(T) { const daily = T.filter(t => !t.hab && t.id !== 'misc' && t.id !== 'login'); return { daily, done: daily.filter(t => t.full).length }; }
 function nextStep(D, P) {
-  const all = dailyTasks(D), { daily, done } = questCount(all), T = all.filter(t => !t.week);
+  const all = dailyTasks(D), { daily, done } = questCount(all), T = all.filter(t => !t.week && t.id !== 'login');
   const pc = all.flatMap(t => t.pend).reduce((a, l) => a + (l.c || 0), 0);
   // 下一步：照順序找還沒完成的，「寫明天的清單」留到最後
   const nx = T.find(t => !t.full && t.id !== 'plan1') || T.find(t => !t.full);

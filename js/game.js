@@ -5,6 +5,7 @@ const Q = [];
 const viewDay = () => addDays(dayKey(), UI.pday);
 const BONUS = {
   welcome: '歡迎下水！送你一隻小丑魚',
+  login: '今天的登入獎勵',
   top3: '前三件事都完成了！',
   pubchest: '今天發布了文章！',
   period: '習慣達標！',
@@ -94,7 +95,8 @@ function reconcile(allowGrant) {
   const d = dayKey(), P = S.plans[d] || [], R = CONFIG.rewardRows;
   S.held = S.held || {};
   // 前三格都要有寫內容、而且都打勾才算
-  const conds = [['top3:' + d, 'top3', P.length >= R && P.slice(0, R).every(x => x.text.trim() && x.done)],
+  const conds = [['login:' + d, 'login', true],   // 每天打開就有，不需要條件
+    ['top3:' + d, 'top3', P.length >= R && P.slice(0, R).every(x => x.text.trim() && x.done)],
     ['anyhab:' + d, 'anyhab', activeHabits().some(h => dayChecks(d, h.id).length > 0), '今天完成了一個習慣！']];
   for (const h of activeHabits()) {
     const has = dayChecks(d, h.id).length > 0;
@@ -171,7 +173,7 @@ function finishSeg() {
 }
 function tick() {
   // 跨過換日時間：昨天沒領的獎勵會自動入帳、今天的任務和統計都要重算，馬上重畫（不等 30 秒的檢查）
-  const dk = dayKey(); if (tick.day && tick.day !== dk) { tick.day = dk; render(); renderSheet(); } tick.day = dk;
+  const dk = dayKey(); if (tick.day && tick.day !== dk) { tick.day = dk; render(); renderSheet(); catchUp(); } tick.day = dk;   // 新的一天：補發每日登入獎勵
   if (!S.timer) { document.title = '習慣深潛'; return; }
   let T = S.timer;
   if (!T.segs) S.timer = T = { segs: [{ m: T.mode === 'break' ? 'break' : 'focus', min: Math.round(T.dur / 60e3) }], si: 0, start: T.start };

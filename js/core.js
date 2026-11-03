@@ -160,7 +160,7 @@ function carryEditDrafts(old) {
 // 存檔超過一定大小時，把「很久以前」的零碎獎勵紀錄合併成一天一筆、舊的六件事文字只留「那天有做事」。
 // 金幣、XP、番茄鐘次數與時數、打卡天數、習慣連勝都不會變；抽到的生物、買寶箱、兌換、習慣打卡紀錄（checks）原樣保留。
 const COMPACT_LIMIT = 400000, COMPACT_KEEP_DAYS = 60;
-const FOLD_KINDS = new Set(['check', 'habit', 'plan', 'top3', 'pubchest', 'period', 'weekly', 'anyhab', 'pomo']);
+const FOLD_KINDS = new Set(['check', 'habit', 'plan', 'top3', 'pubchest', 'period', 'weekly', 'anyhab', 'pomo', 'login']);
 function compactIfLarge(s = S) {
   if (JSON.stringify(s).length < COMPACT_LIMIT) return false;
   // 以資料裡最新的日期為準（不是裝置現在的日期），裝置日期被調到很後面也不會把近期紀錄收掉

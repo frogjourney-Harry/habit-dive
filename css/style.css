@@ -343,6 +343,8 @@ body.focusing{overflow:hidden}
   span.pdel{display:none}
   input[type=checkbox]{width:24px;height:24px}
   nav button{font-size:12px}
+  .qc{flex-wrap:wrap}   /* 領取按鈕放不下時換到下一行，不撐出畫面 */
+  .qc .sp{flex:1 1 80px}
 }
 .dex .cell img{max-width:100%;height:auto}
 /* 橫向握持有瀏海的手機：內容不要被瀏海蓋住 */
