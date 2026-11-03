@@ -212,22 +212,37 @@ function delCheck(d, id, i) {
 }
 
 /* ========= 請假 ========= */
-// 每天的習慣每個月可以請幾天假：那天不打卡也不算漏，連勝照樣接下去（沒有獎勵）。S.leaves[習慣 id][日期] = 1
+// 每天型的習慣：每月可以請 leavePerMonth 天，那天不打卡也不算漏。S.leaves[習慣 id][日期] = 1
+// 每週／每兩週型（運動、Vocus）：「這一期請假」，每月 leavePerMonthWeekly 次，記在那一期的第一天；那一期沒達標也不算斷。
+// 連勝照樣接下去（不加天數），請假沒有獎勵
 const leavesOf = id => { const L = S.leaves && typeof S.leaves === 'object' && S.leaves[id]; return L && typeof L === 'object' ? L : {}; };
 const onLeave = (id, d) => !!leavesOf(id)[d];
-const leaveLeft = (id, d) => Math.max(0, CONFIG.leavePerMonth - Object.keys(leavesOf(id)).filter(x => x.slice(0, 7) === d.slice(0, 7)).length);
-// 每週／每兩週的習慣：這一期裡有請假，沒達標也不算斷（不加連勝、也沒有達標獎勵）
 const periodLeave = (h, p) => { const e = addDays(p, 7 * h.weeks - 1); return Object.keys(leavesOf(h.id)).some(x => x >= p && x <= e); };
-function clearLeave(id, d) { if (onLeave(id, d)) delete S.leaves[id][d]; }
+const leaveHere = (h, d) => h.weeks ? periodLeave(h, periodKey(d, h.weeks)) : onLeave(h.id, d);
+const leaveCap = h => h.weeks ? CONFIG.leavePerMonthWeekly : CONFIG.leavePerMonth;
+function leaveLeft(id, d) {
+  const h = habit(id); if (!h) return 0;
+  const key = h.weeks ? periodKey(d, h.weeks) : d, D = h.weeks ? derive() : null;
+  // 每週型：請了假、但那一期後來還是達標的，不算用掉
+  const used = Object.keys(leavesOf(id)).filter(x => x.slice(0, 7) === key.slice(0, 7) && !(h.weeks && periodDone(D, h, periodKey(x, h.weeks)))).length;
+  return Math.max(0, leaveCap(h) - used);
+}
+// 當天打卡了，每天型的請假就自動取消（每週型的請假是整期的，不受影響）
+function clearLeave(id, d) { const h = habit(id); if (h && !h.weeks && onLeave(id, d)) delete S.leaves[id][d]; }
 // 請假或取消請假，回傳要顯示的訊息
 function toggleLeave(id, d) {
   const h = habit(id); if (!h) return '';
-  if (onLeave(id, d)) { delete S.leaves[id][d]; return '已取消請假'; }
-  if (dayChecks(d, id).length) return '這天已經完成了，不用請假';
-  if (!leaveLeft(id, d)) return `這個月的請假用完了（每月 ${CONFIG.leavePerMonth} 天）`;
+  const key = h.weeks ? periodKey(d, h.weeks) : d;
+  if (leaveHere(h, d)) {
+    if (h.weeks) { const e = addDays(key, 7 * h.weeks - 1); for (const x of Object.keys(S.leaves[id])) if (x >= key && x <= e) delete S.leaves[id][x]; }
+    else delete S.leaves[id][d];
+    return '已取消請假';
+  }
+  if (h.weeks ? periodDone(derive(), h, key) : dayChecks(d, id).length) return h.weeks ? `${periodWord(h)}已經達標，不用請假` : '這天已經完成了，不用請假';
+  if (!leaveLeft(id, d)) return `這個月的請假用完了（每月 ${leaveCap(h)} ${h.weeks ? '次' : '天'}）`;
   if (!S.leaves || typeof S.leaves !== 'object') S.leaves = {};
   if (!S.leaves[id] || typeof S.leaves[id] !== 'object') S.leaves[id] = {};
-  S.leaves[id][d] = 1; return '請假了，連勝不會中斷';
+  S.leaves[id][key] = 1; return '請假了，連勝不會中斷';
 }
 
 /* ========= 狀態推導 ========= */

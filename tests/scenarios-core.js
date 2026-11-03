@@ -393,17 +393,22 @@ test('請假：運動、Vocus（每週型）請假那一週不算斷，沒有獎
   eq(I.ev("toggleLeave('exercise', addDays(dayKey(), -1))") !== '', true, '上週日請假');
   I.ev("toggleLeave('vocus', addDays(dayKey(), -1))");
   eq(st('exercise'), 2, '運動：請假的那週不算斷，前面兩週接得上（不加天數）'); eq(st('vocus'), 2, 'Vocus：同上');
-  // 畫面：運動面板有請假、卡片顯示請假；請假沒有獎勵
+  // 畫面：運動面板是「本週請假」（每月 1 次）、卡片顯示請假；請假沒有獎勵
   await I.tab('today'); await I.click(['#habits .hab', '運動']);
-  ok(I.has('今天請假（本月還剩'), '運動面板有請假按鈕');
-  await I.click('[data-act=leave]'); await I.click('[data-act=sheetclose]');
+  ok(I.has('本週請假（本月還剩 1 次）'), '運動面板有「本週請假」，每月 1 次（上週的請假算在 10 月）');
+  await I.click('[data-act=leave]'); ok(I.has('本週請假中，點一下取消'), '請假後按鈕變成取消'); await I.click('[data-act=sheetclose]');
   ok(I.$$('#habits .hab.leave').some(e => e.innerText.includes('請假')), '運動卡片顯示請假');
   ok(!I.S.logs.some(l => /exercise|week:|per:/.test(l.key || '')), '請假沒有獎勵');
-  await I.click(['#habits .hab', 'Vocus']); ok(I.has('今天請假（本月還剩 1 天）'), 'Vocus 面板也有，額度是 Vocus 自己的（昨天用了 1 天）');
+  ok(/用完/.test(I.ev("toggleLeave('exercise', addDays(dayKey(), 7))")), '這個月 1 次用完了，下週不能再請');
+  await I.click(['#habits .hab', 'Vocus']); ok(I.has('本週請假（本月還剩 1 次）'), 'Vocus 面板也有，額度是 Vocus 自己的');
   ok(!I.has('請假的那天不算漏'), '沒有冗長的說明文字');
   await I.click('[data-act=sheetclose]');
-  // 請假那天又記錄運動：請假自動取消
+  // 請假的那一週記錄了運動，只要沒達標，請假還在；達標了就用不到、額度還回來
   await I.click(['#habits .hab', '運動']); await I.type('#ex_min', '30'); await I.click('[data-act=exadd]');
-  ok(!I.ev("onLeave('exercise', dayKey())"), '運動記錄之後，當天的請假自動取消');
-  I.check('每週型請假'); I.destroy();
+  ok(I.ev("leaveHere(habit('exercise'), dayKey())"), '記錄 1 次運動（還沒達標）：本週請假還在');
+  I.ev("habit('exercise').target = 1; save(); render()"); await I.click('[data-act=sheetclose]').catch(() => {});
+  eq(I.ev("leaveLeft('exercise', dayKey())"), 1, '這週達標了：請假用不到，額度還回來');
+
+  I.ev("addCheck(dayKey(), 'vocus', { title: 'y' })"); ok(/已經達標/.test(I.ev("toggleLeave('vocus', dayKey())")), '這週已經發文達標：不用請假');
+  I.ev('save()'); I.check('每週型請假'); I.destroy();
 });

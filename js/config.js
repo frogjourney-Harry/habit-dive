@@ -11,6 +11,7 @@ const CONFIG = {
   coins: { task: 15, period: 60, welcome: 60, top3: 30, pubchest: 30, login: 15 },   // 都是 15 的倍數，好記
   rewardRows: 3,              // 六件事每天只有前幾項打勾有獎勵，其餘只做紀錄
   leavePerMonth: 2,           // 每天的習慣每個月可以請幾天假（請假的那天連勝不會中斷）
+  leavePerMonthWeekly: 1,     // 每週/每兩週型的習慣（運動、Vocus）每個月可以請幾次「這一期請假」
   coinsPerDay: 120,            // 紀錄不夠時，商店用這個速度估計「要努力幾天」
   // 生物寶箱：在商店用金幣買，一種稀有度一種寶箱，開出那個稀有度裡隨機一種生物。
   // rates＝普通 / 少見 / 稀有 / 史詩 / 傳說（%），feed＝開出飼料的機率（%，只有最便宜的普通寶箱有）

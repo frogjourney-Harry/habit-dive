@@ -136,7 +136,7 @@ function today(D) {
     } else {
       on = dayDone(D, td, h.id); sub = on ? '今天 ✓' : onLeave(h.id, td) ? '今天請假' : '今天還沒';
     }
-    return `<button class="hab ${on ? 'on' : ''} ${!on && (h.weeks ? periodLeave(h, periodKey(td, h.weeks)) : onLeave(h.id, td)) ? 'leave' : ''}" data-act="habtap" data-v="${esc(h.id)}">
+    return `<button class="hab ${on ? 'on' : ''} ${!on && leaveHere(h, td) ? 'leave' : ''}" data-act="habtap" data-v="${esc(h.id)}">
       <div class="row"><span class="hn">${esc(h.n)}</span><span class="sp"></span>${badge}</div>
       <div class="hs">${sub}</div></button>`;
   }).join('');
@@ -277,11 +277,12 @@ function renderSheet() {
   else body = list.length
       ? `<button class="wide" data-act="chk">✓ 已完成，點一下取消</button>`
       : `<button class="pri wide" data-act="chk">完成打卡</button>`;
-  // 請假：每天型和每週型的習慣都有；那天已經有紀錄就不用請
-  if (!list.length) {
-    const who = day < 0 ? '昨天' : '今天', left = leaveLeft(h.id, d);
-    body += onLeave(h.id, d) ? `<button class="wide" data-act="leave">${who}請假中，點一下取消</button>`
-      : `<button class="wide" data-act="leave" ${left ? '' : 'disabled'}>${who}請假（本月還剩 ${left} 天）</button>`;
+  // 請假：每天型是「今天／昨天請假」（每月 2 天），每週型是「本週請假」整期（每月 1 次）；已經完成就不用請
+  if (!(h.weeks ? periodDone(D, h, periodKey(d, h.weeks)) : list.length)) {
+    const left = leaveLeft(h.id, d), unit = h.weeks ? '次' : '天';
+    const who = h.weeks ? (periodKey(d, h.weeks) === p0 ? periodWord(h) : h.weeks === 1 ? '上週' : '上兩週') : day < 0 ? '昨天' : '今天';
+    body += leaveHere(h, d) ? `<button class="wide" data-act="leave">${who}請假中，點一下取消</button>`
+      : `<button class="wide" data-act="leave" ${left ? '' : 'disabled'}>${who}請假（本月還剩 ${left} ${unit}）</button>`;
   }
   el.innerHTML = `<div class="row"><b style="font-size:18px">${esc(h.n)}</b><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
     <div class="mini">${goal}${s.n ? `・連續 ${s.n} ${h.weeks ? (h.weeks === 1 ? '週' : '次') : '天'}` : ''}</div>
