@@ -370,12 +370,12 @@ test('請假：畫面操作、重開還在、壞資料不當掉', async () => {
   await I.tab('today');
   await I.click(['#habits .hab', '8:00 起床']);
   ok(I.has('今天請假（本月還剩 2 天）'), '面板有請假按鈕和剩餘天數');
-  await I.click('[data-act=leave]'); ok(I.has('今天請假中，點一下取消'), '請假後按鈕變成取消'); ok(I.has('請假了'), '有提示');
-  await I.click('[data-act=sheetclose]'); ok(I.$('#habits .hab.leave') && I.$('#habits .hab.leave').innerText.includes('今天請假'), '習慣卡片顯示「今天請假」');
+  await I.click('[data-act=leave]'); ok(I.has('今天已請假，點一下取消'), '請假後按鈕變成取消'); ok(I.has('請假了'), '有提示');
+  await I.click('[data-act=sheetclose]'); ok(I.$('#habits .hab.leave') && I.$('#habits .hab.leave').innerText.includes('今天已請假'), '習慣卡片顯示「今天請假」');
   ok(I.S.logs.filter(l => l.key && l.key.startsWith('hab:hwake')).length === 0, '請假沒有獎勵');
   await I.click(['#habits .hab', '8:00 起床']); await I.click('[data-act=shday][data-v="-1"]'); ok(I.has('昨天請假（本月還剩 1 天）'), '昨天也能請假，額度共用');
-  await I.click('[data-act=leave]'); ok(I.has('昨天請假中'), '昨天請假了'); await I.click('[data-act=shday][data-v="0"]'); await I.click('[data-act=chk]');
-  ok(I.has('已完成') && !I.has('今天請假中'), '今天改成打卡：請假自動取消');
+  await I.click('[data-act=leave]'); ok(I.has('昨天已請假'), '昨天請假了'); await I.click('[data-act=shday][data-v="0"]'); await I.click('[data-act=chk]');
+  ok(I.has('已完成') && !I.has('今天已請假'), '今天改成打卡：請假自動取消');
   ok(!I.S.leaves.hwake['2026-11-02'], '紀錄裡今天的請假被清掉');
   ok(I.ev("leaveLeft('hwake', dayKey())") === 1, '額度剩 1（昨天那天還在）');
   await I.click('[data-act=sheetclose]'); await I.tab('quest'); I.check('請假畫面');
@@ -396,7 +396,7 @@ test('請假：運動、Vocus（每週型）請假那一週不算斷，沒有獎
   // 畫面：運動面板是「本週請假」（每月 1 次）、卡片顯示請假；請假沒有獎勵
   await I.tab('today'); await I.click(['#habits .hab', '運動']);
   ok(I.has('本週請假（本月還剩 1 次）'), '運動面板有「本週請假」，每月 1 次（上週的請假算在 10 月）');
-  await I.click('[data-act=leave]'); ok(I.has('本週請假中，點一下取消'), '請假後按鈕變成取消'); await I.click('[data-act=sheetclose]');
+  await I.click('[data-act=leave]'); ok(I.has('本週已請假，點一下取消'), '請假後按鈕變成取消'); await I.click('[data-act=sheetclose]');
   ok(I.$$('#habits .hab.leave').some(e => e.innerText.includes('請假')), '運動卡片顯示請假');
   ok(!I.S.logs.some(l => /exercise|week:|per:/.test(l.key || '')), '請假沒有獎勵');
   ok(/用完/.test(I.ev("toggleLeave('exercise', addDays(dayKey(), 7))")), '這個月 1 次用完了，下週不能再請');

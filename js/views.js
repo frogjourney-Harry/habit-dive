@@ -60,7 +60,7 @@ function dailyTasks(D) {
   ];
   for (const h of activeHabits()) {
     const dayLogs = x => byKey(h.kind === 'vocus' ? 'art:' + x : `hab:${h.id}:${x}`);
-    if (!h.weeks) { T.push({ id: 'h_' + h.id, hab: true, name: h.n, how: onLeave(h.id, d) && !dayLogs(d).length ? '今天請假中（不算漏）' : '', go: 'habits', est: C.task, ex: h.kind === 'exercise' ? X.exercise : X.habit, logs: dayLogs(d) }); continue; }
+    if (!h.weeks) { T.push({ id: 'h_' + h.id, hab: true, name: h.n, how: onLeave(h.id, d) && !dayLogs(d).length ? '今天已請假' : '', go: 'habits', est: C.task, ex: h.kind === 'exercise' ? X.exercise : X.habit, logs: dayLogs(d) }); continue; }
     // 週期型（例如本週運動 3 天）：每次打卡和達標加碼合成一列，看得出這期的進度
     const p = periodKey(d, h.weeks), days = Array.from({ length: 7 * h.weeks }, (_, i) => addDays(p, i));
     const bonus = h.kind === 'vocus' ? [] : byKey(h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`);
@@ -132,9 +132,9 @@ function today(D) {
     let on, sub;
     if (h.weeks) {
       const p = periodKey(td, h.weeks), cnt = perCount(D, h, p);
-      on = periodDone(D, h, p); sub = `${periodWord(h)} ${cnt}/${h.target} ${countWord(h)}`; if (!on && periodLeave(h, p)) sub += '・請假';
+      on = periodDone(D, h, p); sub = `${periodWord(h)} ${cnt}/${h.target} ${countWord(h)}`; if (!on && periodLeave(h, p)) sub += '・已請假';
     } else {
-      on = dayDone(D, td, h.id); sub = on ? '今天 ✓' : onLeave(h.id, td) ? '今天請假' : '今天還沒';
+      on = dayDone(D, td, h.id); sub = on ? '今天 ✓' : onLeave(h.id, td) ? '今天已請假' : '今天還沒';
     }
     return `<button class="hab ${on ? 'on' : ''} ${!on && leaveHere(h, td) ? 'leave' : ''}" data-act="habtap" data-v="${esc(h.id)}">
       <div class="row"><span class="hn">${esc(h.n)}</span><span class="sp"></span>${badge}</div>
@@ -281,7 +281,7 @@ function renderSheet() {
   if (!(h.weeks ? periodDone(D, h, periodKey(d, h.weeks)) : list.length)) {
     const left = leaveLeft(h.id, d), unit = h.weeks ? '次' : '天';
     const who = h.weeks ? (periodKey(d, h.weeks) === p0 ? periodWord(h) : h.weeks === 1 ? '上週' : '上兩週') : day < 0 ? '昨天' : '今天';
-    body += leaveHere(h, d) ? `<button class="wide" data-act="leave">${who}請假中，點一下取消</button>`
+    body += leaveHere(h, d) ? `<button class="wide" data-act="leave">${who}已請假，點一下取消</button>`
       : `<button class="wide" data-act="leave" ${left ? '' : 'disabled'}>${who}請假（本月還剩 ${left} ${unit}）</button>`;
   }
   el.innerHTML = `<div class="row"><b style="font-size:18px">${esc(h.n)}</b><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
