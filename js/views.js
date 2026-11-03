@@ -593,8 +593,8 @@ function chestOdds(ch, D) {
 }
 function shop(D) {
   if (UI.shopEdit && !Array.isArray(S.shop)) S.shop = shopItems().map(x => ({ ...x }));
-  const hist = S.logs.filter(l => l.k === 'redeem' || l.k === 'chest').slice(-10).reverse();   // 兌換和買寶箱，只留最近 10 筆
-  const histName = l => l.k !== 'chest' ? l.name : `${l.name || '寶箱'}　→${l.feedGot ? `飼料 ${l.feedGot} 顆` : CR[l.drop] ? CR[l.drop].name : ''}`;
+  const hist = S.logs.filter(l => l.k === 'redeem' || l.k === 'chest').slice(-5).reverse();   // 兌換和買寶箱，只留最近 5 筆
+  const histName = l => l.name || '寶箱';
   if (UI.shopEdit) return `<section class="px shop">${sh('編輯獎勵', 'REWARDS', '<button class="pri" data-act="shopdone">完成</button>')}
     <div class="mini">設定你真的想要的獎勵。參考：每天大約能賺 ${CONFIG.coinsPerDay} 金幣。</div>
     ${S.shop.map((it, i) => `<div class="it">
@@ -625,7 +625,7 @@ function shop(D) {
         : `<span class="dim need">約 ${daysFor(it.price - D.coins)} 天</span>`}
       ${it === next ? `<div class="nextbar2"><small>下一個目標・${D.coins} / ${it.price}</small><div class="bar c"><i style="width:${Math.max(0, D.coins / it.price * 100)}%"></i></div></div>` : ''}</div>`).join('')}
   </section>
-  <section class="px">${sh('消費紀錄', 'HISTORY', '<small class="dim">近十筆</small>')}${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(histName(l))}</span><span class="sp"></span><span class="price">${l.c}${COIN}</span></div>`).join('') : '<div class="dim">還沒有消費過。</div>'}</section>`;
+  <section class="px">${sh('消費紀錄', 'HISTORY', '<small class="dim">近五筆</small>')}${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(histName(l))}</span><span class="sp"></span><span class="price">${l.c}${COIN}</span></div>`).join('') : '<div class="dim">還沒有消費過。</div>'}</section>`;
 }
 
 // 最近的打卡紀錄（含運動細節、文章標題）

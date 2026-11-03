@@ -77,7 +77,6 @@ test('寶箱：五種價格、稀有度、重複換金幣', async () => {
     rest(); const un = stubRandom(I, [0.5, 0.99, 0, 0]);
     const c0 = I.coins(); await I.click(`[data-act=buychest][data-v=c${i}]`); await I.dismiss(); un();
     eq(I.coins(), c0 - price, `${price} 金幣的寶箱：第一次扣 ${price}`);
-    ok(new RegExp('寶箱\\s*→\\s*' + I.ev(`CR.${id}.name`)).test(I.$('#main').innerText),`消費紀錄有寫開出 ${id}`);
     ok(I.ev('derive().col')[id] === 1, `c${i} 開出 ${id}：` + JSON.stringify(I.ev('derive().col')));
     const un2 = stubRandom(I, [0.5, 0.99, 0, 0]); const c1 = I.coins(); await I.click(`[data-act=buychest][data-v=c${i}]`); await I.dismiss(); un2();
     eq(I.coins(), c1 - price + dup, `重複的${id}要退 ${dup} 金幣`);
@@ -91,7 +90,7 @@ test('寶箱：普通寶箱的飼料機率；金幣不夠不能買', async () =>
   const un = stubRandom(I, [0.5, 0]);
   await I.click('[data-act=buychest][data-v=c0]'); ok(I.has('飼料'), '開出飼料的畫面'); await I.dismiss(); un();
   eq(I.S.feed, 5, '飼料 +5 顆'); eq(I.coins(), 60, '扣 40 金幣');
-  ok(/普通寶箱\s*→\s*飼料 5 顆/.test(I.$('#main').innerText), '消費紀錄有這次買寶箱（開出飼料）');
+  ok(/消費紀錄[\s\S]*普通寶箱[\s\S]*-40/.test(I.$('#main').innerText) && !/普通寶箱\s*→/.test(I.$('#main').innerText), '消費紀錄有這次買寶箱，但不寫抽到什麼');
   ok(!I.S.logs.some(l => l.drop && l.k === 'chest'), '開出飼料就沒有生物');
   eq(I.$('[data-act=buychest][data-v=c1]').disabled, true, '60 金幣買不起少見寶箱（按鈕停用）');
   ok(!(await I.tryClick('[data-act=buychest][data-v=c1]')), '停用的按鈕點不下去');
@@ -136,7 +135,7 @@ test('獎勵商店：兌換、編輯、價格與名稱的怪輸入、XSS', async
   ok(names.includes('小數:13'), '小數要四捨五入：' + names.join('|')); ok(!names.some(n => n.startsWith(':')), '沒名字的要被丟掉');
   ok(I.has('很貴'), '超大價錢也要能顯示'); I.check('商店編輯');
   for (let n = 0; n < 7; n++) { await I.click(`[data-act=redeem][data-v="${I.ev('shopItems()').find(x => x.price <= I.coins()).id}"]`); await I.click('#askyes'); }
-  const rows = I.$$('#main section:last-child .row').length; ok(rows <= 10, '消費紀錄最多 10 筆：' + rows);
+  const rows = I.$$('#main section:last-child .row').length; ok(rows <= 5, '消費紀錄最多 5 筆：' + rows);
   I.check('兌換很多次'); I.destroy();
 });
 
