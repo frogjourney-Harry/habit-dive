@@ -76,7 +76,7 @@ test('取消打卡會收回已領的獎勵：不能讓金幣變負的', async ()
   I.check('取消打卡'); I.destroy();
 });
 
-test('寫好清單的規則：至少 3 件、明天 ×2、不能重複領', async () => {
+test('寫好清單的規則：至少 3 件、明天一樣算、不能重複領', async () => {
   const I = await startToday();
   await I.plan(['A', 'B']); await I.saveList();
   eq(I.S.logs.filter(l => l.k === 'plan').length, 0, '只寫 2 件不能按寫好了');
@@ -84,13 +84,14 @@ test('寫好清單的規則：至少 3 件、明天 ×2、不能重複領', asyn
   const p = I.S.logs.find(l => l.key === 'plan:' + D0); ok(p && p.c === 15 && p.xp === 10, '今天的清單 15 金幣 10 XP');
   ok(!I.$('#six [data-act=plansave]'), '寫好之後按鈕消失');
   await I.plan(['X', 'Y', 'Z'], 1); await I.saveList();
-  const t = I.S.logs.find(l => l.key === 'plan:2026-11-03'); ok(t && t.c === 30 && t.xp === 20, '提前寫明天加倍：' + JSON.stringify(t));
+  const t = I.S.logs.find(l => l.key === 'plan:2026-11-03'); ok(t && t.c === 15 && t.xp === 10, '提前寫明天不加倍：' + JSON.stringify(t));
   eq(I.S.logs.filter(l => l.k === 'plan').length, 2, '兩份清單獎勵');
+await I.tab('quest'); eq(I.$$('.qc .qn').map(e => e.innerText).filter(x => /清單|前 3 件/.test(x)), ['寫好清單', '完成前 3 件事'], '任務只有兩列：寫好清單（今天明天都算）、前 3 件事（含全部完成加碼）'); ok(!I.has('×2'), '沒有加倍的字樣'); await I.tab('today');
   I.check('清單');
   // 隔天：「寫好今天的清單」已經完成，不用再寫
   await I.advance(24 * 3600e3); const J = await I.reload(); await J.dismiss();
   await J.tab('quest');
-  const row = J.$$('.qc').find(e => e.innerText.includes('寫好今天的清單')); ok(row && row.classList.contains('got') || row && row.classList.contains('pend'), '隔天「寫好今天的清單」要算完成');
+  const row = J.$$('.qc').find(e => e.innerText.includes('寫好清單')); ok(row && row.classList.contains('got') || row && row.classList.contains('pend'), '隔天「寫好清單」要算完成');
   J.check('隔天'); J.destroy(); I.destroy();
 });
 
@@ -172,7 +173,7 @@ test('習慣新增、刪除、頻率、上限、空白名稱', async () => {
   await I.click('#sheet [data-act=sheetclose]').catch(() => {});
   await I.click('#habits [data-act=habedit]');
   const del = I.$$('[data-act=habdel]'); await I.click(del[del.length - 3]);   // 刪掉「看書」之前的那個或最後一個
-  await I.dismiss(); await I.click('[data-act=habdone]');
+  await I.dismiss(); ok(I.has('請假不算漏：每天型每月 2 天，每週型每月 1 次'), '編輯畫面的規則說明有提到請假'); await I.click('[data-act=habdone]');
   I.check('習慣編輯'); I.destroy();
 });
 
@@ -225,7 +226,7 @@ test('任務頁：進度、領取單項、全部領取、點未完成會跳到�
   const I = await startToday();
   await I.tab('quest');
   const total = I.$('#main section .qcnt').innerText; ok(/^0\/\d+$/.test(total), '一開始 0/n：' + total);
-  await I.click(['.qc [data-act=goto], .qc .sp[data-act=goto]', '寫好今天的清單'].length ? '.qc .sp[data-act=goto]' : '');
+  await I.click(['.qc [data-act=goto], .qc .sp[data-act=goto]', '寫好清單'].length ? '.qc .sp[data-act=goto]' : '');
   eq(I.UI.tab, 'today', '點未完成的任務會回到今日頁');
   await I.plan(['A', 'B', 'C']); await I.saveList(); await I.tick(0);
   await I.tab('quest');

@@ -301,12 +301,12 @@ test('習慣：頻率與目標中途修改、自訂習慣每週目標的獎勵',
   I.check('習慣目標'); I.destroy();
 });
 
-test('任務頁：進度數字在各種狀態下都對（每日 6 項＋習慣）', async () => {
+test('任務頁：進度數字在各種狀態下都對（每日 4 項＋習慣）', async () => {
   const I = await boot({ state: mkState() }); await I.dismiss(); await I.tab('quest');
   const read = () => { const m = I.$('#main section .qcnt').innerText.match(/(\d+)\/(\d+)/); return [+m[1], +m[2]]; };
-  eq(read(), [0, 6], '一開始 0/6');
-  await I.tab('today'); await I.plan(['A', 'B', 'C']); await I.saveList(); await I.tab('quest'); eq(read(), [1, 6], '寫好清單 1/6');
-  await I.tab('today'); await I.tick(0); await I.tick(1); await I.tick(2); await I.tab('quest'); eq(read(), [3, 6], 'plan, first three, all three = 3 of 6');
+  eq(read(), [0, 4], '一開始 0/4');
+  await I.tab('today'); await I.plan(['A', 'B', 'C']); await I.saveList(); await I.tab('quest'); eq(read(), [1, 4], '寫好清單 1/4');
+  await I.tab('today'); await I.tick(0); await I.tick(1); await I.tick(2); await I.tab('quest'); eq(read(), [2, 4], '清單、前三件 = 2/4（全部完成加碼併在前三件那一列）');
   I.destroy();
 });
 

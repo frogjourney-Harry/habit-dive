@@ -38,7 +38,7 @@ function habitEditor() {
       <button class="ghost" data-act="habdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
     <div class="row" style="margin-top:8px"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣 ${customCount()}/${CONFIG.maxCustom}</button>
       ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${esc(h.id)}">加回 ${esc(h.n)}</button>`).join('')}</div>
-    <div class="mini">每天的習慣漏兩天才斷；每週／每兩週的習慣沒達標就斷。</div>
+    <div class="mini">每天的習慣漏兩天才斷；每週／每兩週的習慣沒達標就斷。請假不算漏：每天型每月 ${CONFIG.leavePerMonth} 天，每週型每月 ${CONFIG.leavePerMonthWeekly} 次。</div>
     </section>`;
 }
 
@@ -52,10 +52,9 @@ function dailyTasks(D) {
   const T = [
     { id: 'login', name: '每日登入', go: 'six', est: C.login, ex: X.login, logs: byKey('login:' + d) },
     // how＝一小句提示（名稱看得懂就不寫）；go＝點了跳到「今日」頁的哪一區
-    { id: 'plan', name: '寫好今天的清單', how: `寫至少 ${R} 件，按「寫好了」`, go: 'six', est: C.task, ex: X.plan, nx: `寫好今天的清單（至少 ${R} 件）`, logs: byKey('plan:' + d) },
-    { id: 'plan1', name: '寫好明天的清單（獎勵 ×2）', how: '六件事切到「明天」寫', go: 'six:1', est: C.task * 2, ex: X.plan * 2, logs: byKey('plan:' + d1) },
-    { id: 'rows', name: `完成前 ${R} 件事`, go: 'six', n: checks.length, of: R, est: C.task * Math.max(R - checks.length, 0), ex: X.check * Math.max(R - checks.length, 0), logs: checks },
-    { id: 'top3', name: `前 ${R} 件都完成`, go: 'six', est: C.top3, ex: X.top3, logs: byKey('top3:' + d) },
+    // 今天或明天的清單都算「寫好清單」（寫兩份就領兩份，沒有加倍）；前 R 件的打勾和「全部完成」加碼合成同一列
+    { id: 'plan', name: '寫好清單', how: `今天或明天的都可以，寫至少 ${R} 件`, go: 'six', est: C.task, ex: X.plan, nx: `寫好清單（至少 ${R} 件）`, logs: [...byKey('plan:' + d), ...byKey('plan:' + d1)] },
+    { id: 'rows', name: `完成前 ${R} 件事`, how: `${R} 件都完成有加碼`, go: 'six', n: checks.length, of: R, est: C.task * Math.max(R - checks.length, 0) + (byKey('top3:' + d).length ? 0 : C.top3), ex: X.check * Math.max(R - checks.length, 0) + (byKey('top3:' + d).length ? 0 : X.top3), logs: [...checks, ...byKey('top3:' + d)] },
     { id: 'anyhab', name: '任一個習慣打卡', go: 'habits', est: C.task, ex: X.anyhab, nx: '「習慣」區任選一張卡片打卡', logs: byKey('anyhab:' + d) },
     { id: 'pomo', name: `專注一段番茄鐘`, how: `滿 ${CONFIG.pomoRewardMin} 分鐘`, go: 'pomo', est: C.task, ex: X.pomo, nx: `專注一段番茄鐘（${CONFIG.pomoRewardMin} 分鐘）`, logs: byKey('pomo:' + d) },
   ];
@@ -112,12 +111,12 @@ function questCount(T) { const daily = T.filter(t => !t.hab && t.id !== 'misc' &
 function nextStep(D, P) {
   const all = dailyTasks(D), { daily, done } = questCount(all), T = all.filter(t => !t.week && t.id !== 'login');
   const pc = all.flatMap(t => t.pend).reduce((a, l) => a + (l.c || 0), 0);
-  // 下一步：照順序找還沒完成的，「寫明天的清單」留到最後
-  const nx = T.find(t => !t.full && t.id !== 'plan1') || T.find(t => !t.full);
+  // 下一步：照順序找還沒完成的
+  const nx = T.find(t => !t.full);
   let label = '每日任務都完成了！';
   if (nx) {
     const R = CONFIG.rewardRows, i = P.slice(0, R).findIndex(x => !x.done);
-    label = nx.id === 'rows' || nx.id === 'top3' ? (i < 0 ? nx.name : P[i].text.trim() ? `打勾第 ${i + 1} 件「${P[i].text.trim()}」` : `在六件事寫下第 ${i + 1} 件要做的事`)
+    label = nx.id === 'rows' ? (i < 0 ? nx.name : P[i].text.trim() ? `打勾第 ${i + 1} 件「${P[i].text.trim()}」` : `在六件事寫下第 ${i + 1} 件要做的事`)
       : nx.nx || nx.name;
   }
   return `<section class="px nextbar"><div class="row">
@@ -150,7 +149,7 @@ function today(D) {
         <button class="pri" data-act="vcfg">確定</button></div>
       <div class="row" style="margin-top:6px"><button class="ghost" data-act="vdrop">我不寫 Vocus，移除這個習慣</button></div></section>`;
   const hint = UI.pday < 0 ? '補登昨天：只算完成，沒有獎勵'
-    : UI.pday > 0 ? `先寫好明天的（至少 ${CONFIG.rewardRows} 件），獎勵 ×2`
+    : UI.pday > 0 ? `先寫好明天的（至少 ${CONFIG.rewardRows} 件），一樣算「寫好清單」`
     : `前 ${CONFIG.rewardRows} 件有獎勵・按住編號上下拖曳排順序`;
   const favs = S.favs || [];
   // 常用：點一下填進第一個空格，不用每天重打
@@ -211,7 +210,7 @@ function renderFocus() {
 
 /* ========= 第一次打開的引導 ========= */
 // 步驟 1：綁定 Google（可以先跳過，但要說清楚資料可能會不見）；步驟 2：勾選想養成的習慣。做完才會發新手禮物（見 startGame）
-const onbCustomCount = () => customCount() + ONB_HABITS.filter(h => h.kind === 'custom' && (UI.onbSel || {})[h.id] && !habit(h.id) && !(h.id === 'write' && UI.onbVocus)).length + ((UI.onbName || '').trim() ? 1 : 0);
+const onbCustomCount = () => customCount() + ONB_HABITS.filter(h => h.kind === 'custom' && (UI.onbSel || {})[h.id] && !habit(h.id)).length + ((UI.onbName || '').trim() ? 1 : 0);
 const onbLabel = () => ONB_HABITS.some(h => (UI.onbSel || {})[h.id]) || (UI.onbName || '').trim() ? '開始' : '先不選，直接開始';
 function renderOnbButton() { const b = document.querySelector('#onbbox [data-act=onbdone]'); if (b) b.textContent = onbLabel(); }   // 打字時只換按鈕上的字，不重畫（輸入框會失去焦點）
 function renderOnb() {
@@ -237,7 +236,6 @@ function renderOnb() {
       ${CLOUD.user ? `<div class="mini" style="margin:0 0 6px">已綁定 ${esc(CLOUD.user.email || '')}</div>` : ''}
       <div class="mini" style="margin:0 0 10px">可以複選，也可以先不選。之後在「今日」的習慣區按「編輯」隨時修改。</div>
       <div class="onbgrid">${ONB_HABITS.map(h => `<button class="onbopt ${sel[h.id] ? 'sel' : ''}" data-act="onbpick" data-v="${h.id}" aria-pressed="${!!sel[h.id]}"><b>${esc(h.n)}</b><small>${esc(h.desc)}</small></button>`).join('')}</div>
-      ${sel.write ? `<button class="onbvocus ${UI.onbVocus ? 'sel' : ''}" data-act="onbvocus" aria-pressed="${!!UI.onbVocus}">${UI.onbVocus ? '☑' : '☐'} 我會發布到 Vocus<small>記錄文章標題，發文有額外獎勵</small></button>` : ''}
       <div class="row onbcustom"><input class="sp" data-onb="name" maxlength="20" placeholder="自訂，例如：喝水" aria-label="自訂習慣名稱" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(UI.onbName || '')}"></div>
       <div class="mini" style="margin:0 0 12px">自訂的習慣預設每天，可以在「編輯」改成每週或每兩週、每週幾天。</div>
       <button class="pri wide" data-act="onbdone">${onbLabel()}</button>`;
@@ -248,17 +246,16 @@ function renderOnb() {
 function finishOnb() {
   const sel = UI.onbSel || {}, name = (UI.onbName || '').trim().slice(0, 20);
   if (onbCustomCount() > CONFIG.maxCustom) { toast(`自訂型的習慣最多 ${CONFIG.maxCustom} 個，少選一個吧`); return false; }
-  const out = [], vocus = !!(sel.write && UI.onbVocus), mk = o => { const old = S.habits.find(h => h.id === o.id); return old ? { ...old, off: false } : { id: o.id, e: o.e, n: o.n, kind: o.kind, weeks: o.weeks, target: o.target, ...(o.unit ? { unit: o.unit } : {}) }; };
+  const out = [], mk = o => { const old = S.habits.find(h => h.id === o.id); return old ? { ...old, off: false } : { id: o.id, e: o.e, n: o.n, kind: o.kind, weeks: o.weeks, target: o.target, ...(o.unit ? { unit: o.unit } : {}) }; };
   for (const o of ONB_HABITS) {
-    if (o.id === 'write' && vocus) out.push(mk(ONB_VOCUS));   // 勾了 Vocus：用 Vocus 習慣取代一般的寫作
-    else if (sel[o.id]) out.push(mk(o));
-    else if (o.kind === 'exercise') { const old = S.habits.find(h => h.id === o.id); if (old) out.push({ ...old, off: true }); }   // 運動沒選也留著（編輯畫面可以加回）；沒選的 Vocus 和其他習慣直接不放進來
+    if (sel[o.id]) out.push(mk(o));
+    else if (o.kind === 'exercise') { const old = S.habits.find(h => h.id === o.id); if (old) out.push({ ...old, off: true }); }   // 運動沒選也留著（編輯畫面可以加回）；沒選的其他習慣直接不放進來
   }
-  const mine = S.habits.filter(h => h.id !== ONB_VOCUS.id && !ONB_HABITS.some(o => o.id === h.id));   // 引導以外、舊存檔裡自己加的習慣原樣保留
+  const mine = S.habits.filter(h => h.kind !== 'vocus' && !ONB_HABITS.some(o => o.id === h.id));   // 引導以外、舊存檔裡自己加的習慣原樣保留（預設帶的 Vocus 不留：新使用者不需要）
   if (name) mine.push({ id: 'h' + rid(), e: '⭐', n: name, kind: 'custom', weeks: 0, target: 1 });
   S.habits = [...out, ...mine];
-  if (!vocus) S.vocusSet = true;   // 選了 Vocus 就留著「發文節奏」設定卡讓他選
-  S.onb = true; Object.assign(UI, { onbStep: 0, onbSel: null, onbName: '', onbVocus: false });
+  S.vocusSet = true;
+  S.onb = true; Object.assign(UI, { onbStep: 0, onbSel: null, onbName: '' });
   save(); render();
   return true;
 }

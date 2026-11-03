@@ -27,7 +27,6 @@ function rollCreature(rates) {
 const GAIN = { n: 0, title: '', c: 0 };
 function grant(kind, tag, o = {}) {
   let xp = o.xp ?? CONFIG.xp[kind] ?? 0, c = BONUS[kind] ? CONFIG.coins[kind] : CONFIG.coins.task;   // 金幣固定，不隨機
-  if (o.x2) { xp *= 2; c *= 2; }
   const log = { id: rid(), t: Date.now(), d: o.d || dayKey(), k: kind, tag: tag || undefined, xp, c, key: o.key, ...o.extra };
   if (kind === 'welcome') return dropCreature(log, null, BONUS.welcome, 0, CR.clown);   // 新手禮物：一隻小丑魚
   log.pend = true;

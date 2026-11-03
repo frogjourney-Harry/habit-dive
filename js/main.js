@@ -107,7 +107,6 @@ document.addEventListener('click', async e => {
       if (sel[v] && onbCustomCount() > CONFIG.maxCustom) { sel[v] = false; toast(`自訂型的習慣最多 ${CONFIG.maxCustom} 個`); }
       renderOnb(); break;
     }
-    case 'onbvocus': UI.onbVocus = !UI.onbVocus; renderOnb(); break;
     case 'onbdone': if (finishOnb()) toast('設定好了，先寫下今天最重要的事吧'); break;
     case 'vdrop':
       S.habits = S.habits.filter(h => h.id !== 'vocus'); S.vocusSet = true; save(); render(); toast('已移除 Vocus 習慣'); break;
@@ -163,7 +162,7 @@ document.addEventListener('click', async e => {
       const d = viewDay();
       if (filled(getPlan(d)).length < CONFIG.rewardRows) { toast(`至少寫下 ${CONFIG.rewardRows} 件事`); break; }
       const ahead = d > dayKey();
-      ac(); reward(() => grant('plan', null, { key: 'plan:' + d, x2: ahead, title: ahead ? '提前寫好明天的清單，獎勵 ×2！' : '今天的清單寫好了！' })); break;
+      ac(); reward(() => grant('plan', null, { key: 'plan:' + d, title: ahead ? '明天的清單寫好了！' : '今天的清單寫好了！' })); break;
     }
     case 'redeem': {
       const it = shopItems().find(x => x.id === v);
