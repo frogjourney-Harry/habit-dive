@@ -361,7 +361,7 @@ test('請假：每月額度、取消、打卡後自動恢復額度、月份分�
   ok(/已經完成/.test(tog(t)), '已經打卡的那天不能請假');
   // 沒有的習慣、每週型的習慣都不能請假
   eq(I.ev("toggleLeave('nope', '2026-11-02')"), '', '不存在的習慣');
-  eq(I.ev("toggleLeave('exercise', '2026-11-02')"), '', '每週型的習慣不用請假');
+  ok(/請假/.test(I.ev("toggleLeave('exercise', '2026-11-02')")), '每週型的習慣（運動）也能請假'); ok(/請假/.test(I.ev("toggleLeave('vocus', '2026-11-02')")), 'Vocus 也能請假');
   I.ev('save()'); I.check('請假額度'); I.destroy();
 });
 
@@ -382,4 +382,28 @@ test('請假：畫面操作、重開還在、壞資料不當掉', async () => {
   const J = await I.reload(); await J.dismiss(); ok(J.ev("onLeave('hwake', addDays(dayKey(), -1))"), '重開後請假還在');
   for (const bad of ['"x"', '[1]', '{"hwake": 5}', '{"hwake": "x"}', 'null']) { J.ev(`S.leaves = ${bad}; save(); render()`); J.ev("toggleLeave('hwake', dayKey())"); J.ev('render()'); J.check('壞的 leaves ' + bad); }
   J.destroy(); I.destroy();
+});
+
+test('請假：運動、Vocus（每週型）請假那一週不算斷，沒有獎勵', async () => {
+  const I = await startToday();
+  // 上上週、上上上週都達標；上週（10/26–11/1）什麼都沒做
+  I.ev("[-14, -13, -12, -21, -20, -19].forEach(d => addCheck(addDays(dayKey(), d), 'exercise', {})); [-13, -20].forEach(d => addCheck(addDays(dayKey(), d), 'vocus', { title: 'x' })); save(); render()");
+  const st = id => I.ev(`streaks(derive()).${id}.n`);
+  eq(st('exercise'), 0, '運動：上週沒達標 → 斷了（沒請假的對照）'); eq(st('vocus'), 0, 'Vocus：同上');
+  eq(I.ev("toggleLeave('exercise', addDays(dayKey(), -1))") !== '', true, '上週日請假');
+  I.ev("toggleLeave('vocus', addDays(dayKey(), -1))");
+  eq(st('exercise'), 2, '運動：請假的那週不算斷，前面兩週接得上（不加天數）'); eq(st('vocus'), 2, 'Vocus：同上');
+  // 畫面：運動面板有請假、卡片顯示請假；請假沒有獎勵
+  await I.tab('today'); await I.click(['#habits .hab', '運動']);
+  ok(I.has('今天請假（本月還剩'), '運動面板有請假按鈕');
+  await I.click('[data-act=leave]'); await I.click('[data-act=sheetclose]');
+  ok(I.$$('#habits .hab.leave').some(e => e.innerText.includes('請假')), '運動卡片顯示請假');
+  ok(!I.S.logs.some(l => /exercise|week:|per:/.test(l.key || '')), '請假沒有獎勵');
+  await I.click(['#habits .hab', 'Vocus']); ok(I.has('今天請假（本月還剩 1 天）'), 'Vocus 面板也有，額度是 Vocus 自己的（昨天用了 1 天）');
+  ok(!I.has('請假的那天不算漏'), '沒有冗長的說明文字');
+  await I.click('[data-act=sheetclose]');
+  // 請假那天又記錄運動：請假自動取消
+  await I.click(['#habits .hab', '運動']); await I.type('#ex_min', '30'); await I.click('[data-act=exadd]');
+  ok(!I.ev("onLeave('exercise', dayKey())"), '運動記錄之後，當天的請假自動取消');
+  I.check('每週型請假'); I.destroy();
 });

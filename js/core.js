@@ -216,10 +216,12 @@ function delCheck(d, id, i) {
 const leavesOf = id => { const L = S.leaves && typeof S.leaves === 'object' && S.leaves[id]; return L && typeof L === 'object' ? L : {}; };
 const onLeave = (id, d) => !!leavesOf(id)[d];
 const leaveLeft = (id, d) => Math.max(0, CONFIG.leavePerMonth - Object.keys(leavesOf(id)).filter(x => x.slice(0, 7) === d.slice(0, 7)).length);
+// 每週／每兩週的習慣：這一期裡有請假，沒達標也不算斷（不加連勝、也沒有達標獎勵）
+const periodLeave = (h, p) => { const e = addDays(p, 7 * h.weeks - 1); return Object.keys(leavesOf(h.id)).some(x => x >= p && x <= e); };
 function clearLeave(id, d) { if (onLeave(id, d)) delete S.leaves[id][d]; }
 // 請假或取消請假，回傳要顯示的訊息
 function toggleLeave(id, d) {
-  const h = habit(id); if (!h || h.weeks) return '';
+  const h = habit(id); if (!h) return '';
   if (onLeave(id, d)) { delete S.leaves[id][d]; return '已取消請假'; }
   if (dayChecks(d, id).length) return '這天已經完成了，不用請假';
   if (!leaveLeft(id, d)) return `這個月的請假用完了（每月 ${CONFIG.leavePerMonth} 天）`;
@@ -270,7 +272,7 @@ function chain(isDone, cur, step, first, maxMiss, isLeave = () => false) {
 function streaks(D) {
   const today = dayKey(), first = Object.keys(D.days).sort()[0] || today, out = {};
   for (const h of activeHabits()) out[h.id] = h.weeks
-    ? chain(p => periodDone(D, h, p), periodKey(today, h.weeks), p => addDays(p, -7 * h.weeks), periodKey(first, h.weeks), 1)
+    ? chain(p => periodDone(D, h, p), periodKey(today, h.weeks), p => addDays(p, -7 * h.weeks), periodKey(first, h.weeks), 1, p => periodLeave(h, p))
     : chain(d => dayDone(D, d, h.id), today, d => addDays(d, -1), first, 2, d => onLeave(h.id, d));
   return out;
 }

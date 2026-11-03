@@ -78,11 +78,11 @@ document.addEventListener('click', async e => {
       const note = document.getElementById('ex_note').value.trim().slice(0, 200); if (note) e.note = note;
       if (skipped) toast('有欄位的數字不合理，已略過');
       UI.sheet.exType = type;
-      addCheck(sheetDay(), 'exercise', e); ac(); SFX.tap();
+      addCheck(sheetDay(), 'exercise', e); clearLeave('exercise', sheetDay()); ac(); SFX.tap();
       reward(() => {}, UI.sheet.day === 0); break;
     }
     case 'artadd':
-      addCheck(sheetDay(), 'vocus', { title: document.getElementById('artTitle').value.trim() || undefined }); ac(); SFX.tap();
+      addCheck(sheetDay(), 'vocus', { title: document.getElementById('artTitle').value.trim() || undefined }); clearLeave('vocus', sheetDay()); ac(); SFX.tap();
       reward(() => {}, UI.sheet.day === 0); break;
     case 'chkdel': delCheck(sheetDay(), UI.sheet.id, +v); reward(() => {}, false); break;
     case 'habedit': UI.habEdit = true; render(); break;
