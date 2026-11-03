@@ -153,6 +153,7 @@ function carryEditDrafts(old) {
   if (typeof UI === 'undefined') return;
   if (UI.shopEdit && Array.isArray(old.shop)) S.shop = old.shop;
   if (UI.habEdit && Array.isArray(old.habits)) S.habits = old.habits;
+  if (UI.tankEdit && old.names) S.names = old.names;
 }
 
 /* ========= 存檔瘦身 ========= */

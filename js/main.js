@@ -170,13 +170,14 @@ document.addEventListener('click', async e => {
     case 'release': {
       const lg = S.logs.find(l => l.id === v), c = lg && CR[lg.drop]; if (!c) break;
       const p = pets(c.id).find(x => x.id === v), st = p ? `（${stageName(c, stageOf(p.fed))}）` : '';
-      if (!(await ask(`放生這隻${c.name}${st}？\n牠會回到大海，不會再出現在水族箱。圖鑑的收集紀錄會保留。`, '放生'))) break;
-      S.released = S.released || {}; S.released[v] = true; save(); render(); renderSheet(); toast(`${c.name}回到大海了`); break;
+      const nm = petName(v);
+      if (!(await ask(`放生這隻${c.name}${nm ? `「${nm}」` : ''}${st}？\n牠會回到大海，不會再出現在水族箱。圖鑑的收集紀錄會保留。`, '放生'))) break;
+      S.released = S.released || {}; S.released[v] = true; if (S.names) delete S.names[v]; save(); render(); renderSheet(); toast(`${nm || c.name}回到大海了`); break;
     }
     case 'releasepick': {
-      const lg = S.logs.find(l => l.id === v);
-      S.released = S.released || {}; S.released[v] = true; save();
-      UI.opened = false; render(); nextChest(); toast(`${CR[lg.drop].name}回到大海了`); break;
+      const lg = S.logs.find(l => l.id === v), nm = petName(v);
+      S.released = S.released || {}; S.released[v] = true; if (S.names) delete S.names[v]; save();
+      UI.opened = false; render(); nextChest(); toast(`${nm || CR[lg.drop].name}回到大海了`); break;
     }
     case 'fav': {
       const it = getPlan(viewDay())[v], t = it.text.trim();
@@ -263,6 +264,7 @@ document.addEventListener('input', e => {
     if (p) p.textContent = paceText({ type: document.getElementById('exType').value, dist: g('dist'), m: g('m'), min: g('min') });
     return;
   }
+  if (el.dataset.nf) { setPetName(el.dataset.nf, el.value); return; }
   if (el.dataset.sf) { const it = S.shop && S.shop[el.dataset.si]; if (it) { it[el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); } return; }
   if (el.dataset.gf) { const g = S.gcats && S.gcats[el.dataset.gi]; if (g) { g[el.dataset.gf] = el.value; save(); } return; }
   if (el.dataset.hf) {

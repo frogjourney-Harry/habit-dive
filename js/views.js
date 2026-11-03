@@ -304,6 +304,16 @@ const GROW = [0, 10, 30];                                  // 吃到幾顆：幼
 const fedOf = key => (S.fed && S.fed[key]) || 0;
 const stageOf = n => GROW.filter(t => n >= t).length;
 const inTank = id => !(S.outTank && S.outTank[id]);
+// 幫個體取的名字：存在 S.names（key 是個體 id），沒取名字就是空字串
+const PET_NAME_MAX = 10;
+const petName = id => { const n = S.names && typeof S.names === 'object' ? S.names[id] : ''; return typeof n === 'string' ? Array.from(n.trim()).slice(0, PET_NAME_MAX).join('') : ''; };
+function setPetName(id, v) {
+  if (!S.logs.some(l => l.id === id && l.drop)) return;
+  if (!S.names || typeof S.names !== 'object') S.names = {};
+  v = Array.from(String(v).trim()).slice(0, PET_NAME_MAX).join('');
+  if (v) S.names[id] = v; else delete S.names[id];
+  save();
+}
 function pets(sp) {
   return S.logs.filter(l => l.drop === sp && !(S.released && S.released[l.id])).map(l => ({ id: l.id, fed: fedOf(l.id) }));
 }
@@ -405,12 +415,13 @@ function tankFeedText() {
 function tankEditor(D) {
   const owned = CREATURES.filter(c => pets(c.id).length);
   return `<section class="px">${sh('水族箱設定', 'AQUARIUM', '<button class="pri" data-act="tankdone">完成</button>')}
-    <div class="mini">勾選要放進水族箱的個體，不想養的可以放生。</div>
+    <div class="mini">勾選要放進水族箱的個體，不想養的可以放生。幫牠取名字的話，名字會顯示在水族箱裡。</div>
     ${owned.map(c => {
       const P = pets(c.id);
       return `<div class="tset"><div class="row"><b class="sp">${c.name}</b></div>
         ${P.map(p => `<div class="entry"><label class="row sp" style="gap:8px"><input type="checkbox" data-act="intank" data-v="${esc(p.id)}" ${inTank(p.id) ? 'checked' : ''}>
           ${stageImg(c, stageOf(p.fed), 3)}<small>${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</small></label>
+          <input class="pname" data-nf="${esc(p.id)}" value="${esc(petName(p.id))}" maxlength="${PET_NAME_MAX}" placeholder="幫牠取名字" aria-label="${esc(c.name)}的名字">
           <button class="ghost" data-act="release" data-v="${esc(p.id)}">放生</button></div>`).join('')}</div>`;
     }).join('') || '<div class="dim">還沒有生物，到商店買寶箱吧。</div>'}</section>`;
 }
@@ -453,7 +464,7 @@ function tankStart() {
     const P = pets(c.id), [, speed, ground] = TANK_SPECIES[c.id];
     P.forEach((p, i) => {
       if (!inTank(p.id)) return;
-      const f = { c, key: p.id, no: i + 1, many: P.length > 1, ground: !!ground, ph: Math.random() * 6, rest: 0,
+      const f = { c, key: p.id, no: i + 1, many: P.length > 1, name: petName(p.id), ground: !!ground, ph: Math.random() * 6, rest: 0,
         vx: speed * SWIM * (.8 + Math.random() * .4) * (Math.random() < .5 ? -1 : 1) };
       look(f);
       const q = prev.get(f.key);
@@ -511,7 +522,7 @@ function tankStart() {
           if (after > before) {
             S.seen = S.seen || {}; S.seen[f.c.id] = Math.max(S.seen[f.c.id] || 1, after);
             const cx = f.x + f.w / 2, by = f.y + f.h; look(f); f.x = cx - f.w / 2; if (f.ground) f.y = floorY - f.h + 2; else f.baseY = by - f.h;
-            SFX.rank(); toast(`${f.c.name}${f.many ? ` ${f.no} 號` : ''}長成${stageName(f.c, after)}了！`);
+            SFX.rank(); toast(`${f.name || f.c.name + (f.many ? ` ${f.no} 號` : '')}長成${stageName(f.c, after)}了！`);
           }
           save();
         }
@@ -532,6 +543,13 @@ function tankStart() {
       if (f.vx < 0) { x.translate(rp(f.x) + f.w, rp(f.y)); x.scale(-1, 1); x.drawImage(f.s, 0, 0, f.w, f.h); }
       else x.drawImage(f.s, rp(f.x), rp(f.y), f.w, f.h);
       x.restore();
+    }
+    // 有取名字的魚，頭上顯示名字（畫在所有魚的上面）
+    x.font = '4.5px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'alphabetic'; x.lineWidth = 1.2; x.lineJoin = 'round';
+    for (const f of TANK.fish) {
+      if (!f.name) continue;
+      const tw = x.measureText(f.name).width, cx = Math.max(tw / 2 + 1, Math.min(W - tw / 2 - 1, f.x + f.w / 2)), ty = f.y > 7 ? f.y - 1.5 : f.y + f.h + 5;
+      x.strokeStyle = 'rgba(8,24,48,.85)'; x.strokeText(f.name, rp(cx), rp(ty)); x.fillStyle = '#eaf2ff'; x.fillText(f.name, rp(cx), rp(ty));
     }
     if (!TANK.fish.length) { x.fillStyle = '#eaf2ff'; x.font = '10px monospace'; x.textAlign = 'center'; x.fillText('水族箱是空的', W / 2, H / 2); }
     TANK.raf = requestAnimationFrame(frame);

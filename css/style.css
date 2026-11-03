@@ -180,6 +180,9 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .tset{padding:8px 0;border-bottom:1px solid var(--line)}
 .tset .entry{border:0;padding:2px 0 2px 4px}
 .tset .entry .sprite{margin:2px 0}
+.tset .entry{flex-wrap:wrap}
+.tset .entry .pname{flex:1 1 calc(100% - 36px);min-width:0;margin:0 0 4px 36px;order:3}
+.tset .entry button{order:2}
 .tset select{font-size:14px}
 .shop .it.chest .ic{width:40px;text-align:center}
 .feedpile{display:flex;justify-content:center;gap:6px;margin:14px 0}

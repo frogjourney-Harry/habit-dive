@@ -155,6 +155,7 @@ test('水族箱：撒飼料、成長、設定、放生、圖鑑', async () => {
   // 讓小丑魚吃到飼料：直接把飼料放在牠身上
   I.ev("S.fed = S.fed || {}; S.fed[Object.keys(S.fed)[0] || 'dr0clown'] = 9; S.fed['dr0clown'] = 9");
   const f0 = fish().find(f => f.key === 'dr0clown');
+  I.ev("TANK.fish = TANK.fish.filter(f => f.key === 'dr0clown')");   // 別隻（例如大的鯨鯊）剛好游到同一個位置會搶先吃掉，結果就不固定了
   I.ev(`TANK.food.push({ x: ${f0.x + 1}, y: ${f0.y + 1}, vy: 0, age: 0 })`);
   await new Promise(r => setTimeout(r, 400));
   ok(I.S.fed['dr0clown'] >= 10, '吃到飼料 fed=' + I.S.fed['dr0clown']);
@@ -305,4 +306,35 @@ test('任務頁：進度數字在各種狀態下都對（每日 6 項＋習慣�
   await I.tab('today'); await I.plan(['A', 'B', 'C']); await I.saveList(); await I.tab('quest'); eq(read(), [1, 6], '寫好清單 1/6');
   await I.tab('today'); await I.tick(0); await I.tick(1); await I.tick(2); await I.tab('quest'); eq(read(), [3, 6], 'plan, first three, all three = 3 of 6');
   I.destroy();
+});
+
+test('幫魚取名字：存檔、顯示、放生、亂輸入', async () => {
+  const I = await boot({ state: base(coinLog(500), ...drops(['clown', 'clown', 'star'])) }); await I.dismiss();
+  const id1 = 'dr0clown', id2 = 'dr1clown';
+  await I.tab('tank'); await flush();
+  await I.click('[data-act=tankedit]');
+  const inp = id => I.$(`input[data-nf="${id}"]`);
+  ok(inp(id1) && inp(id2) && inp('dr2star'), '每一隻都有名字欄');
+  ok(I.$$('input[data-nf]').every(e => e.getAttribute('aria-label') && e.maxLength === 10), '名字欄有名稱、限 10 字');
+  await I.type(inp(id1), '  小橘  '); eq(I.S.names[id1], '小橘', '存起來並去掉前後空白');
+  await I.type(inp(id2), '一二三四五六七八九十十一十二'); eq(I.S.names[id2].length, 10, '超過 10 字會截斷');
+  await I.type(inp('dr2star'), '<img src=x onerror=window.__xss=1>'); await flush(); ok(!I.win.__xss, '名字裡的 HTML 不會執行');
+  await I.type(inp('dr2star'), ''); ok(!('dr2star' in I.S.names), '清空就是沒有名字');
+  ok(I.$$('input[data-nf]').length === 3 && inp(id1).value.trim() === '小橘', '打字時不會重畫、輸入框還在');
+  I.check('取名字');
+  await I.click('[data-act=tankdone]'); await new Promise(r => setTimeout(r, 300));
+  const f1 = I.ev('TANK.fish').find(f => f.key === id1); eq(f1.name, '小橘', '水族箱裡的魚帶著名字');
+  eq(I.ev('TANK.fish').find(f => f.key === 'dr2star').name, '', '沒名字的魚沒有標籤');
+  // 重開還在
+  const J = await I.reload(); await J.dismiss(); eq(J.ev("petName('dr0clown')"), '小橘', '重開後名字還在');
+  await J.tab('tank'); await new Promise(r => setTimeout(r, 300)); J.check('重開後水族箱');
+  // 壞資料：names 不是物件、值不是字串
+  for (const bad of ['"字串"', '[1,2]', '{"dr0clown": 123}', 'null']) { J.ev(`S.names = ${bad}; save(); render()`); eq(J.ev("petName('dr0clown')"), '', '壞資料 ' + bad + ' 不會當掉'); J.check('壞的 names ' + bad); }
+  // 放生會一起清掉名字
+  J.ev("S.names = { dr0clown: '小橘' }; save()"); await J.click('[data-act=tankedit]');
+  await J.click('[data-act=release][data-v="dr0clown"]'); ok(J.$('#askmsg').textContent.includes('「小橘」'), '放生確認會寫名字'); await J.click('#askyes');
+  ok(!J.S.names.dr0clown, '放生後名字清掉'); ok(J.has('小橘回到大海了'), '放生提示用名字');
+  // 不是自己的個體 id 不能亂寫
+  J.ev("setPetName('not-a-pet', 'x')"); ok(!('not-a-pet' in (J.S.names || {})), '不存在的個體不能取名');
+  J.check('取名字全部'); J.destroy(); I.destroy();
 });
