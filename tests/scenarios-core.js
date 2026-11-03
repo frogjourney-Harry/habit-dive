@@ -303,3 +303,26 @@ test('六件事拖曳：把手看得到、一直有提示、手勢被中斷會�
   ok(!I.$('#six .prow.drag'), '手勢被中斷：恢復原狀'); eq(I.ev('getPlan(dayKey())[0].text'), 'a', '順序沒變');
   I.check('拖曳把手'); I.destroy();
 });
+
+test('拖曳排序：判斷範圍寬鬆（拖過相鄰一列的 40% 就換、20% 不換、拖到最外面不會壞）', async () => {
+  const I = await startToday();
+  await I.plan(['一', '二', '三']);
+  const P = I.win.PointerEvent, rows = () => I.$$('#six .prow'), vals = () => I.$$('#six .ptext').slice(0, 3).map(e => e.value);
+  rows()[0].scrollIntoView({ block: 'center' });
+  const pitch = () => { const q = rows().map(r => r.getBoundingClientRect()); return q[1].top - q[0].top; };
+  const drag = async (idx, frac, { cancel } = {}) => {   // 從第 idx 列的編號出發，往下（正）或往上（負）拖相鄰列距離的 frac 倍
+    const no = I.$$('#six .prow .no')[idx], r = no.getBoundingClientRect(), y0 = r.top + r.height / 2, dy = frac * pitch();
+    no.dispatchEvent(new P('pointerdown', { bubbles: true, clientX: r.left + 5, clientY: y0, pointerId: 1 }));
+    I.doc.dispatchEvent(new P('pointermove', { bubbles: true, clientX: r.left + 5, clientY: y0 + dy, pointerId: 1 }));
+    I.doc.dispatchEvent(new P('pointerup', { bubbles: true, clientX: r.left + 5, clientY: y0 + dy, pointerId: 1 }));
+    await flush(); await new Promise(r => setTimeout(r, 380));
+  };
+  await drag(0, 0.2); eq(vals(), ['一', '二', '三'], '只拖 20%：不換');
+  await drag(0, 0.4); eq(vals(), ['二', '一', '三'], '拖 40%：就換到下一格');
+  await drag(1, -0.4); eq(vals(), ['一', '二', '三'], '往上拖 40%：換回來');
+  await drag(0, 1.4); eq(vals(), ['二', '三', '一'], '拖 1.4 列：跳到第 3 格');
+  await drag(2, -2.4); eq(vals(), ['一', '二', '三'], '往上拖 2.4 列：回到第 1 格');
+  await drag(0, -5); eq(vals(), ['一', '二', '三'], '往上拖出最頂端：還在第 1 格');
+  await drag(0, 8); eq(vals().length, 3, '往下拖過頭：不會壞'); ok(I.$$('#six .prow').length >= 3, '列還在');
+  I.check('拖曳範圍'); I.destroy();
+});

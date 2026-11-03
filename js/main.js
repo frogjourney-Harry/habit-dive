@@ -227,18 +227,23 @@ document.addEventListener('keydown', e => {
   } else if (e.key === 'Escape' && UI.sheet) { UI.sheet = null; renderSheet(); }
 });
 // 六件事拖曳排序：按住編號往上或往下拖，放開就移到那個位置（只點一下還是「點兩個編號交換」）
-const DRAG = { i: null, y0: 0, moved: false, to: null, until: 0 };
+const DRAG = { i: null, y0: 0, moved: false, to: null, until: 0, mids: [] };
+const DRAG_REACH = .3;   // 拖過相鄰那一列的 30% 就換過去（以前要拖過一半以上），不用拖得很剛好
 document.addEventListener('pointerdown', e => {
   const b = e.target.closest('#six .prow .no'); if (!b || UI.pday < 0) return;
-  Object.assign(DRAG, { i: +b.dataset.v, y0: e.clientY, moved: false, to: +b.dataset.v });
+  const mids = [...document.querySelectorAll('#six .prow')].map(r => { const q = r.getBoundingClientRect(); return q.top + q.height / 2; });   // 還沒移動時每一列的中心
+  Object.assign(DRAG, { i: +b.dataset.v, y0: e.clientY, moved: false, to: +b.dataset.v, mids });
   try { b.setPointerCapture(e.pointerId); } catch (_) {}
 });
 document.addEventListener('pointermove', e => {
   if (DRAG.i == null) return;
   if (!DRAG.moved && Math.abs(e.clientY - DRAG.y0) < 8) return;
   DRAG.moved = true;
-  const rows = [...document.querySelectorAll('#six .prow')], mid = r => { const q = r.getBoundingClientRect(); return q.top + q.height / 2; };
-  DRAG.to = rows.reduce((best, r, k) => Math.abs(mid(r) - e.clientY) < Math.abs(mid(rows[best]) - e.clientY) ? k : best, 0);
+  const rows = [...document.querySelectorAll('#six .prow')], m = DRAG.mids, c = m[DRAG.i] + e.clientY - DRAG.y0;   // c＝被拖的那一列現在的中心
+  let to = DRAG.i;
+  if (c >= m[to]) while (to < m.length - 1 && c > m[to] + DRAG_REACH * (m[to + 1] - m[to])) to++;   // 往下拖
+  else while (to > 0 && c < m[to] - DRAG_REACH * (m[to] - m[to - 1])) to--;                       // 往上拖
+  DRAG.to = to;
   rows.forEach((r, k) => { r.classList.toggle('drag', k === DRAG.i); r.classList.toggle('over', k === DRAG.to && k !== DRAG.i); });
   rows[DRAG.i].style.transform = `translateY(${e.clientY - DRAG.y0}px)`;
 });
