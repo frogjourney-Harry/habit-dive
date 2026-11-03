@@ -288,3 +288,18 @@ test('每日登入獎勵：每天一份、要手動領、隔天自動入帳、�
   ok(K.ev('hasProgress(S)') === false, '只有歡迎禮物和登入獎勵不算「用過」（新裝置要能接雲端存檔）');
   K.check('每日登入'); K.destroy(); J.destroy(); I.destroy();
 });
+
+test('六件事拖曳：把手看得到、一直有提示、手勢被中斷會回到原位', async () => {
+  const I = await boot({ state: mkState({ plans: { [D0]: [{ text: 'a', done: false, cat: 'other' }, { text: 'b', done: false, cat: 'other' }, { text: 'c', done: false, cat: 'other' }, { text: '', done: false, cat: 'other' }, { text: '', done: false, cat: 'other' }, { text: '', done: false, cat: 'other' }] } }) }); await I.dismiss();
+  let no = I.$('#six .prow .no');
+  ok(I.win.getComputedStyle(no, '::after').content !== 'none', '編號旁邊有拖曳把手（點點）');
+  ok(I.has('按住編號上下拖曳'), '提示一直在（不是只有第一次的小技巧）');
+  await I.click('[data-act=tipsix]').catch(() => {}); ok(I.has('按住編號上下拖曳'), '關掉小技巧後提示還在');
+  no = I.$('#six .prow .no');
+  const r = no.getBoundingClientRect(), ev = (t, y) => new I.win.PointerEvent(t, { bubbles: true, clientX: r.left + 5, clientY: y, pointerId: 3, pointerType: 'touch' });
+  no.dispatchEvent(ev('pointerdown', r.top + 5)); I.doc.dispatchEvent(ev('pointermove', r.top + 60)); await flush();
+  ok(I.$('#six .prow.drag'), '拖曳中那一列有標示');
+  I.doc.dispatchEvent(ev('pointercancel', r.top + 60)); await flush();
+  ok(!I.$('#six .prow.drag'), '手勢被中斷：恢復原狀'); eq(I.ev('getPlan(dayKey())[0].text'), 'a', '順序沒變');
+  I.check('拖曳把手'); I.destroy();
+});

@@ -194,7 +194,13 @@ document.addEventListener('click', async e => {
       slot.text = t; save(); render(); break;
     }
     case 'delfav': S.favs.splice(+v, 1); save(); render(); break;
-    case 'tankdone': UI.tankEdit = false; render(); toast('水族箱已更新'); break;
+    case 'petname': {
+      UI.nameEdit = UI.nameEdit === v ? null : v; render();
+      const i = document.querySelector('input[data-nf]'); if (i) { i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch (_) {} }
+      break;
+    }
+    case 'petnamedone': UI.nameEdit = null; render(); break;
+    case 'tankdone': UI.tankEdit = false; UI.nameEdit = null; render(); toast('水族箱已更新'); break;
     case 'buyfeed': {
       if (derive().coins < FEED.price) { toast(`金幣不夠，飼料要 ${FEED.price} 金幣`); break; }
       S.logs.push({ id: rid(), t: Date.now(), d: dayKey(), k: 'redeem', name: `飼料 ${FEED.pack} 顆`, c: -FEED.price });
@@ -214,6 +220,7 @@ document.addEventListener('keydown', e => {
 // 點彈窗外面的暗色區域就關閉面板
 document.getElementById('sheetov').addEventListener('click', e => { if (e.target.id === 'sheetov') { UI.sheet = null; renderSheet(); } });
 document.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === 'Escape') && e.target.dataset && e.target.dataset.nf) { e.preventDefault(); UI.nameEdit = null; render(); return; }
   if (!document.getElementById('askov').classList.contains('hidden') && ask.res) {
     if (e.key === 'Enter') { e.preventDefault(); ask.res(true); }
     if (e.key === 'Escape') { e.preventDefault(); ask.res(false); }
@@ -244,6 +251,7 @@ document.addEventListener('pointerup', () => {
   const P = getPlan(viewDay()); P.splice(to, 0, P.splice(i, 1)[0]); UI.swap = null;
   reward(() => {}, UI.pday === 0); toast(`移到第 ${to + 1} 件`);
 });
+document.addEventListener('pointercancel', () => { if (DRAG.i == null) return; DRAG.i = null; render(); });   // 系統中斷了手勢：放棄這次拖曳，回到原位
 document.addEventListener('click', e => { if (performance.now() < DRAG.until && e.target.closest('.prow .no')) { DRAG.until = 0; e.stopPropagation(); e.preventDefault(); } }, true);
 // 輸入框只存資料不重畫，避免打字時失去焦點
 document.addEventListener('input', e => {

@@ -149,7 +149,7 @@ function today(D) {
         <button class="pri" data-act="vcfg">確定</button></div></section>`;
   const hint = UI.pday < 0 ? '補登昨天：只算完成，沒有獎勵'
     : UI.pday > 0 ? `先寫好明天的（至少 ${CONFIG.rewardRows} 件），獎勵 ×2`
-    : `前 ${CONFIG.rewardRows} 件有獎勵`;
+    : `前 ${CONFIG.rewardRows} 件有獎勵・按住編號上下拖曳排順序`;
   const favs = S.favs || [];
   // 常用：點一下填進第一個空格，不用每天重打
   const favBar = favs.length ? `<div class="favs"><small class="dim">常用</small>${favs.map((t, i) => `<span class="fav"><button class="ghost" data-act="usefav" data-v="${i}">${esc(t)}</button><button class="ghost x" data-act="delfav" data-v="${i}" title="從常用移除">×</button></span>`).join('')}</div>` : '';
@@ -415,14 +415,15 @@ function tankFeedText() {
 function tankEditor(D) {
   const owned = CREATURES.filter(c => pets(c.id).length);
   return `<section class="px">${sh('水族箱設定', 'AQUARIUM', '<button class="pri" data-act="tankdone">完成</button>')}
-    <div class="mini">勾選要放進水族箱的個體，不想養的可以放生。幫牠取名字的話，名字會顯示在水族箱裡。</div>
+    <div class="mini">勾選要放進水族箱的個體，不想養的可以放生。點「取名」幫牠取名字，名字會顯示在水族箱裡。</div>
     ${owned.map(c => {
       const P = pets(c.id);
       return `<div class="tset"><div class="row"><b class="sp">${c.name}</b></div>
         ${P.map(p => `<div class="entry"><label class="row sp" style="gap:8px"><input type="checkbox" data-act="intank" data-v="${esc(p.id)}" ${inTank(p.id) ? 'checked' : ''}>
-          ${stageImg(c, stageOf(p.fed), 3)}<small>${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</small></label>
-          <input class="pname" data-nf="${esc(p.id)}" value="${esc(petName(p.id))}" maxlength="${PET_NAME_MAX}" placeholder="幫牠取名字" aria-label="${esc(c.name)}的名字">
-          <button class="ghost" data-act="release" data-v="${esc(p.id)}">放生</button></div>`).join('')}</div>`;
+          ${stageImg(c, stageOf(p.fed), 3)}<small>${petName(p.id) ? `<b>${esc(petName(p.id))}</b>・` : ''}${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</small></label>
+          <button class="ghost" data-act="petname" data-v="${esc(p.id)}">${petName(p.id) ? '改名' : '取名'}</button>
+          <button class="ghost" data-act="release" data-v="${esc(p.id)}">放生</button>
+          ${UI.nameEdit === p.id ? `<div class="pname"><input data-nf="${esc(p.id)}" value="${esc(petName(p.id))}" maxlength="${PET_NAME_MAX}" placeholder="幫牠取個名字" aria-label="${esc(c.name)}的名字"><button class="pri" data-act="petnamedone">完成</button></div>` : ''}</div>`).join('')}</div>`;
     }).join('') || '<div class="dim">還沒有生物，到商店買寶箱吧。</div>'}</section>`;
 }
 function tank(D) {

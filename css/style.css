@@ -91,7 +91,9 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .prow{display:flex;align-items:center;gap:10px;padding:5px 0}
 .prow .ptext{flex:1;min-width:0}
 .prow.done .ptext{text-decoration:line-through;color:var(--dim)}
-.prow .no{width:28px;margin:0;padding:3px 0;text-align:center;color:var(--faint);font-size:14px;flex:none}
+.prow .no{width:48px;margin:0;padding:3px 0;text-align:center;color:var(--faint);font-size:14px;flex:none;display:flex;align-items:center;justify-content:center;gap:6px}
+/* 拖曳把手：像素風的兩排點，看得出來這裡可以按住拖 */
+.prow .no::after{content:"";width:3px;height:3px;background:var(--dim);transform:translateY(-6px);box-shadow:6px 0 var(--dim),0 6px var(--dim),6px 6px var(--dim),0 12px var(--dim),6px 12px var(--dim);margin-right:8px}
 .prow .no.sel{color:var(--coin);box-shadow:0 -2px 0 var(--coin),0 2px 0 var(--coin),-2px 0 0 var(--coin),2px 0 0 var(--coin)}
 .prow select{font-size:14px;padding:4px 4px;flex:none;max-width:42%}
 .divider{margin:10px 0 2px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;letter-spacing:.2em;color:var(--faint)}
@@ -181,7 +183,9 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .tset .entry{border:0;padding:2px 0 2px 4px}
 .tset .entry .sprite{margin:2px 0}
 .tset .entry{flex-wrap:wrap}
-.tset .entry .pname{flex:1 1 calc(100% - 36px);min-width:0;margin:0 0 4px 36px;order:3}
+.tset .entry .pname{flex:1 1 calc(100% - 36px);min-width:0;margin:0 0 4px 36px;order:3;display:flex;gap:8px;align-items:center}
+.tset .entry .pname input{flex:1;min-width:0}
+.tset .entry .pname button{margin:0;flex:none}
 .tset .entry button{order:2}
 .tset select{font-size:14px}
 .shop .it.chest .ic{width:40px;text-align:center}
@@ -327,7 +331,7 @@ body.focusing{overflow:hidden}
 @media (max-width:600px){
   input[type=checkbox]{width:28px;height:28px}
   .prow{gap:8px;padding:5px 0}
-  .prow .no{width:36px;height:34px;padding:0}
+  .prow .no{width:50px;height:34px;padding:0}
   .star{min-width:38px;min-height:36px}
   .pdel{width:34px;min-height:34px}
   span.pdel{display:none}   /* 前三件沒有刪除鈕，不留空位，輸入框才夠寬 */
@@ -342,6 +346,7 @@ body.focusing{overflow:hidden}
 @media (max-width:300px){
   .prow{gap:3px}
   .prow .no{width:28px}
+  .prow .no::after{display:none}
   .star{min-width:28px}
   span.pdel{display:none}
   input[type=checkbox]{width:24px;height:24px}
