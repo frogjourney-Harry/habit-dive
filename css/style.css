@@ -7,12 +7,20 @@
 }
 *{box-sizing:border-box}
 /* 宣告本來就是深色頁面：Samsung 網際網路、Chrome 的「網頁強制深色」就不會再把顏色反轉；也不讓瀏覽器自動放大字 */
-/* 電腦上：不會捲動的頁面（大海）也留著捲軸的位置，各頁的內容才不會左右跳；留下來的那一條也畫上同樣的海（html 的背景）。
-   手機的捲軸浮在畫面上、不佔位置，不需要 */
-@media (min-width:601px){ html{scrollbar-gutter:stable} }
 html{color-scheme:dark;-webkit-text-size-adjust:100%;text-size-adjust:100%;
   --sea:linear-gradient(180deg,#174673 0 12%,#133c66 12% 28%,#0f3157 28% 46%,#0b2646 46% 66%,#081b36 66% 84%,#06152b 84%);
-  background:var(--sea) fixed var(--bg)}
+  background:var(--sea) 0 0/100% 100vh repeat-x var(--bg)}   /* 往右延伸到捲軸那一條，高度剛好一個畫面 */
+/* 電腦上：不會捲動的頁面（大海）也留著捲軸的位置，各頁的內容才不會左右跳。
+   Windows 的 Chrome 會把留下來的那一條畫成空的捲軸，所以捲軸的底也畫上同樣的海，各頁的捲軸都融進背景。
+   手機的捲軸浮在畫面上、不佔位置，不需要 */
+@media (min-width:601px){
+  html{scrollbar-gutter:stable}
+  html::-webkit-scrollbar{width:12px}
+  html::-webkit-scrollbar-track{background:linear-gradient(180deg,#174673 0 12%,#133c66 12% 28%,#0f3157 28% 46%,#0b2646 46% 66%,#081b36 66% 84%,#06152b 84%)}
+  html::-webkit-scrollbar-thumb{background:#2f6299;border:3px solid transparent;background-clip:padding-box}
+  html::-webkit-scrollbar-thumb:hover{background-color:#4a7fb8}
+  @supports not selector(::-webkit-scrollbar){ html{scrollbar-color:#2f6299 #0b2646} }   /* Firefox */
+}
 html,body{margin:0}
 body{color:var(--ink);min-height:100vh;
   font:16px/1.6 "Cascadia Mono",Consolas,"Microsoft JhengHei UI","Microsoft JhengHei",monospace}
