@@ -378,12 +378,25 @@ function wander(f, dt, W, floorY) {
     f.wt = 240 + Math.random() * 480;             // 太久沒到就換目的地
   }
   f.wt -= dt;
-  if (f.rest > 0) { f.rest -= dt; return; }
-  const dx = f.tx - cx, dy = f.ty - f.baseY, dist = Math.hypot(dx, dy);
-  if (dist < 2) { f.tx = null; if (Math.random() < .35) f.rest = 30 + Math.random() * 150; return; }
-  const step = Math.min(dist, Math.abs(f.vx) * f.pace * dt);
-  f.x += dx / dist * step; f.baseY += dy / dist * step * .6;   // 上下移動比左右慢一點
-  if (Math.abs(dx) > 2) f.vx = Math.sign(dx) * Math.abs(f.vx);
+  let tvx = 0, tvy = 0;   // 想要的速度；實際速度 mx、my 慢慢追上去，起步、轉彎、停下都有緩衝
+  if (f.rest > 0) f.rest -= dt;
+  else {
+    const dx = f.tx - cx, dy = f.ty - f.baseY, dist = Math.hypot(dx, dy);
+    if (dist < 2) { f.tx = null; if (Math.random() < .35) f.rest = 30 + Math.random() * 150; }
+    else {
+      const sd = Math.abs(f.vx) * f.pace * (.3 + .7 * Math.min(1, dist / 16));   // 快到了會慢下來
+      tvx = dx / dist * sd; tvy = dy / dist * sd * .6;   // 上下移動比左右慢一點
+    }
+  }
+  steer(f, tvx, tvy, dt);
+}
+// 速度緩動：實際速度每一格往想要的速度靠一點，位置再用實際速度推進
+function steer(f, tvx, tvy, dt, vertical = true) {
+  const k = 1 - Math.pow(.94, dt);
+  f.mx = (f.mx || 0) + (tvx - (f.mx || 0)) * k; f.my = (f.my || 0) + (tvy - (f.my || 0)) * k;
+  f.x += f.mx * dt; if (vertical) f.baseY += f.my * dt;
+  // 魚頭朝實際游的方向（不是朝目的地），掉頭時不會倒著滑
+  if (vertical && Math.abs(f.mx) > Math.abs(f.vx) * .15) f.vx = Math.sign(f.mx) * Math.abs(f.vx);
 }
 function tankFeedText() {
   const f = freeLeft(), b = S.feed || 0;
@@ -421,7 +434,9 @@ function tankStart() {
   cancelAnimationFrame(TANK.raf);
   const cv = document.getElementById('tank'); if (!cv) return;
   const W = Math.floor(cv.clientWidth / 3), H = Math.floor(cv.clientHeight / 3);   // 每一格固定 3 個螢幕像素，手機上也看得清楚
-  cv.width = W; cv.height = H;
+  // 畫布用裝置的實際像素畫（遊戲裡一格＝ K 個裝置像素），位置可以對到裝置像素：慢的魚不再一格一格跳
+  const K = Math.round(3 * Math.min(3, Math.max(1, window.devicePixelRatio || 1))), rp = v => Math.round(v * K) / K;
+  cv.width = W * K; cv.height = H * K; TANK.W = W; TANK.H = H;
   const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
   const floorY = H - 12;
   const prev = new Map((TANK.fish || []).map(f => [f.key, f]));   // 重畫（例如買飼料）時，每一隻留在原位
@@ -442,7 +457,7 @@ function tankStart() {
         vx: speed * SWIM * (.8 + Math.random() * .4) * (Math.random() < .5 ? -1 : 1) };
       look(f);
       const q = prev.get(f.key);
-      if (q) { f.vx = q.vx; f.ph = q.ph; f.rest = q.rest; f.x = Math.min(q.x, Math.max(0, W - f.w)); f.baseY = ground ? floorY - f.h + 2 : Math.min(q.baseY, floorY - f.h + 2); f.y = ground ? f.baseY : q.y; }
+      if (q) { f.vx = q.vx; f.ph = q.ph; f.rest = q.rest; f.mx = q.mx || 0; f.my = q.my || 0; f.x = Math.min(q.x, Math.max(0, W - f.w)); f.baseY = ground ? floorY - f.h + 2 : Math.min(q.baseY, floorY - f.h + 2); f.y = ground ? f.baseY : q.y; }
       else { f.x = Math.random() * Math.max(1, W - f.w); f.y = f.baseY = ground ? floorY - f.h + 2 : 6 + Math.random() * Math.max(1, floorY - f.h - 24); }
       TANK.fish.push(f);
     });
@@ -460,18 +475,19 @@ function tankStart() {
   const frame = now => {
     if (!document.body.contains(cv)) return;
     const dt = Math.min(3, (now - last) / 16.7); last = now;
+    x.setTransform(K, 0, 0, K, 0, 0);
     // 背景：一層層的海水、沙地、海草
     const bands = ['#1d5a8c', '#174c7a', '#123f68', '#0e3356', '#0b2846'];
     bands.forEach((c, i) => { x.fillStyle = c; x.fillRect(0, Math.floor(i * floorY / bands.length), W, Math.ceil(floorY / bands.length) + 1); });
     x.fillStyle = '#c2a36b'; x.fillRect(0, floorY, W, H - floorY);
     x.fillStyle = '#a3864f'; for (let i = 0; i < W; i += 7) x.fillRect(i, floorY + 3 + (i % 3), 2, 2);
-    weeds.forEach((w, i) => { for (let j = 0; j < w.h; j += 3) { const sway = Math.round(Math.sin(now / 700 + i + j / 6) * 2); x.fillStyle = j % 6 ? '#38b764' : '#257179'; x.fillRect(w.x + sway, floorY - j, 3, 3); } });
+    weeds.forEach((w, i) => { for (let j = 0; j < w.h; j += 3) { const sway = rp(Math.sin(now / 700 + i + j / 6) * 2); x.fillStyle = j % 6 ? '#38b764' : '#257179'; x.fillRect(w.x + sway, floorY - j, 3, 3); } });
     if (Math.random() < .03 * dt) TANK.bub.push({ x: Math.random() * W, y: floorY, s: 1 + Math.round(Math.random()) });
     TANK.bub = TANK.bub.filter(b => (b.y -= .5 * dt) > 0);
-    x.fillStyle = 'rgba(180,240,255,.55)'; TANK.bub.forEach(b => x.fillRect(Math.round(b.x), Math.round(b.y), b.s, b.s));
+    x.fillStyle = 'rgba(180,240,255,.55)'; TANK.bub.forEach(b => x.fillRect(rp(b.x), rp(b.y), b.s, b.s));
     TANK.food.forEach(f => { if (f.y < floorY - 2) f.y += f.vy * dt; f.age = (f.age || 0) + dt; });
     TANK.food = TANK.food.filter(f => f.age < 1800);
-    x.fillStyle = '#ef7d57'; TANK.food.forEach(f => x.fillRect(Math.round(f.x), Math.round(f.y), 2, 2));
+    x.fillStyle = '#ef7d57'; TANK.food.forEach(f => x.fillRect(rp(f.x), rp(f.y), 2, 2));
     // 生物：飼料碰到身體就算吃到；吃到的那一隻會長大
     const eats = (f, p) => p.x >= f.x - 2 && p.x <= f.x + f.w + 2 && p.y >= f.y - 2 && p.y <= f.y + f.h + 2;
     for (const f of TANK.fish) {
@@ -482,11 +498,11 @@ function tankStart() {
         const dd = Math.hypot(p.x - (f.x + f.w / 2), p.y - (f.y + f.h / 2)); if (dd < best) { best = dd; food = p; }
       }
       if (food) {
-        const dx = food.x - (f.x + f.w / 2), sp = Math.max(.12, sp0 * 1.8) * dt;   // 看到飼料會加速，但慢的還是慢
-        f.x += Math.sign(dx) * Math.min(Math.abs(dx), sp);
-        if (Math.abs(dx) > .5) f.vx = Math.sign(dx) * sp0;
+        const dx = food.x - (f.x + f.w / 2), sp = Math.max(.12, sp0 * 1.8);   // 看到飼料會加速，但慢的還是慢
         f.tx = null; f.rest = 0;   // 吃完再重新找地方游
-        if (!f.ground) { const dy = food.y - (f.y + f.h / 2); f.baseY += Math.sign(dy) * Math.min(Math.abs(dy), sp * .8); }
+        const dy = food.y - (f.y + f.h / 2), ease = Math.min(1, Math.hypot(dx, dy) / 10);
+        steer(f, Math.sign(dx) * sp * ease, f.ground ? 0 : Math.sign(dy) * sp * .8 * ease, dt, !f.ground);
+        if (f.ground) f.vx = Math.abs(dx) > .5 ? Math.sign(dx) * sp0 : f.vx;
         if (eats(f, food)) {
           TANK.food.splice(TANK.food.indexOf(food), 1); SFX.eat();
           const before = stageOf(fedOf(f.key));
@@ -502,19 +518,19 @@ function tankStart() {
       } else if (f.ground) {
         if (f.rest > 0) f.rest -= dt;
         else {
-          f.x += f.vx * dt;
           if (Math.random() < .004 * dt) f.rest = 60 + Math.random() * 180;
           if (Math.random() < .003 * dt) f.vx = -f.vx;   // 偶爾掉頭
         }
+        steer(f, f.rest > 0 ? 0 : f.vx, 0, dt, false);
       } else wander(f, dt, W, floorY);
       if (!f.ground) {
         f.baseY = Math.max(2, Math.min(floorY - f.h + 2, f.baseY));
         f.y = f.baseY + Math.sin(now / (f.c.id === 'jelly' ? 1600 : 900) + f.ph) * (f.c.id === 'jelly' ? 8 : 3);
       }
-      if (f.x < 0) { f.x = 0; f.vx = Math.abs(f.vx); } else if (f.x > W - f.w) { f.x = W - f.w; f.vx = -Math.abs(f.vx); }
+      if (f.x < 0) { f.x = 0; f.vx = Math.abs(f.vx); f.mx = Math.max(0, f.mx || 0); } else if (f.x > W - f.w) { f.x = W - f.w; f.vx = -Math.abs(f.vx); f.mx = Math.min(0, f.mx || 0); }
       x.save();
-      if (f.vx < 0) { x.translate(Math.round(f.x) + f.w, Math.round(f.y)); x.scale(-1, 1); x.drawImage(f.s, 0, 0, f.w, f.h); }
-      else x.drawImage(f.s, Math.round(f.x), Math.round(f.y), f.w, f.h);
+      if (f.vx < 0) { x.translate(rp(f.x) + f.w, rp(f.y)); x.scale(-1, 1); x.drawImage(f.s, 0, 0, f.w, f.h); }
+      else x.drawImage(f.s, rp(f.x), rp(f.y), f.w, f.h);
       x.restore();
     }
     if (!TANK.fish.length) { x.fillStyle = '#eaf2ff'; x.font = '10px monospace'; x.textAlign = 'center'; x.fillText('水族箱是空的', W / 2, H / 2); }

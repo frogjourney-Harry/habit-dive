@@ -143,7 +143,7 @@ test('水族箱：撒飼料、成長、設定、放生、圖鑑', async () => {
   const I = await boot({ state: base(coinLog(500), ...drops(['clown', 'star', 'whaleshark', 'jelly', 'manta'])) }); await I.dismiss();
   await I.tab('tank'); await flush(); await new Promise(r => setTimeout(r, 600));
   const fish = () => I.ev('TANK.fish'); eq(fish().length, 5, '五隻都在水族箱裡');
-  const W = I.$('#tank').width, H = I.$('#tank').height;
+  const W = I.ev('TANK.W'), H = I.ev('TANK.H');
   for (const f of fish()) ok(f.x >= 0 && f.x <= W - f.w + 1 && f.y >= -2 && f.y <= H, `${f.c.id} 在水族箱範圍內 (${f.x | 0},${f.y | 0})`);
   // 撒飼料：先用免費 3 顆，再用買的，再沒有
   const cv = I.$('#tank'); const r = cv.getBoundingClientRect();
@@ -172,12 +172,31 @@ test('水族箱：撒飼料、成長、設定、放生、圖鑑', async () => {
   I.check('水族箱'); I.destroy();
 });
 
+test('水族箱：游動平順（速度不會突然跳、位置對到裝置像素）', async () => {
+  const I = await boot({ state: mkState({ logs: [W0, coinLog(100), ...drops(['clown', 'damsel', 'shark', 'jelly', 'manta', 'star', 'hermit'])] }) }); await I.dismiss();
+  await I.tab('tank'); await flush();
+  const cv = I.$('#tank'), W = I.ev('TANK.W');
+  ok(cv.width >= W * 3 && cv.width % W === 0, `畫布是高解析度（${cv.width} 寬 / 遊戲 ${W} 格）`);
+  const worst = {}, last = {}; let moved = 0;
+  for (let n = 0; n < 150; n++) {   // 約 2.5 秒，每一格都量
+    await new Promise(r => setTimeout(r, 16));
+    for (const f of I.ev('TANK.fish.map(f => ({ id: f.c.id, x: f.x, mx: f.mx, my: f.my }))')) {
+      ok(Number.isFinite(f.mx) && Number.isFinite(f.my), f.id + ' 有速度值');
+      const p = last[f.id]; if (p) { worst[f.id] = Math.max(worst[f.id] || 0, Math.abs(f.mx - p.mx), Math.abs(f.my - p.my)); if (f.x !== p.x) moved++; }
+      last[f.id] = f;
+    }
+  }
+  ok(moved > 0, '魚有在動');
+  for (const [id, d] of Object.entries(worst)) ok(d < .12, `${id} 速度每格變化不超過 .12（最大 ${d.toFixed(3)}），不會忽快忽慢或瞬間掉頭`);
+  I.check('游動平順'); I.destroy();
+});
+
 test('水族箱：20 種 × 5 隻全部放進去也不會壞', async () => {
   const ids = []; for (const c of ['clown','damsel','butterfly','star','hermit','urchin','turtle','octopus','nudi','lion','puffer','cuttle','seahorse','shark','moray','jelly','manta','mola','dolphin','whaleshark']) for (let k = 0; k < 5; k++) ids.push(c);
   const I = await boot({ state: mkState({ logs: [W0, coinLog(100), ...drops(ids)], fed: Object.fromEntries(ids.map((c, i) => ['dr' + i + c, i % 3 === 0 ? 30 : i % 3 === 1 ? 10 : 0])) }) }); await I.dismiss();
   await I.tab('tank'); await new Promise(r => setTimeout(r, 900));
   eq(I.ev('TANK.fish.length'), 100, '100 隻');
-  const W = I.$('#tank').width; let off = 0; for (const f of I.ev('TANK.fish')) if (f.x < -1 || f.x > W - f.w + 2 || !Number.isFinite(f.x) || !Number.isFinite(f.y)) off++;
+  const W = I.ev('TANK.W'); let off = 0; for (const f of I.ev('TANK.fish')) if (f.x < -1 || f.x > W - f.w + 2 || !Number.isFinite(f.x) || !Number.isFinite(f.y)) off++;
   eq(off, 0, '沒有生物跑出水族箱或變成 NaN');
   I.check('100 隻'); await I.click('[data-act=tankedit]'); I.check('100 隻設定頁'); await I.click('[data-act=tankdone]');
   await I.click('[data-act=tankview][data-v=dex]'); I.check('圖鑑全收集'); ok(I.has('20 / 20'), '圖鑑 20/20');
