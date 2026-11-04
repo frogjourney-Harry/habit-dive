@@ -67,7 +67,6 @@ document.addEventListener('click', async e => {
       else { addCheck(d, id, {}); clearLeave(id, d); ac(); SFX.tap(); }
       reward(() => {}, UI.sheet.day === 0); break;
     }
-    case 'leavey': { const msg = toggleLeave(v, addDays(dayKey(), -1)); save(); render(); if (msg) toast(msg); break; }   // 首頁提醒上的「補請昨天的假」
     case 'leave': { const msg = toggleLeave(UI.sheet.id, sheetDay()); save(); render(); renderSheet(); if (msg) toast(msg); break; }
     case 'exadd': {
       const type = document.getElementById('exType').value, e = { type };
@@ -223,6 +222,13 @@ document.addEventListener('click', async e => {
       if (UI.tab === 'tank') { renderStat(); const el = document.getElementById('feedInfo'); if (el) el.innerHTML = tankFeedHTML(); }
       else render();
       break;
+    }
+    case 'buyfreeze': {
+      const D = derive(), F = CONFIG.freeze;
+      if (freezeLeft(D) >= F.max) { toast(`保護卡最多帶 ${F.max} 張`); break; }
+      if (D.coins < F.price) { toast(`金幣不夠，保護卡要 ${F.price} 金幣`); break; }
+      S.logs.push({ id: rid(), t: Date.now(), d: dayKey(), k: 'redeem', name: '連勝保護卡', freeze: 1, c: -F.price });
+      save(); catchUp(); render(); SFX.buy(); toast('🛡 買了一張連勝保護卡'); break;   // 昨天剛漏掉的話，馬上補上
     }
     case 'import': document.getElementById('importFile').click(); break;
   }

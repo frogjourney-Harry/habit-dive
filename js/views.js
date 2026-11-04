@@ -39,7 +39,7 @@ function habitEditor() {
       <button class="ghost" data-act="habdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
     <div class="row" style="margin-top:8px"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣 ${customCount()}/${CONFIG.maxCustom}</button>
       ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${esc(h.id)}">加回 ${esc(h.n)}</button>`).join('')}</div>
-    <div class="mini">每天的習慣漏兩天才斷；每週／每兩週的習慣沒達標就斷。請假不算漏：每天型每月 ${CONFIG.leavePerMonth} 天，每週型每月 ${CONFIG.leavePerMonthWeekly} 次。</div>
+    <div class="mini">每天的習慣漏一天就斷；每週／每兩週的習慣沒達標就斷。漏掉時會自動請假保住連勝：每天型每月 ${CONFIG.leavePerMonth} 天，每週型每月 ${CONFIG.leavePerMonthWeekly} 次，用完了再用商店的連勝保護卡。</div>
     </section>`;
 }
 
@@ -141,13 +141,17 @@ function today(D) {
       <div class="row"><span class="hn">${esc(h.n)}</span><span class="sp"></span>${badge}</div>
       <div class="hs">${sub}</div></button>`;
   }).join('');
-  // 昨天漏了、今天再漏就會斷：一則提醒把兩條路講清楚（今天做到，或補請昨天的假），不用再另外去找請假按鈕
-  const yd = addDays(td, -1);
-  const risky = activeHabits().filter(h => st[h.id].risk).map(h => {
-    const left = leaveLeft(h.id, yd);
-    return `<div class="warn row riskrow"><span class="sp">昨天漏了「${esc(h.n)}」，今天做到${left ? '或補請昨天的假' : ''}，連勝就不會斷。</span>
-      ${left ? `<button class="ghost" data-act="leavey" data-v="${esc(h.id)}">補請昨天的假（本月還剩 ${left} 天）</button>` : ''}</div>`;
-  });
+  // 昨天（上一期）漏了：已經自動用掉假或保護卡的，告訴他還剩多少；都用完、連勝斷了的，也說一聲。今天做了就不再提
+  const yd = addDays(td, -1), cards = freezeLeft(D);
+  const risky = activeHabits().map(h => {
+    const p = h.weeks ? addDays(periodKey(td, h.weeks), -7 * h.weeks) : yd;
+    if (h.weeks ? perCount(D, h, periodKey(td, h.weeks)) : dayDone(D, td, h.id)) return '';
+    const v = autoLeaveOf(h, p), when = h.weeks ? (h.weeks === 1 ? '上週' : '上兩週') : '昨天';
+    if (v) return `<div class="mini riskrow">${when}漏了「${esc(h.n)}」，自動用掉 1 ${v === 'f' ? `張連勝保護卡（還剩 ${cards} 張）` : `${h.weeks ? '次' : '天'}假（本月還剩 ${leaveLeft(h.id, td)} ${h.weeks ? '次' : '天'}）`}，連勝保住了。</div>`;
+    if (!h.weeks && yd >= S.strictFrom && !dayDone(D, yd, h.id) && !onLeave(h.id, yd) && habitChain(D, h, addDays(yd, -1)).n)
+      return `<div class="warn">昨天漏了「${esc(h.n)}」，剩下的假和保護卡不夠補，連勝從今天重新開始。</div>`;
+    return '';
+  }).filter(Boolean);
   const V = habit('vocus');
   const setup = S.vocusSet || !V ? '' : `<section class="px">${sh('Vocus 發文節奏', 'SETUP')}
       <div class="mini">不用每天發。選一個做得到的節奏，之後可以在「習慣・編輯」修改。</div>
@@ -341,7 +345,9 @@ function renderSheet() {
   if (!(h.weeks ? periodDone(D, h, periodKey(d, h.weeks)) : list.length)) {
     const left = leaveLeft(h.id, d), unit = h.weeks ? '次' : '天';
     const who = h.weeks ? (periodKey(d, h.weeks) === p0 ? periodWord(h) : h.weeks === 1 ? '上週' : '上兩週') : day < 0 ? '昨天' : '今天';
-    body += leaveHere(h, d) ? `<button class="wide" data-act="leave">${who}已請假，點一下取消</button>`
+    const auto = autoLeaveOf(h, h.weeks ? periodKey(d, h.weeks) : d);
+    body += auto ? `<div class="mini" style="margin-top:8px">${who}漏了，自動用掉 1 ${auto === 'f' ? '張連勝保護卡' : unit + '假'}保住連勝；補打卡就會退回。</div>`
+      : leaveHere(h, d) ? `<button class="wide" data-act="leave">${who}已請假，點一下取消</button>`
       : `<button class="wide" data-act="leave" ${left ? '' : 'disabled'}>${who}請假（本月還剩 ${left} ${unit}）</button>`;
   }
   el.innerHTML = `<div class="row"><b style="font-size:18px">${esc(h.n)}</b><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
@@ -710,6 +716,10 @@ function shop(D) {
       ${UI.chestOpen !== ch.id ? '' : `<div class="cpool">${chestPool(ch).map(c => `<button class="ghost ${D.col[c.id] ? '' : 'new'}" data-act="fact" data-v="${c.id}" title="${c.name}">${img(c.px, 2)}<small>${c.name}</small></button>`).join('')}</div>`}</div>`).join('')}
     <div class="it chest"><span class="ic">${img(SHRIMP, 2)}</span><span class="sp">飼料 ${FEED.pack} 顆<br><small>每天另有免費 ${FEED.free} 顆・目前還有 ${feedLeft()} 顆</small></span>
       <span class="price">${FEED.price}${COIN}</span><button class="pri" data-act="buyfeed" ${D.coins < FEED.price ? 'disabled' : ''}>購買</button></div></section>
+  <section class="px shop">${sh('連勝保護', 'STREAK')}
+    <div class="mini">漏掉習慣時，先自動用當月的免費假，用完了才用保護卡，每張補一天（每週型補一期）。所有習慣共用，最多帶 ${CONFIG.freeze.max} 張。</div>
+    <div class="it"><span class="ic">🛡</span><span class="sp">連勝保護卡<br><small>目前有 ${freezeLeft(D)} / ${CONFIG.freeze.max} 張</small></span>
+      <span class="price">${CONFIG.freeze.price}${COIN}</span><button class="pri" data-act="buyfreeze" ${D.coins < CONFIG.freeze.price || freezeLeft(D) >= CONFIG.freeze.max ? 'disabled' : ''}>購買</button></div></section>
   <section class="px shop">${sh('獎勵商店', 'REWARDS', '<button class="ghost" data-act="shopedit">編輯</button>')}
     <div class="mini">你可以自行設定想要的獎勵。${activeDays >= 5 ? `最近 14 天平均每天賺 ${rate} 金幣。` : `目前以每天約 ${rate} 金幣估算。`}</div>
     ${items.length ? '' : '<div class="dim" style="margin-top:8px">還沒有獎勵，按「編輯」新增。</div>'}

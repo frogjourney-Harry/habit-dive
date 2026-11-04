@@ -8,6 +8,7 @@ async function monkey(seed, steps, o = {}) {
   const rnd = mulberry(seed), pick = a => a[Math.floor(rnd() * a.length)];
   const states = [() => mkState(), () => mkState({ logs: [W0, coinLog(3000), ...drops(['clown', 'clown', 'clown', 'clown', 'clown', 'shark', 'manta'])] }),
     () => null, () => mkState({ logs: [W0, coinLog(200)], plans: { [D0]: [{ text: 'a', done: true, rw: true, cat: 'other' }, { text: 'b', done: false, cat: 'other' }, { text: 'c', done: false, cat: 'other' }, { text: '', done: false, cat: 'other' }, { text: '', done: false, cat: 'other' }, { text: '', done: false, cat: 'other' }] } })];
+  Object.assign(window.__cloudDb, { docs: {}, fail: false, log: [], popupBlocked: false, nextUser: null });   // 每一組種子用自己的雲端：不然會撿到上一組（時鐘不同）的資料
   const st = states[seed % states.length]();
   let I = await boot(st ? { state: st, width: o.width || (seed % 2 ? 375 : 1024), height: 800 } : { seed: {}, width: o.width || 375, height: 800 });
   const trail = [], found = new Map(); let n = 0;

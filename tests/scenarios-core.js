@@ -173,7 +173,7 @@ test('習慣新增、刪除、頻率、上限、空白名稱', async () => {
   await I.click('#sheet [data-act=sheetclose]').catch(() => {});
   await I.click('#habits [data-act=habedit]');
   const del = I.$$('[data-act=habdel]'); await I.click(del[del.length - 3]);   // 刪掉「看書」之前的那個或最後一個
-  await I.dismiss(); ok(I.has('請假不算漏：每天型每月 2 天，每週型每月 1 次'), '編輯畫面的規則說明有提到請假'); await I.click('[data-act=habdone]');
+  await I.dismiss(); ok(I.has('漏掉時會自動請假保住連勝：每天型每月 2 天，每週型每月 1 次，用完了再用商店的連勝保護卡'), '編輯畫面的規則說明有提到請假'); await I.click('[data-act=habdone]');
   I.check('習慣編輯'); I.destroy();
 });
 
@@ -340,29 +340,61 @@ test('請假：連勝不中斷、不算漏', async () => {
   eq(streakOf(I).n, 0, '連漏兩天（前天、昨天）：連勝歸零（沒請假的對照）');
   ok(I.ev("toggleLeave('hwake', addDays(dayKey(), -2))") !== '', '前天請假');
   eq(streakOf(I).n, 4, '前天請假：連勝還在（4 天），請假的那天不加天數');
-  ok(streakOf(I).risk === true, '昨天漏了、今天還沒做：還是會提醒');
   I.ev("toggleLeave('hwake', addDays(dayKey(), -1))");
   eq(streakOf(I).n, 4, '昨天也請假：連勝還在');
-  ok(streakOf(I).risk === false, '昨天請假不算漏，不用提醒');
   I.ev("addCheck(dayKey(), 'hwake', {})"); eq(streakOf(I).n, 5, '今天做了就 +1');
   I.ev('save()'); I.check('請假連勝'); I.destroy();
 });
 
-test('請假：昨天漏了的提醒裡直接補請昨天的假（不用另外找請假按鈕）', async () => {
+test('漏一天就斷：漏掉時自動用掉當月的假，補打卡就退回', async () => {
   const I = await startWithWake([-4, -3, -2]);   // 連續 3 天，昨天沒做
+  I.ev("S.strictFrom = addDays(dayKey(), -30)");   // 新規則從一個月前就開始
+  eq(streakOf(I).n, 0, '新規則：昨天漏了就斷（還沒自動請假前）');
+  I.ev('catchUp()');
+  eq(I.ev("leavesOf('hwake')[addDays(dayKey(), -1)]"), 'a', '開 App 時自動幫昨天請假');
+  eq(streakOf(I).n, 3, '連勝保住'); eq(I.ev("leaveLeft('hwake', dayKey())"), 1, '本月的假少一天');
   await I.tab('today'); const row = () => I.$$('#habits .riskrow').find(e => e.innerText.includes('8:00 起床'));
-  ok(row() && row().innerText.includes('今天做到或補請昨天的假'), '提醒寫出兩條路：' + (row() && row().innerText));
-  ok(row().querySelector('[data-act=leavey]').innerText.includes('本月還剩 2 天'), '按鈕寫剩幾天');
-  await I.click(row().querySelector('[data-act=leavey]'));
-  ok(I.ev("onLeave('hwake', addDays(dayKey(), -1))"), '補請了昨天的假'); ok(!row(), '提醒消失'); ok(I.has('請假了，連勝不會中斷'), '提示訊息');
-  eq(streakOf(I).n, 3, '連勝還在'); eq(I.ev("leaveLeft('hwake', addDays(dayKey(), -1))"), 1, '額度少一天');
-  I.check('補請昨天'); I.destroy();
-  const J = await startWithWake([-4, -3, -2]);
-  J.ev("S.leaves = { hwake: { [addDays(dayKey(), 1)]: 1, [addDays(dayKey(), 2)]: 1 } }; save(); render()");   // 這個月的 2 天假已經排掉了
-  eq(J.ev("leaveLeft('hwake', addDays(dayKey(), -1))"), 0, '這個月的假用完了');
-  await J.tab('today'); const r = J.$$('#habits .riskrow').find(e => e.innerText.includes('8:00 起床'));
-  ok(r && !r.querySelector('[data-act=leavey]') && r.innerText.includes('今天做到，連勝'), '假用完了：只剩「今天做到」，沒有請假按鈕：' + (r && r.innerText));
-  J.check('假用完'); J.destroy();
+  ok(row() && row().innerText.includes('昨天漏了「8:00 起床」，自動用掉 1 天假（本月還剩 1 天），連勝保住了'), '首頁說明用掉了假：' + (row() && row().innerText));
+  ok(/自動補上/.test(I.ev("toggleLeave('hwake', addDays(dayKey(), -1))")) && I.ev("onLeave('hwake', addDays(dayKey(), -1))"), '自動補的假不能取消');
+  await I.click(['#habits .hab', '8:00 起床']); await I.click('[data-act=shday][data-v="-1"]');
+  ok(I.has('昨天漏了，自動用掉 1 天假保住連勝'), '面板也寫出來');
+  await I.click('[data-act=chk]');
+  ok(!I.ev("onLeave('hwake', addDays(dayKey(), -1))") && I.ev("leaveLeft('hwake', dayKey())") === 2, '補打卡昨天：假退回');
+  eq(streakOf(I).n, 4, '連勝 4 天'); await I.click('[data-act=sheetclose]'); ok(!row(), '提醒消失');
+  I.check('自動請假'); I.destroy();
+});
+
+test('連勝保護卡：假用完了自動用卡、補打卡退卡、不夠補就一張都不用', async () => {
+  const I = await startWithWake([-4, -3, -2]);
+  I.ev("S.strictFrom = addDays(dayKey(), -30); S.leaves = { hwake: { [addDays(dayKey(), 1)]: 1, [addDays(dayKey(), 2)]: 1 } }; S.logs.push({ id: 'cx', t: 2, d: dayKey(), k: 'bonus', c: 500, xp: 0 }); save(); render(); catchUp()");
+  eq(streakOf(I).n, 0, '本月的假用完、又沒有卡：連勝斷了');
+  await I.tab('today'); ok(I.has('昨天漏了「8:00 起床」，剩下的假和保護卡不夠補，連勝從今天重新開始'), '首頁說連勝斷了');
+  await I.tab('shop'); ok(I.has('目前有 0 / 2 張'), '商店顯示 0 張');
+  const c0 = I.coins(); await I.click('[data-act=buyfreeze]'); eq(I.coins(), c0 - 150, '扣 150 金幣');
+  eq(I.ev("leavesOf('hwake')[addDays(dayKey(), -1)]"), 'f', '買了卡：馬上補上昨天'); eq(I.ev('freezeLeft()'), 0, '卡用掉了'); eq(streakOf(I).n, 3, '連勝接回來');
+  ok(I.has('消費紀錄') && I.$$('.px').some(e => e.innerText.includes('HISTORY') && e.innerText.includes('連勝保護卡')), '消費紀錄有保護卡');
+  await I.tab('today'); ok(I.has('自動用掉 1 張連勝保護卡（還剩 0 張），連勝保住了'), '首頁說用了卡');
+  I.ev("addCheck(addDays(dayKey(), -1), 'hwake', {}); clearLeave('hwake', addDays(dayKey(), -1)); save(); render()");
+  eq(I.ev('freezeLeft()'), 1, '補打卡昨天：卡退回來');
+  await I.tab('shop'); await I.click('[data-act=buyfreeze]'); eq(I.ev('freezeLeft()'), 2, '買第二張');
+  ok(I.$('[data-act=buyfreeze]').disabled, '最多 2 張：按鈕不能按'); ok(I.has('目前有 2 / 2 張'), '商店顯示 2 張');
+  I.check('保護卡'); I.destroy();
+  // 連漏三天、只有兩張卡（10 月、11 月的免費假都用完了）：補不完就一張都不用
+  const J = await startWithWake([-6, -5, -4]);
+  J.ev("S.strictFrom = addDays(dayKey(), -30); S.leaves = { hwake: { '2026-10-01': 1, '2026-10-02': 1, [addDays(dayKey(), 1)]: 1, [addDays(dayKey(), 2)]: 1 } }; S.logs.push({ id: 'f1', t: 2, d: dayKey(), k: 'redeem', name: '連勝保護卡', freeze: 1, c: -150 }, { id: 'f2', t: 3, d: dayKey(), k: 'redeem', name: '連勝保護卡', freeze: 1, c: -150 }, { id: 'cy', t: 1, d: dayKey(), k: 'bonus', c: 300, xp: 0 }); save(); render(); catchUp()");
+  eq(J.ev('freezeLeft()'), 2, '缺口 3 天、卡只有 2 張：不浪費'); eq(streakOf(J).n, 0, '連勝斷了');
+  J.ev("S.leaves.hwake['2026-10-02'] = undefined; delete S.leaves.hwake['2026-10-02']; save(); catchUp()");   // 10 月多出 1 天免費假
+  eq(J.ev('freezeLeft()'), 0, '1 天免費假＋2 張卡剛好補完'); eq(streakOf(J).n, 3, '連勝保住');
+  J.check('補不完'); J.destroy();
+});
+
+test('自動請假：每週型漏掉的那一期也會自動補', async () => {
+  const I = await startToday();
+  I.ev("[-14, -13, -12, -21, -20, -19].forEach(d => addCheck(addDays(dayKey(), d), 'exercise', {})); S.strictFrom = addDays(dayKey(), -30); save(); render(); catchUp()");
+  eq(I.ev("leavesOf('exercise')[addDays(dayKey(), -7)]"), 'a', '上週沒達標：自動用掉這個月的 1 次');
+  eq(I.ev('streaks(derive()).exercise.n'), 2, '連勝保住');
+  await I.tab('today'); ok(I.has('上週漏了「運動」，自動用掉 1 次假'), '首頁說明');
+  I.check('每週自動請假'); I.destroy();
 });
 
 test('請假：每月額度、取消、打卡後自動恢復額度、月份分開算', async () => {

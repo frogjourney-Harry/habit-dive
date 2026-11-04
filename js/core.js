@@ -120,6 +120,8 @@ function migrate(s) {
   s.v = 7;
   // 第一次打開的引導（選習慣、登入）：還沒用過的新存檔要做；用過的（有紀錄、打卡或寫過六件事）當作做過了
   if (typeof s.onb !== 'boolean') s.onb = s.logs.some(l => l.k !== 'welcome' && l.k !== 'login') || Object.keys(s.checks).length > 0 || Object.values(s.plans).some(P => P.some(x => x.text.trim()));
+  // 從這天起每天型的習慣漏一天就斷（之前的舊規則是漏兩天才斷，已經有的連勝照舊算）
+  if (typeof s.strictFrom !== 'string' || !/^\d{4}-\d\d-\d\d$/.test(s.strictFrom)) s.strictFrom = dayKey();
   return s;
 }
 const needOnb = () => S.onb === false && !window.__noOnb;   // __noOnb：自動測驗用，略過引導
@@ -218,6 +220,7 @@ function delCheck(d, id, i) {
 // 每天型的習慣：每月可以請 leavePerMonth 天，那天不打卡也不算漏。S.leaves[習慣 id][日期] = 1
 // 每週／每兩週型（運動、Vocus）：「這一期請假」，每月 leavePerMonthWeekly 次，記在那一期的第一天；那一期沒達標也不算斷。
 // 連勝照樣接下去（不加天數），請假沒有獎勵
+// 值：1＝自己請的、'a'＝漏掉時自動用掉的免費假、'f'＝自動用掉的連勝保護卡（不佔每月的免費假）
 const leavesOf = id => { const L = S.leaves && typeof S.leaves === 'object' && S.leaves[id]; return L && typeof L === 'object' ? L : {}; };
 const onLeave = (id, d) => !!leavesOf(id)[d];
 const periodLeave = (h, p) => { const e = addDays(p, 7 * h.weeks - 1); return Object.keys(leavesOf(h.id)).some(x => x >= p && x <= e); };
@@ -227,8 +230,47 @@ function leaveLeft(id, d) {
   const h = habit(id); if (!h) return 0;
   const key = h.weeks ? periodKey(d, h.weeks) : d, D = h.weeks ? derive() : null;
   // 每週型：請了假、但那一期後來還是達標的，不算用掉
-  const used = Object.keys(leavesOf(id)).filter(x => x.slice(0, 7) === key.slice(0, 7) && !(h.weeks && periodDone(D, h, periodKey(x, h.weeks)))).length;
+  const L = leavesOf(id);
+  const used = Object.keys(L).filter(x => L[x] !== 'f' && x.slice(0, 7) === key.slice(0, 7) && !(h.weeks && periodDone(D, h, periodKey(x, h.weeks)))).length;
   return Math.max(0, leaveCap(h) - used);
+}
+// 連勝保護卡：所有習慣共用。手上有幾張＝買的張數 − 已經用掉的（補打卡讓那天或那一期完成了，卡就退回）
+function freezeLeft(D = derive()) {
+  let used = 0;
+  for (const [id, L] of Object.entries(S.leaves && typeof S.leaves === 'object' ? S.leaves : {})) {
+    if (!L || typeof L !== 'object') continue;
+    const h = S.habits.find(x => x.id === id);
+    for (const [x, v] of Object.entries(L)) if (v === 'f' && !(h && h.weeks && periodDone(D, h, periodKey(x, h.weeks)))) used++;
+  }
+  return Math.max(0, S.logs.filter(l => l.freeze).length - used);
+}
+const autoLeaveOf = (h, d) => { const L = leavesOf(h.id); const k = h.weeks ? Object.keys(L).find(x => x >= d && x <= addDays(d, 7 * h.weeks - 1)) : d; return k && (L[k] === 'a' || L[k] === 'f') ? L[k] : ''; };
+// 漏掉的日子（每週型是漏掉的那一期）自動請假：先用當月的免費假，不夠再用保護卡。
+// 只補 strictFrom 之後、而且前面真的有連勝的缺口；整段缺口補不完就一張都不用（反正會斷，不白白浪費）
+function autoLeave() {
+  const td = dayKey(), D = derive(), first = Object.keys(D.days).sort()[0] || td;
+  let cards = freezeLeft(D), changed = false;
+  for (const h of activeHabits()) {
+    const step = h.weeks ? p => addDays(p, -7 * h.weeks) : d => addDays(d, -1);
+    const done = h.weeks ? p => periodDone(D, h, p) : d => dayDone(D, d, h.id);
+    const lv = h.weeks ? p => periodLeave(h, p) : d => onLeave(h.id, d);
+    const endOf = h.weeks ? p => addDays(p, 7 * h.weeks - 1) : d => d;
+    const gap = []; let k = step(h.weeks ? periodKey(td, h.weeks) : td);
+    const k0 = h.weeks ? periodKey(first, h.weeks) : first;
+    while (gap.length < 62 && k >= k0 && !done(k) && !lv(k) && endOf(k) >= S.strictFrom) { gap.push(k); k = step(k); }
+    if (!gap.length || !habitChain(D, h, k).n) continue;
+    const free = {}, plan = []; let c = cards;
+    for (const g of gap.reverse()) {
+      const m = g.slice(0, 7); if (free[m] == null) free[m] = leaveLeft(h.id, g);
+      if (free[m] > 0) { free[m]--; plan.push([g, 'a']); } else if (c > 0) { c--; plan.push([g, 'f']); } else break;
+    }
+    if (plan.length < gap.length) continue;
+    if (!S.leaves || typeof S.leaves !== 'object') S.leaves = {};
+    if (!S.leaves[h.id] || typeof S.leaves[h.id] !== 'object') S.leaves[h.id] = {};
+    for (const [g, v] of plan) S.leaves[h.id][g] = v;
+    cards = c; changed = true;
+  }
+  return changed;
 }
 // 當天打卡了，每天型的請假就自動取消（每週型的請假是整期的，不受影響）
 function clearLeave(id, d) { const h = habit(id); if (h && !h.weeks && onLeave(id, d)) delete S.leaves[id][d]; }
@@ -237,6 +279,7 @@ function toggleLeave(id, d) {
   const h = habit(id); if (!h) return '';
   const key = h.weeks ? periodKey(d, h.weeks) : d;
   if (leaveHere(h, d)) {
+    if (autoLeaveOf(h, key)) return '這是漏掉時自動補上的假，補打卡就會退回';
     if (h.weeks) { const e = addDays(key, 7 * h.weeks - 1); for (const x of Object.keys(S.leaves[id])) if (x >= key && x <= e) delete S.leaves[id][x]; }
     else delete S.leaves[id][d];
     return '已取消請假';
@@ -275,23 +318,27 @@ const dayDone = (D, d, k) => !!(D.days[d] && D.days[d][k]);
 const perCount = (D, h, p) => D.per[h.id + '@' + p] || 0;
 const periodDone = (D, h, p) => perCount(D, h, p) >= h.target;
 
-// 每天的習慣「不連續漏兩次」：漏一次不斷，連續漏兩次才歸零；進行中的今天不算漏。
-// 週期型習慣漏一期就斷：週期本身已經是自己選的寬鬆度
+// 漏一天（每週型漏一期）就斷，除非那天請了假；進行中的今天（這一期）不算漏。
+// 例外：strictFrom 之前是舊規則，每天的習慣連續漏兩天才斷
 // 請假的那天不算漏，也不加天數：連勝照樣接下去
 function chain(isDone, cur, step, first, maxMiss, isLeave = () => false) {
   let n = isDone(cur) ? 1 : 0, miss = 0, k = step(cur);
-  const prevMissed = !isDone(k) && !isLeave(k);
   while (k >= first) {
-    if (isDone(k)) { n++; miss = 0; } else if (isLeave(k)) miss = 0; else if (++miss >= maxMiss) break;
+    if (isDone(k)) { n++; miss = 0; } else if (isLeave(k)) miss = 0; else if (++miss >= maxMiss(k)) break;
     k = step(k);
   }
-  return { n, risk: maxMiss > 1 && n > 0 && !isDone(cur) && !isLeave(cur) && prevMissed };
+  return { n };
+}
+// 某個習慣到 cur 這天（這一期）為止的連勝
+function habitChain(D, h, cur) {
+  const first = Object.keys(D.days).sort()[0] || dayKey();
+  return h.weeks
+    ? chain(p => periodDone(D, h, p), periodKey(cur, h.weeks), p => addDays(p, -7 * h.weeks), periodKey(first, h.weeks), () => 1, p => periodLeave(h, p))
+    : chain(d => dayDone(D, d, h.id), cur, d => addDays(d, -1), first, d => d < S.strictFrom ? 2 : 1, d => onLeave(h.id, d));
 }
 function streaks(D) {
-  const today = dayKey(), first = Object.keys(D.days).sort()[0] || today, out = {};
-  for (const h of activeHabits()) out[h.id] = h.weeks
-    ? chain(p => periodDone(D, h, p), periodKey(today, h.weeks), p => addDays(p, -7 * h.weeks), periodKey(first, h.weeks), 1, p => periodLeave(h, p))
-    : chain(d => dayDone(D, d, h.id), today, d => addDays(d, -1), first, 2, d => onLeave(h.id, d));
+  const today = dayKey(), out = {};
+  for (const h of activeHabits()) out[h.id] = habitChain(D, h, today);
   return out;
 }
 // 等級：升到 Lv.n 需要累積 10×(n−1)² XP
