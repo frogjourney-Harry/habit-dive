@@ -431,10 +431,14 @@ const FEED = { free: 3, pack: 10, price: 30 };            // 每天免費 3 顆�
 // 水族箱設定：哪幾隻放進去記在 S.outTank
 const freeLeft = () => S.feedDay && S.feedDay.d === dayKey() ? Math.max(0, FEED.free - S.feedDay.used) : FEED.free;
 const feedLeft = () => freeLeft() + (S.feed || 0);
+// 新手提示：撒滿這麼多顆飼料以前，海中間會有一句說明（S.tossed＝總共撒過幾顆）
+const FEED_TIP_UNTIL = 3, FEED_TIP = '點水裡撒飼料，魚吃到一定數量會長大';
+const needFeedTip = () => (S.tossed || 0) < FEED_TIP_UNTIL;
 function useFeed() {
   if (freeLeft() > 0) { if (!S.feedDay || S.feedDay.d !== dayKey()) S.feedDay = { d: dayKey(), used: 0 }; S.feedDay.used++; }
   else if ((S.feed || 0) > 0) S.feed--;
   else return false;
+  S.tossed = (S.tossed || 0) + 1;
   save(); return true;
 }
 const TANK = { raf: 0 };
@@ -469,10 +473,10 @@ function steer(f, tvx, tvy, dt, vertical = true) {
   // 魚頭朝實際游的方向（不是朝目的地），掉頭時不會倒著滑
   if (vertical && Math.abs(f.mx) > Math.abs(f.vx) * .15) f.vx = Math.sign(f.mx) * Math.abs(f.vx);
 }
-// 海底工具列的飼料：小蝦圖示＋還有幾顆，小字寫其中免費、買的各幾顆
+// 海底工具列的飼料：小蝦圖示＋兩個標籤，今天免費的還剩幾顆（共 3 顆）、買的還有幾顆
 function tankFeedHTML() {
   const f = freeLeft(), b = S.feed || 0;
-  return `${img(SHRIMP, 2, false, 'feedic')}<span class="fnum"><b>${f + b}</b><small>${f ? `免費 ${f}` : '免費用完'}${b ? `・買的 ${b}` : ''}</small></span>`;
+  return `${img(SHRIMP, 2, false, 'feedic')}<span class="fpills"><span class="fpill free${f ? '' : ' out'}" title="今天免費的飼料，每天 ${FEED.free} 顆">FREE ${f}/${FEED.free}</span><span class="fpill paid" title="用金幣買的飼料">PAID ${b}</span></span>`;
 }
 function tankEditor(D) {
   const owned = CREATURES.filter(c => pets(c.id).length);
@@ -493,11 +497,12 @@ function tank(D) {
   if (UI.tankView === 'dex') return dex(D);
   const n = CREATURES.filter(c => pets(c.id).some(p => inTank(p.id))).length;
   // 沒有框：畫布透明、填滿整個視窗，魚直接游在網站背景的海裡。
-  // 海裡不放任何按鈕：飼料、補充、圖鑑、設定都在最下面一條不透明的工具列（跟分頁列連在一起），海和沙地停在它上面；操作說明常駐在飼料旁邊
+  // 海裡不放任何按鈕：飼料、補充、圖鑑、設定都在最下面一條不透明的工具列（跟分頁列連在一起），海和沙地停在它上面；新手（還沒撒滿 3 顆飼料）海中間有一句說明
   return `<div class="sea"><canvas id="tank" class="tank" aria-label="大海，點水裡撒飼料"></canvas>
-    <div class="seahud seabar"><div id="feedInfo" title="飼料">${tankFeedHTML()}</div><small class="feedtip sp">點水裡撒飼料，吃到的那一隻會長大</small>
+    <div class="seahud seabar"><div id="feedInfo">${tankFeedHTML()}</div><span class="sp"></span>
       <button class="feedbuy" data-act="buyfeed" title="用 ${FEED.price} 金幣買 ${FEED.pack} 顆飼料">+${FEED.pack}<span class="price">${FEED.price}${COIN}</span></button>
-      <button data-act="tankview" data-v="dex" title="${n} 種在大海裡">圖鑑<i class="cnt">${n}</i></button><button data-act="tankedit">設定</button></div></div>`;
+      <button data-act="tankview" data-v="dex" title="${n} 種在大海裡">圖鑑<i class="cnt">${n}</i></button><button data-act="tankedit">設定</button></div>
+    ${needFeedTip() ? `<div class="seacoach" aria-live="polite"><i class="ring"></i><span>${FEED_TIP}</span></div>` : ''}</div>`;
 }
 // 大海畫面時：頁尾藏起來、整頁不捲動，海填滿整個視窗
 const seaOn = () => UI.tab === 'tank' && !UI.tankEdit && UI.tankView !== 'dex';
@@ -578,6 +583,7 @@ function tankStart() {
     if (!useFeed()) { toast('飼料用完了，明天會再送 3 顆，也可以用金幣買'); return; }
     TANK.food.push({ x: px, y: py, vy: .25 }); ac(); SFX.tap();
     const el = document.getElementById('feedInfo'); if (el) el.innerHTML = tankFeedHTML();
+    if (!needFeedTip()) { const tip = document.querySelector('.seacoach'); if (tip) tip.remove(); }
   };
   let last = performance.now();
   const frame = now => {

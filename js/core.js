@@ -40,10 +40,12 @@ function migrate(s) {
   if (s.shop && !Array.isArray(s.shop)) delete s.shop;
   // 單一數值欄位：型別不對就換成合理的值（字串會讓飼料 5+10 變成 "510"；番茄鐘分鐘太大會讓整個頁面卡死）
   const num = v => (v === null || v === '' || v === true || v === false || !Number.isFinite(+v)) ? 0 : +v;
-  for (const k of ['feed', 'lvSeen']) if (s[k] != null) s[k] = Math.max(0, Math.floor(num(s[k])));
+  for (const k of ['feed', 'lvSeen', 'tossed']) if (s[k] != null) s[k] = Math.max(0, Math.floor(num(s[k])));
   if (s.mtime != null) s.mtime = Math.max(0, num(s.mtime));
   if (s.pomoMin != null) { const m = Math.round(num(s.pomoMin)); if (m >= 5 && m <= 120) s.pomoMin = m; else delete s.pomoMin; }
   if (s.feedDay != null) { if (typeof s.feedDay === 'object' && !Array.isArray(s.feedDay)) s.feedDay = { d: String(s.feedDay.d || ''), used: Math.max(0, Math.floor(num(s.feedDay.used))) }; else delete s.feedDay; }
+  // 撒過幾顆飼料（新手提示用）：還沒有這個欄位的舊存檔，用吃掉的顆數加今天撒的估計
+  if (s.tossed == null && s.fed && typeof s.fed === 'object') s.tossed = Object.values(s.fed).reduce((a, v) => a + Math.max(0, +v || 0), 0) + (s.feedDay ? s.feedDay.used : 0);
   if (s.favs != null) s.favs = (Array.isArray(s.favs) ? s.favs : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 12);
   if (s.habits) for (const h of s.habits) { if (h.unit != null) h.unit = String(h.unit).slice(0, 4); h.n = String(h.n ?? ''); h.weeks = Math.max(0, Math.min(2, Math.round(num(h.weeks)))); h.target = Math.max(1, Math.min(14, Math.round(num(h.target)) || 1)); }
   if (s.habits && !Array.isArray(s.habits)) delete s.habits;
