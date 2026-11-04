@@ -64,15 +64,18 @@ test('升級：彈窗、稱號、只慶祝一次、超大等級', async () => {
   eq(I.ev('levelOf(derive().xp)'), 3, '45 XP = Lv.3');
   const sawTitle = I.S.lvSeen === 3; ok(sawTitle, '記下已慶祝到 Lv.3');
   const J = await I.reload(); ok(J.$('#ov').classList.contains('hidden'), '重開不會再跳升級彈窗');
-  await J.tab('log'); ok(!J.$('.ranks'), '稱號一覽預設收起來');
-  await J.click('[data-act=ranks]'); const rk = J.$$('.rk');
+  await J.tab('log'); ok(!J.$('.dive'), '紀錄頁只放入口，不直接列稱號'); ok(J.$('.rkbtn').innerText.includes('2 / '), '入口寫已拿到 2 個');
+  await J.click('.rkbtn'); const rk = J.$$('.dive .rk');
   eq(rk.length, J.ev('RANKS.length'), '每個稱號都列出來');
   ok(rk.every(e => e.querySelector('p').innerText.trim().length > 10), '每個稱號都有介紹');
   eq(J.$$('.rk.got').length, 1, 'Lv.3：浮潛客已拿到'); ok(J.$('.rk.cur').innerText.includes('體驗潛水員'), 'Lv.3：現在是體驗潛水員');
-  eq(J.$$('.rk.lock').length, rk.length - 2, '其他還鎖著'); ok(J.$('.rkbtn').innerText.includes('2 / '), '按鈕寫已拿到 2 個');
-  J.check('稱號一覽'); await J.click('[data-act=ranks]'); ok(!J.$('.ranks'), '再按一次收起來'); J.destroy();
+  eq(J.$$('.rk.lock').length, rk.length - 2, '其他還鎖著'); ok(J.$('.rk.cur').innerText.includes('再 '), '現在的稱號下面寫還差多少 XP');
+  J.check('稱號頁'); await J.click('[data-act=logview][data-v=""]'); ok(J.$('.rkbtn') && !J.$('.dive'), '返回紀錄頁');
+  await J.click('.rkbtn'); await J.tab('today'); await J.tab('log'); ok(!J.$('.dive'), '切到別的分頁再回來，回到紀錄頁本身'); J.destroy();
   const K = await boot({ state: mkState({ logs: [W0, coinLog(0), { id: 'p1', t: 9, d: D0, k: 'plan', key: 'plan:' + D0, xp: 100000, c: 15, pend: true }] }) });
-  await K.dismiss(); await K.tab('quest'); await K.click('.qall'); ok(K.has('Lv.'), '超大等級彈窗有顯示'); K.check('升級彈窗'); await K.dismiss();
+  await K.dismiss(); await K.tab('quest'); await K.click('.qall'); ok(K.has('Lv.'), '超大等級彈窗有顯示'); K.check('升級彈窗');
+  await K.click('[data-act=seeranks]'); await K.dismiss(); ok(K.$('.dive') && K.$('#nav .sel').innerText.includes('紀錄'), '升級彈窗的「看所有稱號」打開稱號頁');
+  ok(K.$('.rk.cur').innerText.includes('海洋傳說') && !K.$('.rk.lock') && !K.$('.rk.cur .bar'), '最高稱號：全部拿到、沒有下一級的進度條');
   for (const t of ['today', 'quest', 'tank', 'shop', 'log', 'about']) { await K.tab(t); K.check('Lv.' + K.ev('levelOf(derive().xp)') + ' ' + t); }
   K.destroy(); I.destroy();
 });

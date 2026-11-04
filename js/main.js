@@ -21,7 +21,7 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const v = b.dataset.v;
   switch (b.dataset.act) {
-    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.tankView = ''; UI.swap = null; UI.tab = v; render(); window.scrollTo(0, 0); break;
+    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.tankView = ''; UI.logView = ''; UI.swap = null; UI.tab = v; render(); window.scrollTo(0, 0); break;
     case 'pday': UI.pday = +v; UI.swap = null; UI.showRows = 0; render(); break;
     case 'prowdel': {   // 刪掉後面的往上補，最後補一個空格
       const P = getPlan(viewDay()); P.splice(+v, 1); P.push({ text: '', cat: 'other', done: false, rw: false });
@@ -125,7 +125,8 @@ document.addEventListener('click', async e => {
       S.mute = !S.mute; save(); render();
       if (!S.mute) { ac(); SFX.tap(); }
       toast(S.mute ? '音效已關閉' : '音效已開啟'); break;
-    case 'ranks': UI.ranks = !UI.ranks; render(); break;
+    case 'logview': UI.logView = v; render(); window.scrollTo(0, 0); break;
+    case 'seeranks': UI.opened = false; UI.tankEdit = false; UI.tankView = ''; UI.tab = 'log'; UI.logView = 'ranks'; render(); window.scrollTo(0, 0); nextChest(); break;
     case 'chestpool':UI.chestOpen = UI.chestOpen === v ? '' : v; render(); break;
     case 'fact': UI.sheet = { creature: v }; renderSheet(); break;
     case 'pdone': {

@@ -210,7 +210,7 @@ function nextChest() {
   if (it.level !== undefined) {
     m.innerHTML = `<div class="label">LEVEL UP</div><div class="big-lv pop" style="margin:10px 0"><span>Lv.</span>${it.level}</div>
       ${it.title ? `<h2>取得稱號：${it.title}</h2><p class="dim">${RANKS[rankIdx(it.level)][3]}</p>` :`<p class="dim">${RANKS[rankIdx(it.level)][1]}</p>`}
-      <button class="pri" data-act="close">繼續</button>`;
+      <button class="pri" data-act="close">繼續</button>${it.title ? '<button class="ghost" data-act="seeranks">看所有稱號</button>' : ''}`;
     SFX.rank(); return;
   }
   // 新手的小丑魚直接出現，不用開箱

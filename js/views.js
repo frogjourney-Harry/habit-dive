@@ -746,7 +746,25 @@ function entryText(r) {
   return body;
 }
 
+// 稱號頁：從水面一路往下潛，越深的稱號越後面
+const RANK_DEPTH = ['水面', '12 m', '18 m', '30 m', '', '', '', '40 m+', '', ''];
+function ranks(D) {
+  const lv = levelOf(D.xp), ri = rankIdx(lv), nxt = RANKS[ri + 1];
+  const pct = nxt ? Math.max(0, Math.min(100, (D.xp - xpFor(RANKS[ri][0])) / (xpFor(nxt[0]) - xpFor(RANKS[ri][0])) * 100)) : 100;
+  return `<section class="px">${sh('潛水稱號', 'RANKS', `<span class="dim">${ri + 1} / ${RANKS.length}</span><button data-act="logview" data-v="">返回紀錄</button>`)}
+    <div class="mini">稱號照著真實的潛水證照（PADI）一路往下潛，升到指定等級就換一個。深度是那一級能潛到的範圍。</div>
+    <div class="dive">${RANKS.map(([at, name, en, desc], i) => {
+      const st = i < ri ? 'got' : i === ri ? 'cur' : 'lock';
+      return `<div class="rk ${st}" style="--d:${i / (RANKS.length - 1)}">
+        <div class="rkd">${RANK_DEPTH[i] || ''}</div><i class="rkn"></i>
+        <div class="sp"><div class="rkt"><b>${i > ri ? '🔒 ' : ''}${name}</b><small class="en">${en}</small>${st === 'cur' ? '<em>你在這裡</em>' : ''}</div>
+          <div class="rklv">Lv.${at}・${xpFor(at)} XP</div><p>${desc}</p>
+          ${st === 'cur' && nxt ? `<div class="bar"><i style="width:${pct}%"></i></div><div class="mini">再 ${xpFor(nxt[0]) - D.xp} XP 成為「${nxt[1]}」</div>` : ''}</div></div>`;
+    }).join('')}</div></section>`;
+}
+
 function log(D) {
+  if (UI.logView === 'ranks') return ranks(D);
   const lv = levelOf(D.xp), ri = rankIdx(lv), nxt = RANKS[ri + 1], lo = xpFor(lv), hi = xpFor(lv + 1);
   const td = dayKey(), H = activeHabits();
   // 「有打卡的日子」＝當天有完成任何事：習慣打卡、六件事打勾、寫好清單、完成一段番茄鐘
@@ -770,10 +788,7 @@ function log(D) {
     <div class="bar"><i style="width:${Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100))}%"></i></div>
     <div class="mini">升到 Lv.${lv + 1} 還差 ${hi - D.xp} XP${nxt ? `・Lv.${nxt[0]} 成為「${nxt[1]}」` : ''}</div>
     <div class="mini xphow" data-act="tab" data-v="quest">經驗值靠完成任務拿，每項寫在「任務」頁 ›</div>
-    <button class="ghost rkbtn" data-act="ranks" aria-expanded="${!!UI.ranks}">所有稱號・已拿到 ${ri + 1} / ${RANKS.length} ${UI.ranks ? '▴' : '▾'}</button>
-    ${UI.ranks ? `<div class="ranks"><p class="mini">稱號照著真實潛水證照一路往上升，每升到指定等級就換一個。</p>${RANKS.map(([at, name, en, desc], i) =>
-      `<div class="rk ${i < ri ? 'got' : i === ri ? 'cur' : 'lock'}"><div class="rklv">Lv.${at}<small>${xpFor(at)} XP</small></div>
-        <div class="sp"><b>${i > ri ? '🔒 ' : ''}${name}</b><small class="en">${en}</small>${i === ri ? '<em>現在</em>' : ''}<p>${desc}</p></div></div>`).join('')}</div>` : ''}</section>
+    <button class="ghost rkbtn" data-act="logview" data-v="ranks">所有稱號・已拿到 ${ri + 1} / ${RANKS.length} ›</button></section>
   <section class="px">${sh('打卡紀錄', 'ACTIVITY')}
     <div class="streakbox"><div><small>目前連續</small><b>${curRun}</b><small>天</small></div>
       <div><small>最長連續</small><b>${best}</b><small>天</small></div><div><small>總共打卡</small><b>${allDays.length}</b><small>天</small></div></div></section>
