@@ -9,13 +9,13 @@ test('兩個分頁同時開：一邊改了另一邊不能蓋掉', async () => {
   await A.plan(['A 分頁寫的', '二', '三']); await A.tick(0);
   ok(A.S.plans[D0] && A.S.plans[D0][0].text === 'A 分頁寫的', 'A 有寫進去');
   // B 是舊的畫面：現在在 B 打卡一個習慣
-  await B.tab('today'); await B.click(['#habits .hab', 'Vocus']); await B.type('#artTitle', 'B 分頁的文章'); await B.click('[data-act=artadd]'); await flush(4);
+  await B.tab('today'); await B.click(['#habits .hab', '運動']); await B.type('#ex_min', '30'); await B.click('[data-act=exadd]'); await flush(4);
   const st = A.stored();
   ok(st.plans[D0] && st.plans[D0][0].text === 'A 分頁寫的', 'A 寫的六件事被 B 蓋掉了');
   ok(st.logs.some(l => l.k === 'check'), 'A 打勾的獎勵被 B 蓋掉了');
-  ok(st.checks[D0] && st.checks[D0].vocus, 'B 的文章也要在');
+  ok(st.checks[D0] && st.checks[D0].exercise, 'B 的運動也要在');
   await flush(6);
-  ok(A.has('B 分頁的文章') || A.ev("S.checks['" + D0 + "'] && S.checks['" + D0 + "'].vocus.length") === 1, 'A 要看到 B 的改動');
+  ok(A.ev("S.checks['" + D0 + "'] && S.checks['" + D0 + "'].exercise.length") === 1, 'A 要看到 B 的改動');
   A.check('分頁 A'); B.check('分頁 B'); A.destroy(); B.destroy();
 });
 
@@ -32,7 +32,7 @@ test('儲存被封鎖（無痕模式）或滿了：還能用，而且要告訴�
   }
 });
 
-test('舊版資料（v1～v6）都能開，數字沒壞', async () => {
+test('舊版資料（v1～v7）都能開，數字沒壞', async () => {
   const fixtures = {
     v1: { logs: [{ id: 'a', t: 1, d: '2026-09-01', k: 'check', tag: '💻', xp: 10, c: 10 }], plans: { '2026-09-01': [{ text: '寫程式', line: '💻', time: '09:00', dur: 30, done: true }, { text: '', line: '📌' }] } },
     v3: { v: 3, logs: [{ k: 'welcome', key: 'welcome', c: 0, xp: 0, d: '2026-09-01' }], habits: [{ id: 'vocus', e: '✍️', n: 'Vocus', kind: 'vocus', weeks: 1, target: 2 }, { id: 'plan', e: '📝', n: '六件事', kind: 'plan', weeks: 0, target: 1 }, { id: 'exercise', e: '🏃', n: '運動', kind: 'exercise', weeks: 1, target: 3 }], plans: { '2026-09-02': [{ text: '跑步', cat: 'exercise', done: true, ex: { type: '跑步', dist: 5, min: 30 } }, { text: '文章', cat: 'vocus', done: true, pub: { on: true, title: 'T' } }] } },
@@ -42,7 +42,7 @@ test('舊版資料（v1～v6）都能開，數字沒壞', async () => {
   };
   for (const [name, st] of Object.entries(fixtures)) {
     const I = await boot({ state: st }); await I.dismiss();
-    ok(I.S.v === 7, `${name} 升級到 v7`);
+    ok(I.S.v === 8, `${name} 升級到 v8`);
     ok(Number.isFinite(I.coins()) && Number.isFinite(I.xp()), `${name} 金幣和 XP 是有效的數字`);
     for (const t of ['today', 'quest', 'tank', 'shop', 'log', 'about']) { await I.tab(t); I.check(`${name}/${t}`); }
     if (name === 'v5') { eq(I.coins(), 10 - 40 < 0 ? I.coins() : 0, 'v5 舊制度金幣'); ok(!I.S.logs.some(l => l.drop && l.k !== 'chest' && l.k !== 'welcome'), 'v5：舊制度送的生物被收回'); ok(I.S.logs.some(l => l.drop === 'turtle'), 'v5：買的寶箱生物保留'); }

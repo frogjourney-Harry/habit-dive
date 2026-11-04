@@ -7,7 +7,6 @@ const BONUS = {
   welcome: '歡迎下水！送你一隻小丑魚',
   login: '今天的登入獎勵',
   top3: '前三件事都完成了！',
-  pubchest: '今天發布了文章！',
   period: '習慣達標！',
   weekly: '本週運動達標！',
 };
@@ -99,9 +98,8 @@ function reconcile(allowGrant) {
     ['anyhab:' + d, 'anyhab', activeHabits().some(h => dayChecks(d, h.id).length > 0), '今天完成了一個習慣！']];
   for (const h of activeHabits()) {
     const has = dayChecks(d, h.id).length > 0;
-    if (h.kind === 'vocus') conds.push(['art:' + d, 'pubchest', has]);
-    else conds.push([`hab:${h.id}:${d}`, 'habit', has, `${h.n} 打卡完成！`, h.kind === 'exercise' ? CONFIG.xp.exercise : CONFIG.xp.habit]);
-    if (h.weeks && h.kind !== 'vocus') {
+    conds.push([`hab:${h.id}:${d}`, 'habit', has, `${h.n} 打卡完成！`, h.kind === 'exercise' ? CONFIG.xp.exercise : CONFIG.xp.habit]);
+    if (h.weeks) {
       const p = periodKey(d, h.weeks);
       conds.push([h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`, 'period',
         periodDone(derive(), h, p), `${h.n} ${periodWord(h)}達標！`]);

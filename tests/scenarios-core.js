@@ -2,21 +2,19 @@
 const rewardLogs = I => I.S.logs.filter(l => l.k === 'check');
 async function startToday(o = {}) { const I = await boot({ state: mkState(o.state), ...o }); await I.dismiss(); return I; }
 
-test('全新使用者：歡迎彈窗、60 金幣、Vocus 節奏設定', async () => {
+test('全新使用者：歡迎彈窗、60 金幣、沒有 Vocus 習慣', async () => {
   const I = await boot({ seed: {} });
   ok(!I.$('#ov').classList.contains('hidden'), '第一次進來應該跳出歡迎彈窗');
   ok(I.has('小丑魚'), '歡迎彈窗要寫小丑魚');
   I.check('剛進來');
   await I.dismiss();
   eq(I.coins(), 60, '歡迎禮物 60 金幣');
-  ok(I.has('Vocus 發文節奏'), '第一次要出現 Vocus 節奏設定');
-  await I.type('#vW', '2'); await I.type('#vT', '3'); await I.click('[data-act=vcfg]');
-  const V = I.S.habits.find(h => h.id === 'vocus'); eq([V.weeks, V.target], [2, 3], 'Vocus 設定存進去');
-  ok(!I.has('Vocus 發文節奏'), '設定完節奏卡片要消失');
+  ok(!I.has('Vocus') && !I.has('發文節奏'), '不會問 Vocus 發文節奏');
+  eq(I.S.habits.map(h => h.id), ['exercise'], '內建習慣只有運動');
   const I2 = await I.reload(); await I2.dismiss();
   eq(I2.coins(), 60, '重開後金幣還是 60（不會再送一次歡迎禮物）');
   eq(I2.S.logs.filter(l => l.k === 'welcome').length, 1, '歡迎禮物只有一筆');
-  ok(!I2.has('Vocus 發文節奏'), '重開後不會再問節奏');
+  ok(!I2.has('Vocus'), '重開後也沒有 Vocus');
   I2.check('重開'); I2.destroy();
 });
 
@@ -28,8 +26,8 @@ test('每日流程：寫清單→打勾→習慣→領取，金額對得上', as
   for (let i = 0; i < 3; i++) await I.tick(i);
   eq(rewardLogs(I).length, 3, '前三件各一份獎勵');
   ok(I.S.logs.some(l => l.key === 'top3:' + D0), '三件都完成要有 top3 獎勵');
-  await I.habit('Vocus'); await I.type('#artTitle', '我的第一篇'); await I.click('[data-act=artadd]'); await I.click('#sheet [data-act=sheetclose]');
-  ok(I.S.logs.some(l => l.key === 'art:' + D0), 'Vocus 發文有獎勵');
+  await I.habit('運動'); await I.type('#ex_min', '30'); await I.click('[data-act=exadd]'); await I.click('#sheet [data-act=sheetclose]');
+  ok(I.S.logs.some(l => l.key === 'hab:exercise:' + D0), '運動打卡有獎勵');
   ok(I.S.logs.some(l => l.key === 'anyhab:' + D0), '任一習慣要有獎勵');
   const before = I.coins(), pendC = I.S.logs.filter(l => l.pend).reduce((a, l) => a + l.c, 0), pendXp = I.S.logs.filter(l => l.pend).reduce((a, l) => a + l.xp, 0), x0 = I.xp();
   eq(before, 60, '領之前金幣不變');
@@ -39,7 +37,7 @@ test('每日流程：寫清單→打勾→習慣→領取，金額對得上', as
   eq(I.pendCount(), 0, '領完沒有待領取');
   ok(!I.$('#nav .badge'), '領完分頁數字消失');
   ok(!I.$('.qall'), '領完「全部領取」消失');
-  const done = I.$$('.qc.got').length; ok(done >= 5, '已完成的任務要顯示已完成：' + done);
+  const done = I.$$('.qc.got').length; ok(done >= 4, '已完成的任務要顯示已完成：' + done);
   I.check('流程結束'); I.destroy();
 });
 
@@ -142,17 +140,26 @@ test('運動每週 3 天：達標獎勵、取消收回、換週歸零', async ()
   I.check('換週'); I.destroy();
 });
 
-test('Vocus：一天多篇、篇數累計、週期達標沒有額外獎勵', async () => {
-  const I = await startToday({ state: { habits: undefined } });
-  await I.habit('Vocus');
-  for (const t of ['第一篇', '', '<b>第三篇</b>']) { await I.type('#artTitle', t); await I.click('[data-act=artadd]'); }
-  eq(I.S.checks[D0].vocus.length, 3, '一天可以記三篇');
-  eq(I.S.logs.filter(l => l.key === 'art:' + D0).length, 1, '當天發文獎勵只有一份');
-  ok(I.has('（無標題）') && I.has('<b>第三篇</b>'), '標題要原樣顯示（沒標題顯示無標題，HTML 要被跳脫）');
-  ok(!I.$('#sheet .entry b'), '標題裡的 HTML 不能被當成標籤執行');
-  await I.click('#sheet [data-act=sheetclose]'); await I.tab('log');
-  ok(I.has('3') , '紀錄頁看得到篇數');
-  I.check('Vocus'); I.destroy();
+test('舊存檔的 Vocus 習慣：設定過或打過卡的改成一般習慣，預設帶的直接移除', async () => {
+  const V = { id: 'vocus', e: '✍️', n: 'Vocus', kind: 'vocus', weeks: 1, target: 2 }, EXH = { id: 'exercise', e: '🏃', n: '運動', kind: 'exercise', weeks: 1, target: 3 };
+  // 用過的：今天發過文、獎勵還沒領，前一天也有一篇；本週請過假
+  const I = await boot({ state: mkState({ v: 7, vocusSet: true, habits: [V, EXH], checks: { [D0]: { vocus: [{ t: 1, title: 'a' }, { t: 2 }] }, '2026-11-01': { vocus: [{ t: 1 }] } },
+    logs: [mkState().logs[0], { id: 'p1', t: 1, d: D0, k: 'pubchest', key: 'art:' + D0, xp: 30, c: 30, pend: true }, { id: 'p2', t: 1, d: '2026-11-01', k: 'pubchest', key: 'art:2026-11-01', xp: 30, c: 30 }] }) }); await I.dismiss();
+  const h = I.S.habits.find(x => x.id === 'vocus');
+  eq([h.kind, h.unit, h.weeks, h.target, h.n], ['custom', '篇', 1, 2, 'Vocus'], '改成一般習慣，名稱和節奏照舊，單位是篇');
+  ok(!('vocusSet' in I.S), '舊的設定旗標拿掉'); eq(I.S.v, 8, '存檔版本 8');
+  ok(!I.S.logs.some(l => l.k === 'pubchest' || /^art:/.test(l.key || '')), '舊的發文獎勵紀錄改成一般習慣的格式');
+  eq(I.S.logs.filter(l => l.key === 'hab:vocus:' + D0).length, 1, '今天的打卡獎勵沒有重複發');
+  eq(I.coins(), 60 + 30, '已入帳的金幣不變（昨天那份），今天的還待領');
+  eq(I.S.checks[D0].vocus.length, 2, '打卡紀錄原樣保留');
+  await I.tab('today'); ok(I.has('本週 1/2 篇'), '週期改算天數（今天兩篇算一天）：' + I.$('#habits').innerText.replace(/\s+/g, ' '));
+  await I.habit('Vocus'); ok(I.$('#sheet [data-act=chk]') && !I.$('#artTitle'), '面板是一般的打卡按鈕，沒有文章標題欄');
+  await I.click('#sheet [data-act=sheetclose]'); await I.tab('log'); ok(!I.has('篇文章'), '紀錄頁不再有「篇文章」的統計');
+  I.check('轉換後'); I.destroy();
+  // 預設帶的（沒設定節奏、沒打過卡）：直接移除，不再出現發文節奏的問題
+  const J = await boot({ state: mkState({ v: 7, vocusSet: false, habits: [V, EXH] }) }); await J.dismiss();
+  eq(J.S.habits.map(x => x.id), ['exercise'], '預設的 Vocus 習慣被移除'); await J.tab('today'); ok(!J.has('Vocus') && !J.has('發文節奏'), '畫面上沒有 Vocus');
+  J.check('移除後'); J.destroy();
 });
 
 test('習慣新增、刪除、頻率、上限、空白名稱', async () => {
@@ -160,12 +167,12 @@ test('習慣新增、刪除、頻率、上限、空白名稱', async () => {
   await I.click('#habits [data-act=habedit]');
   for (let i = 0; i < 3; i++) await I.click('[data-act=habadd]');
   ok(I.$('[data-act=habadd]').disabled, '自訂習慣滿 3 個要停用新增按鈕');
-  const names = I.$$('[data-hf=n]'); eq(names.length >= 5, true, '編輯畫面有 5 個習慣');
+  const names = I.$$('[data-hf=n]'); eq(names.length >= 4, true, '編輯畫面有 4 個習慣');
   await I.type(names[names.length - 3], '看書'); await I.type(names[names.length - 2], '<img src=x onerror=window.__xss=1>');
   await I.type(names[names.length - 1], '   ');
   await I.click('[data-act=habdone]');
   const act = I.S.habits.filter(h => !h.off).map(h => h.n);
-  ok(act.includes('看書'), '新習慣有加入'); ok(!act.includes('   ') && act.length === 4, '空白名稱的習慣要被拿掉：' + act.join('|'));
+  ok(act.includes('看書'), '新習慣有加入'); ok(!act.includes('   ') && act.length === 3, '空白名稱的習慣要被拿掉：' + act.join('|'));
   ok(!I.win.__xss, 'XSS：習慣名稱不能執行程式');
   ok(I.$$('#habits img').length === 0, '習慣名稱裡的 HTML 不能變成元素');
   await I.click(['#habits .hab', '看書']); await I.click('[data-act=chk]'); await I.dismiss();
@@ -411,7 +418,7 @@ test('請假：每月額度、取消、打卡後自動恢復額度、月份分�
   ok(/已經完成/.test(tog(t)), '已經打卡的那天不能請假');
   // 沒有的習慣、每週型的習慣都不能請假
   eq(I.ev("toggleLeave('nope', '2026-11-02')"), '', '不存在的習慣');
-  ok(/請假/.test(I.ev("toggleLeave('exercise', '2026-11-02')")), '每週型的習慣（運動）也能請假'); ok(/請假/.test(I.ev("toggleLeave('vocus', '2026-11-02')")), 'Vocus 也能請假');
+  ok(/請假/.test(I.ev("toggleLeave('exercise', '2026-11-02')")), '每週型的習慣（運動）也能請假');
   I.ev('save()'); I.check('請假額度'); I.destroy();
 });
 
@@ -434,15 +441,15 @@ test('請假：畫面操作、重開還在、壞資料不當掉', async () => {
   J.destroy(); I.destroy();
 });
 
-test('請假：運動、Vocus（每週型）請假那一週不算斷，沒有獎勵', async () => {
-  const I = await startToday();
+test('請假：運動、寫作（每週型）請假那一週不算斷，沒有獎勵', async () => {
+  const I = await boot({ state: mkState({ habits: [{ id: 'exercise', e: '🏃', n: '運動', kind: 'exercise', weeks: 1, target: 3 }, { id: 'write', e: '📝', n: '寫作', kind: 'custom', unit: '篇', weeks: 1, target: 1 }] }) }); await I.dismiss();
   // 上上週、上上上週都達標；上週（10/26–11/1）什麼都沒做
-  I.ev("[-14, -13, -12, -21, -20, -19].forEach(d => addCheck(addDays(dayKey(), d), 'exercise', {})); [-13, -20].forEach(d => addCheck(addDays(dayKey(), d), 'vocus', { title: 'x' })); save(); render()");
+  I.ev("[-14, -13, -12, -21, -20, -19].forEach(d => addCheck(addDays(dayKey(), d), 'exercise', {})); [-13, -20].forEach(d => addCheck(addDays(dayKey(), d), 'write', {})); save(); render()");
   const st = id => I.ev(`streaks(derive()).${id}.n`);
-  eq(st('exercise'), 0, '運動：上週沒達標 → 斷了（沒請假的對照）'); eq(st('vocus'), 0, 'Vocus：同上');
+  eq(st('exercise'), 0, '運動：上週沒達標 → 斷了（沒請假的對照）'); eq(st('write'), 0, '寫作：同上');
   eq(I.ev("toggleLeave('exercise', addDays(dayKey(), -1))") !== '', true, '上週日請假');
-  I.ev("toggleLeave('vocus', addDays(dayKey(), -1))");
-  eq(st('exercise'), 2, '運動：請假的那週不算斷，前面兩週接得上（不加天數）'); eq(st('vocus'), 2, 'Vocus：同上');
+  I.ev("toggleLeave('write', addDays(dayKey(), -1))");
+  eq(st('exercise'), 2, '運動：請假的那週不算斷，前面兩週接得上（不加天數）'); eq(st('write'), 2, '寫作：同上');
   // 畫面：運動面板是「本週請假」（每月 1 次）、卡片顯示請假；請假沒有獎勵
   await I.tab('today'); await I.click(['#habits .hab', '運動']);
   ok(I.has('本週請假（本月還剩 1 次）'), '運動面板有「本週請假」，每月 1 次（上週的請假算在 10 月）');
@@ -450,7 +457,7 @@ test('請假：運動、Vocus（每週型）請假那一週不算斷，沒有獎
   ok(I.$$('#habits .hab.leave').some(e => e.innerText.includes('請假')), '運動卡片顯示請假');
   ok(!I.S.logs.some(l => /exercise|week:|per:/.test(l.key || '')), '請假沒有獎勵');
   ok(/用完/.test(I.ev("toggleLeave('exercise', addDays(dayKey(), 7))")), '這個月 1 次用完了，下週不能再請');
-  await I.click(['#habits .hab', 'Vocus']); ok(I.has('本週請假（本月還剩 1 次）'), 'Vocus 面板也有，額度是 Vocus 自己的');
+  await I.click(['#habits .hab', '寫作']); ok(I.has('本週請假（本月還剩 1 次）'), '寫作面板也有，額度是寫作自己的');
   ok(!I.has('請假的那天不算漏'), '沒有冗長的說明文字');
   await I.click('[data-act=sheetclose]');
   // 請假的那一週記錄了運動，只要沒達標，請假還在；達標了就用不到、額度還回來
@@ -459,6 +466,6 @@ test('請假：運動、Vocus（每週型）請假那一週不算斷，沒有獎
   I.ev("habit('exercise').target = 1; save(); render()"); await I.click('[data-act=sheetclose]').catch(() => {});
   eq(I.ev("leaveLeft('exercise', dayKey())"), 1, '這週達標了：請假用不到，額度還回來');
 
-  I.ev("addCheck(dayKey(), 'vocus', { title: 'y' })"); ok(/已經達標/.test(I.ev("toggleLeave('vocus', dayKey())")), '這週已經發文達標：不用請假');
+  I.ev("addCheck(dayKey(), 'write', {})"); ok(/已經達標/.test(I.ev("toggleLeave('write', dayKey())")), '這週已經寫作達標：不用請假');
   I.ev('save()'); I.check('每週型請假'); I.destroy();
 });

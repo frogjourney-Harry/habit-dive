@@ -252,7 +252,7 @@ test('運動紀錄：各種運動、怪數字、補登昨天', async () => {
 test('連勝：每天習慣漏一天不斷、連漏兩天歸零；每週習慣漏一週就斷', async () => {
   const mk = days => Object.fromEntries(days.map(d => [d, { h1: [{ t: 1 }] }]));
   const hab = { id: 'h1', n: '看書', kind: 'custom', weeks: 0, target: 1 };
-  const streakOf = async checks => { const I = await boot({ state: mkState({ habits: [{ id: 'vocus', n: 'Vocus', kind: 'vocus', weeks: 1, target: 1 }, { id: 'exercise', n: '運動', kind: 'exercise', weeks: 1, target: 3 }, hab], checks }) }); await I.dismiss(); const s = I.ev('streaks(derive()).h1'); I.destroy(); return s; };
+  const streakOf = async checks => { const I = await boot({ state: mkState({ habits: [{ id: 'exercise', n: '運動', kind: 'exercise', weeks: 1, target: 3 }, hab], checks }) }); await I.dismiss(); const s = I.ev('streaks(derive()).h1'); I.destroy(); return s; };
   eq((await streakOf(mk(['2026-11-02', '2026-11-01', '2026-10-31']))).n, 3, '連續 3 天');
   eq((await streakOf(mk(['2026-11-02', '2026-10-31', '2026-10-30']))).n, 3, '中間漏一天不算斷（3 天）');
   eq((await streakOf(mk(['2026-11-02', '2026-10-30', '2026-10-29']))).n, 1, '連漏兩天就斷：只剩今天');
@@ -373,7 +373,7 @@ test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不�
     const bar = I.$('.seabar').getBoundingClientRect(), navTop = fixed ? nav.getBoundingClientRect().top : h;
     ok(bar.left <= 0.5 && bar.right >= w - 0.5 && Math.abs(bar.bottom - navTop) < 1, `${w}px：工具列橫跨整個寬度、貼在${fixed ? '分頁列上面' : '畫面最底下'}（${bar.left | 0}–${bar.right | 0}，底 ${bar.bottom | 0}／${navTop | 0}）`);
     ok(I.win.getComputedStyle(I.$('.seabar')).backgroundColor.match(/[\d.]+/g).length === 3 || +I.win.getComputedStyle(I.$('.seabar')).backgroundColor.match(/[\d.]+/g)[3] === 1, `${w}px：工具列不透明`);
-    ok(bar.height <= 56, `${w}px：工具列只有一行（${bar.height | 0}px）`);
+    ok(bar.height <= (w < 600 ? 76 : 56), `${w}px：工具列${w < 600 ? '是按鈕一行加說明一行' : '只有一行'}（${bar.height | 0}px）`);
     const H = I.ev('TANK.H'), fy = I.ev('TANK.floorY'), sandTop = fy * r.height / H, floorLine = bar.top;
     ok(floorLine - sandTop >= 40 && floorLine - sandTop <= 56, `${w}px：沙地在工具列上面看得到（沙地 ${sandTop | 0}，${floorLine | 0}）`);
     ok(I.ev('TANK.fish').filter(f => f.ground).every(f => Math.abs(f.y + f.h - 2 - fy) < 1), `${w}px：寄居蟹、海星站在沙地上`);
@@ -384,7 +384,8 @@ test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不�
       ok(b.left >= col.left - 1 && b.right <= col.right + 1 && b.top >= bar.top && b.bottom <= bar.bottom, `${w}px：${s} 在工具列裡、對齊內容欄`);
       if (s !== '#feedInfo') ok(!I.blocked(I.$(s)), `${w}px：工具列的按鈕點得到：${s}`);
     }
-    ok(!I.$$('.seahud').some(e => e !== I.$('.seabar') && !e.classList.contains('hint')), `${w}px：海裡沒有其他浮著的按鈕`);
+    ok(!I.$$('.seahud').some(e => e !== I.$('.seabar')), `${w}px：海裡沒有其他浮著的按鈕`);
+    { const tip = I.$('.seabar .feedtip'); ok(tip && tip.textContent.includes('撒飼料') && tip.offsetWidth > 0 && I.win.getComputedStyle(tip).opacity === '1', `${w}px：撒飼料的說明常駐在飼料旁邊`); }
     await I.tab('today'); ok(I.vis(I.$('.foot')) && !I.doc.body.classList.contains('sea-on') && !I.$('#tank'), `${w}px：離開大海頁面恢復`);
     await I.tab('tank'); await I.click('[data-act=tankview][data-v=dex]'); ok(!I.doc.body.classList.contains('sea-on'), `${w}px：圖鑑是一般頁面`);
     I.check('全屏 ' + w); I.destroy();

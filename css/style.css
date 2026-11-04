@@ -187,11 +187,6 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .sea .tank{position:absolute;top:0;left:0;width:100%;height:100%}
 .seahud{position:absolute;display:flex;align-items:center;gap:8px;pointer-events:none}
 .seahud > *{pointer-events:auto}
-/* 操作說明：頂端列下面置中，4 秒後自己淡掉 */
-.seahud.hint{justify-content:center}
-.seahud.hint small{color:var(--dim);pointer-events:none;background:rgba(9,30,58,.7);padding:3px 10px}
-.seahud.hint.fade{animation:seafade .8s 4s forwards}
-@keyframes seafade{to{opacity:0;visibility:hidden}}
 /* 海底工具列：不透明、橫跨整個寬度，貼在手機分頁列上面（電腦上在畫面最底下）；海和沙地停在它上面。字放很大擠不下時換行 */
 .seahud.seabar{left:0;right:0;flex-wrap:wrap;row-gap:8px;column-gap:6px;padding-top:8px;padding-bottom:8px;background:var(--panel);box-shadow:0 -2px 0 var(--edge)}
 .seabar #feedInfo{display:flex;align-items:center;gap:6px;min-width:0}
@@ -199,6 +194,9 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 .seabar .fnum{display:flex;flex-direction:column;line-height:1.15;min-width:0}
 .seabar #feedInfo b{font-size:17px}
 .seabar #feedInfo small{color:var(--dim);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 操作說明常駐在飼料旁邊；手機上同一行放不下，改放在飼料下面一行（按鈕靠右） */
+.seabar .feedtip{flex:1 1 0;min-width:0;color:var(--dim);font-size:11px;line-height:1.3}
+@media (max-width:599px){ .seabar .feedtip{order:1;flex:0 0 100%} .seabar .feedbuy{margin-left:auto} }
 .seabar button{margin:0;padding:5px 8px;font-size:14px;white-space:nowrap;background:rgba(47,98,153,.3);box-shadow:0 -2px 0 var(--edge-hi),0 2px 0 var(--edge-hi),-2px 0 0 var(--edge-hi),2px 0 0 var(--edge-hi)}
 .seabar button.feedbuy{display:flex;align-items:center;gap:6px}
 .feedbuy .price{color:var(--coin);font-weight:bold}

@@ -63,7 +63,9 @@ function migrate(s) {
   }
   if (!s.habits) {
     s.habits = DEFAULT_HABITS.map(h => ({ ...h }));
-    if (s.vcfg) { Object.assign(s.habits.find(h => h.id === 'vocus'), { weeks: s.vcfg.weeks, target: s.vcfg.target }); s.vocusSet = true; }
+    // 很舊的存檔有寫文章的紀錄（設定過發文節奏、或六件事用了寫文章的分類）：保留成一般習慣，單位是「篇」
+    if (s.vcfg || (old && Object.values(s.plans).some(P => P.some(it => it.cat === 'vocus'))))
+      s.habits.unshift({ id: 'vocus', e: '✍️', n: 'Vocus', kind: 'custom', unit: '篇', weeks: s.vcfg ? s.vcfg.weeks : 1, target: s.vcfg ? s.vcfg.target : 1 });
     if (old && (s.logs.length > 1 || Object.keys(s.plans).length))
       s.habits.push({ id: 'wake', e: '☀️', n: '早起', kind: 'custom', weeks: 0, target: 1 },
                     { id: 'research', e: '💻', n: '研究', kind: 'custom', weeks: 0, target: 1 });
@@ -75,13 +77,12 @@ function migrate(s) {
   for (const [d, P] of Object.entries(s.plans)) for (const it of P) {
     if (!s.habits.some(h => h.id === it.cat)) continue;   // 只處理用習慣當分類的項目
     if (it.done && (it.cat !== 'vocus' || (it.pub && it.pub.on))) {
-      const entry = it.cat === 'exercise' ? { ...(it.ex || {}), note: (it.ex && it.ex.note) || it.text || undefined }
-        : it.cat === 'vocus' ? { title: (it.pub && it.pub.title) || it.text || undefined } : {};
+      const entry = it.cat === 'exercise' ? { ...(it.ex || {}), note: (it.ex && it.ex.note) || it.text || undefined } : {};
       const c = s.checks[d] || (s.checks[d] = {});
       (c[it.cat] || (c[it.cat] = [])).push({ t: 0, ...entry });
       // 今天搬過來的不要再發一次打卡寶箱（當時打勾已經給過了）
       if (d === today) {
-        const key = it.cat === 'vocus' ? 'art:' + d : `hab:${it.cat}:${d}`;
+        const key = `hab:${it.cat}:${d}`;
         if (!s.logs.some(l => l.key === key)) s.logs.push({ id: rid(), t: 0, d, k: 'habit', key, xp: 0, c: 0 });
       }
     }
@@ -117,7 +118,25 @@ function migrate(s) {
   }
   // v7：新手禮物改成一隻小丑魚；已經玩過的（新手紀錄上沒有生物）補送
   if (s.v < 7) { const w = s.logs.find(l => l.k === 'welcome'); if (w && !w.drop) w.drop = 'clown'; }
-  s.v = 7;
+  // v8：拿掉內建的 Vocus 發文習慣。沒設定也沒打過卡的（預設帶的）直接移除；用過的改成一般習慣（單位「篇」），
+  // 打卡、請假、已領的獎勵都接著用（獎勵紀錄的 key 改成一般習慣的格式，今天不會重複發）
+  if (s.v < 8) {
+    const used = id => Object.values(s.checks).some(C => C[id]) || s.logs.some(l => l.k === 'article');
+    s.habits = s.habits.filter(h => h.kind !== 'vocus' || s.vocusSet || used(h.id));
+    for (const h of s.habits) if (h.kind === 'vocus') { h.kind = 'custom'; if (!h.unit) h.unit = '篇'; }
+    const fix = l => {
+      if (l.k === 'pubchest') l.k = 'habit';
+      if (typeof l.key === 'string' && l.key.startsWith('art:')) l.key = 'hab:vocus:' + l.key.slice(4);
+    };
+    for (const l of s.logs) {
+      fix(l);
+      // 最早的版本把發文記在 logs（k: 'article'）：補成那天的打卡
+      if (l.k === 'article' && l.d) { const c = s.checks[l.d] || (s.checks[l.d] = {}); if (!c.vocus) c.vocus = [{ t: 0 }]; l.k = 'habit'; }
+    }
+    if (s.held) for (const [k, l] of Object.entries(s.held)) if (k.startsWith('art:')) { delete s.held[k]; if (l && typeof l === 'object') { fix(l); s.held[l.key || 'hab:vocus:' + k.slice(4)] = l; } }
+    delete s.vocusSet;
+  }
+  s.v = 8;
   // 第一次打開的引導（選習慣、登入）：還沒用過的新存檔要做；用過的（有紀錄、打卡或寫過六件事）當作做過了
   if (typeof s.onb !== 'boolean') s.onb = s.logs.some(l => l.k !== 'welcome' && l.k !== 'login') || Object.keys(s.checks).length > 0 || Object.values(s.plans).some(P => P.some(x => x.text.trim()));
   // 從這天起每天型的習慣漏一天就斷（之前的舊規則是漏兩天才斷，已經有的連勝照舊算）
@@ -166,7 +185,7 @@ function carryEditDrafts(old) {
 // 存檔超過一定大小時，把「很久以前」的零碎獎勵紀錄合併成一天一筆、舊的六件事文字只留「那天有做事」。
 // 金幣、XP、番茄鐘次數與時數、打卡天數、習慣連勝都不會變；抽到的生物、買寶箱、兌換、習慣打卡紀錄（checks）原樣保留。
 const COMPACT_LIMIT = 400000, COMPACT_KEEP_DAYS = 60;
-const FOLD_KINDS = new Set(['check', 'habit', 'plan', 'top3', 'pubchest', 'period', 'weekly', 'anyhab', 'pomo', 'login']);
+const FOLD_KINDS = new Set(['check', 'habit', 'plan', 'top3', 'period', 'weekly', 'anyhab', 'pomo', 'login']);
 function compactIfLarge(s = S) {
   if (JSON.stringify(s).length < COMPACT_LIMIT) return false;
   // 以資料裡最新的日期為準（不是裝置現在的日期），裝置日期被調到很後面也不會把近期紀錄收掉
@@ -202,7 +221,7 @@ function catOf(id) {
 const catList = () => gcats();
 const placeholder = c => c.ph || `${c.n}：今天要做什麼？`;
 const periodWord = h => h.weeks === 1 ? '本週' : '這兩週';
-const countWord = h => h.unit || (h.kind === 'vocus' ? '篇' : '天');
+const countWord = h => h.unit || '天';
 
 // 習慣打卡紀錄：S.checks[日期][習慣 id] = [{ t, title?, type?, dist?, min?, note? }]
 const dayChecks = (d, id) => (S.checks[d] && S.checks[d][id]) || [];
@@ -218,7 +237,7 @@ function delCheck(d, id, i) {
 
 /* ========= 請假 ========= */
 // 每天型的習慣：每月可以請 leavePerMonth 天，那天不打卡也不算漏。S.leaves[習慣 id][日期] = 1
-// 每週／每兩週型（運動、Vocus）：「這一期請假」，每月 leavePerMonthWeekly 次，記在那一期的第一天；那一期沒達標也不算斷。
+// 每週／每兩週型（例如運動）：「這一期請假」，每月 leavePerMonthWeekly 次，記在那一期的第一天；那一期沒達標也不算斷。
 // 連勝照樣接下去（不加天數），請假沒有獎勵
 // 值：1＝自己請的、'a'＝漏掉時自動用掉的免費假、'f'＝自動用掉的連勝保護卡（不佔每月的免費假）
 const leavesOf = id => { const L = S.leaves && typeof S.leaves === 'object' && S.leaves[id]; return L && typeof L === 'object' ? L : {}; };
@@ -294,7 +313,7 @@ function toggleLeave(id, d) {
 /* ========= 狀態推導 ========= */
 // XP、金幣、圖鑑由 logs 算（待領取的獎勵 pend 要領了才算，當天沒領的隔天自動算進來）；習慣完成由卡片打卡（S.checks）算，加上舊版的六件事打勾與紀錄
 function derive() {
-  const D = { xp: 0, coins: 0, col: {}, days: {}, per: {}, articles: 0, claimed: new Set() };
+  const D = { xp: 0, coins: 0, col: {}, days: {}, per: {}, claimed: new Set() };
   const today = dayKey();
   const inc = (d, k, n = 1) => { const x = D.days[d] || (D.days[d] = {}); x[k] = (x[k] || 0) + n; };
   for (const l of S.logs) {
@@ -302,15 +321,13 @@ function derive() {
     if (l.drop) D.col[l.drop] = (D.col[l.drop] || 0) + 1;
     if (l.key) D.claimed.add(l.key);
     if (['wake', 'research', 'exercise'].includes(l.k) && !l.late) inc(l.d, l.k);
-    if (l.k === 'article') inc(l.d, 'vocus');
   }
   for (const [d, C] of Object.entries(S.checks)) for (const [id, arr] of Object.entries(C))
-    if (arr.length) inc(d, id, id === 'vocus' ? arr.length : 1);
-  for (const x of Object.values(D.days)) D.articles += x.vocus || 0;
-  // 週期型習慣：Vocus 算篇數，其他算「有做的天數」（一天做兩次也只算一天）
+    if (arr.length) inc(d, id);
+  // 週期型習慣算「有做的天數」（一天做兩次也只算一天）
   for (const h of activeHabits()) if (h.weeks) for (const [d, x] of Object.entries(D.days)) if (x[h.id]) {
     const k = h.id + '@' + periodKey(d, h.weeks);
-    D.per[k] = (D.per[k] || 0) + (h.kind === 'vocus' ? x[h.id] : 1);
+    D.per[k] = (D.per[k] || 0) + 1;
   }
   return D;
 }

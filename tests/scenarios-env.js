@@ -7,8 +7,8 @@ const BIG = () => {   // 內容很多、很長、數字很大的狀態，用來�
   logs.push(...drops(ids.flatMap(i => [i, i])));
   for (let i = 0; i < 7; i++) logs.push({ id: 'rd' + i, t: 50 + i, d: '2026-10-0' + (i + 1), k: 'redeem', name: long, c: -10 });
   const plans = { [D0]: Array.from({ length: 6 }, (_, i) => ({ text: long, cat: 'other', done: i < 2, rw: i < 2 })) };
-  const habits = [{ id: 'vocus', n: 'Vocus', kind: 'vocus', weeks: 1, target: 7 }, { id: 'exercise', n: '運動運動運動運動運動運動運動運動', kind: 'exercise', weeks: 2, target: 7 }, { id: 'a1', n: long.slice(0, 20), kind: 'custom', weeks: 0, target: 1 }, { id: 'a2', n: 'A'.repeat(20), kind: 'custom', weeks: 1, target: 7 }, { id: 'a3', n: '短', kind: 'custom', weeks: 2, target: 7 }];
-  const checks = { [D0]: { vocus: [{ t: 1, title: long }], exercise: [{ t: 1, type: '潛水', depth: 40, min: 55, site: long, note: long }] } };
+  const habits = [{ id: 'write', n: '寫作', kind: 'custom', unit: '篇', weeks: 1, target: 7 }, { id: 'exercise', n: '運動運動運動運動運動運動運動運動', kind: 'exercise', weeks: 2, target: 7 }, { id: 'a1', n: long.slice(0, 20), kind: 'custom', weeks: 0, target: 1 }, { id: 'a2', n: 'A'.repeat(20), kind: 'custom', weeks: 1, target: 7 }, { id: 'a3', n: '短', kind: 'custom', weeks: 2, target: 7 }];
+  const checks = { [D0]: { write: [{ t: 1 }], exercise: [{ t: 1, type: '潛水', depth: 40, min: 55, site: long, note: long }] } };
   return mkState({ logs, plans, habits, checks, favs: Array.from({ length: 12 }, (_, i) => '常用' + long.slice(0, 10) + i), shop: Array.from({ length: 8 }, (_, i) => ({ id: 's' + i, icon: '🍰', name: long, price: 12345678 + i })) });
 };
 
@@ -217,10 +217,10 @@ test('捲動位置：在長頁面操作後不能跳回頂端', async () => {
   I.destroy();
 });
 
-test('版面：全新使用者（Vocus 設定卡）和空圖鑑在最窄的手機上', async () => {
+test('版面：全新使用者和空圖鑑在最窄的手機上', async () => {
   for (const w of [280, 320, 360]) {
     const I = await boot({ seed: {}, width: w, height: 700 }); await I.dismiss();
-    ok(I.has('Vocus 發文節奏'), '全新使用者有節奏設定卡'); layoutAudit(I, `${w}px/全新`); I.check(`${w}px/全新`);
+    ok(!I.has('Vocus'), '全新使用者沒有 Vocus'); layoutAudit(I, `${w}px/全新`); I.check(`${w}px/全新`);
     for (const t of TABS) { await I.tab(t); layoutAudit(I, `${w}px/全新/${t}`); }
     await I.tab('tank'); await I.click('[data-act=tankview][data-v=dex]'); layoutAudit(I, `${w}px/空圖鑑`); I.check(`${w}px/空圖鑑`);
     I.destroy();
@@ -229,10 +229,10 @@ test('版面：全新使用者（Vocus 設定卡）和空圖鑑在最窄的手�
 
 test('待領取的獎勵一定領得到：刪掉習慣後它的獎勵仍在任務頁', async () => {
   const I = await boot({ state: mkState() }); await I.dismiss();
-  await I.click(['#habits .hab', 'Vocus']); await I.click('[data-act=artadd]'); await I.dismiss(); await I.click('#sheet [data-act=sheetclose]').catch(() => {});
-  ok(I.S.logs.some(l => l.key === 'art:' + D0 && l.pend), 'Vocus 發文有待領取的獎勵');
+  await I.click(['#habits .hab', '運動']); await I.click('[data-act=exadd]'); await I.dismiss(); await I.click('#sheet [data-act=sheetclose]').catch(() => {});
+  ok(I.S.logs.some(l => l.key === 'hab:exercise:' + D0 && l.pend), '運動打卡有待領取的獎勵');
   await I.click('#habits [data-act=habedit]'); await I.click(I.$$('[data-act=habdel]')[0]); await I.click('#askyes'); await I.click('[data-act=habdone]');
-  await I.tab('quest'); ok(I.has('其他獎勵') || I.has('Vocus'), '刪掉習慣後，它還沒領的獎勵要在任務頁'); ok(I.$('.qall'), '全部領取還在'); I.check('刪掉有獎勵的習慣');
+  await I.tab('quest'); ok(I.has('其他獎勵') || I.has('運動'), '刪掉習慣後，它還沒領的獎勵要在任務頁'); ok(I.$('.qall'), '全部領取還在'); I.check('刪掉有獎勵的習慣');
   await I.click('.qall'); await I.dismiss(); eq(I.pendCount(), 0, '全部領得到'); I.check('領完'); I.destroy();
 });
 
@@ -304,13 +304,14 @@ test('第一次打開：先問綁定 Google（可跳過，要說資料可能不�
   I.check('引導'); const J = await I.reload({ onb: true }); await J.dismiss(); ok(!onbOpen(J), '重開不會再問'); eq(activeIds(J), ['exercise', 'write'], '習慣還在'); J.check('引導後重開'); J.destroy(); I.destroy();
 });
 
-test('引導：Vocus 只留給選的人；不選也能開始；自訂習慣和上限；用過的存檔不引導', async () => {
+test('引導：寫作是一般習慣；舊的 Vocus 習慣；不選也能開始；自訂習慣和上限；用過的存檔不引導', async () => {
   resetCloud();
   const A = await boot({ onb: true }); await A.click('#onb [data-act=onbskip]'); await A.click('#onb [data-act=onbpick][data-v=write]'); ok(!A.$('#onb [data-act=onbvocus]') && !A.$('#onb').textContent.includes('Vocus'), '選了寫作也沒有 Vocus 選項'); await A.click('#onb [data-act=onbdone]'); await A.dismiss();
   eq(activeIds(A), ['write'], '寫作就是一般習慣'); ok(!A.S.habits.some(h => h.kind === 'vocus'), '新使用者沒有 Vocus 專屬習慣'); ok(!A.$('#main').innerText.includes('Vocus') && !A.has('發文節奏'), '畫面上沒有 Vocus、沒有發文設定');
   await A.click('[data-act=habtap][data-v=write]'); await A.click('#sheet [data-act=chk]'); const wk = A.S.logs.filter(l => l.k === 'habit' || l.k === 'pubchest'); ok(!A.S.logs.some(l => l.k === 'pubchest') && A.S.logs.some(l => l.key === 'hab:write:' + D0), '寫作打卡只是一般習慣獎勵，沒有發文額外獎勵'); A.check('寫作'); A.destroy();
-  const L = await boot({ onb: true, state: mkState({ vocusSet: false, checks: { [D0]: { exercise: [{ t: 1 }] } } }) }); await L.dismiss();   // 還在用舊版 Vocus 習慣、而且沒設定過節奏的人
-  ok(L.has('Vocus 發文節奏') && L.has('我不寫 Vocus'), '舊的 Vocus 習慣：可以直接移除'); await L.click('[data-act=vdrop]'); ok(!L.S.habits.some(h => h.kind === 'vocus') && !L.$('#main').innerText.includes('Vocus'), '移除後畫面上沒有 Vocus'); L.check('移除 Vocus'); L.destroy();
+  const OLDV = [{ id: 'vocus', e: '✍️', n: 'Vocus', kind: 'vocus', weeks: 1, target: 1 }, { id: 'exercise', e: '🏃', n: '運動', kind: 'exercise', weeks: 1, target: 3 }];
+  const L = await boot({ onb: true, state: mkState({ v: 7, vocusSet: false, habits: OLDV, checks: { [D0]: { exercise: [{ t: 1 }] } } }) }); await L.dismiss();   // 舊版預設帶 Vocus 習慣、沒設定過節奏的人
+  ok(!L.S.habits.some(h => h.id === 'vocus') && !L.$('#main').innerText.includes('Vocus') && !L.has('發文節奏'), '沒用過的舊 Vocus 習慣直接移除，不再問節奏'); L.check('移除 Vocus'); L.destroy();
   const B = await boot({ onb: true }); await B.click('#onb [data-act=onbskip]'); await B.click('#onb [data-act=onbdone]'); await B.dismiss();
   eq(activeIds(B), [], '什麼都沒選也能開始'); ok(!B.has('Vocus'), '沒有 Vocus'); ok(B.S.habits.some(h => h.id === 'exercise' && h.off), '運動留著，可以到編輯畫面加回');
   await B.click('[data-act=habedit]'); ok(B.has('加回 運動') && !B.has('加回 Vocus'), '編輯畫面只能加回運動'); B.check('空習慣'); B.destroy();
@@ -324,7 +325,7 @@ test('引導：Vocus 只留給選的人；不選也能開始；自訂習慣和�
   await D.click('#onb [data-act=onbdone]'); await D.dismiss(); const my = D.S.habits.find(h => h.kind === 'custom' && h.id !== 'read');
   ok(my && my.n.length === 20 && my.weeks === 0 && my.target === 1, '自訂習慣：名稱最多 20 字、預設每天：' + JSON.stringify(my)); ok(!D.win.__xss && !D.$('#main img[src=x]'), 'XSS：自訂習慣名稱'); D.check('自訂習慣'); D.destroy();
   const used = { checks: { [D0]: { exercise: [{ t: 1 }] } } };   // 舊存檔（沒有 onb 欄位）但用過了
-  const E = await boot({ onb: true, state: mkState(used) }); await E.dismiss(); ok(!onbOpen(E), '用過的舊存檔不會被問'); eq(E.S.onb, true, '補上做過了'); ok(E.has('Vocus'), '舊存檔的習慣不動'); E.destroy();
+  const E = await boot({ onb: true, state: mkState({ ...used, v: 7, vocusSet: true, habits: OLDV }) }); await E.dismiss(); ok(!onbOpen(E), '用過的舊存檔不會被問'); eq(E.S.onb, true, '補上做過了'); ok(E.has('Vocus') && E.S.habits.find(h => h.id === 'vocus').kind === 'custom', '舊存檔設定過的 Vocus 習慣保留，變成一般習慣'); E.destroy();
   const F = await boot({ onb: true, state: mkState() }); ok(onbOpen(F), '只有新手禮物、沒做過任何事的存檔還是要引導'); F.destroy();
 });
 

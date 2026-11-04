@@ -291,6 +291,6 @@ function renderReport() {
 // ---- 範例資料 ----
 const D0 = '2026-11-02';
 function mkState(p = {}) {
-  return { v: 7, mute: true, plans: {}, checks: {}, tipSix: true, vocusSet: true,
+  return { v: 8, mute: true, plans: {}, checks: {}, tipSix: true,
     logs: [{ id: 'w0', t: 1, d: '2026-10-01', k: 'welcome', key: 'welcome', c: 60, xp: 0, drop: 'clown' }], ...p };
 }

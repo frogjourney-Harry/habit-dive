@@ -6,12 +6,12 @@ const CONFIG = {
   breakMin: 5, longBreakMin: 15, longBreakEvery: 4,   // 工作階段中：每段專注後短休息，每 4 段長休息
   dayStartHour: 4,            // 凌晨 4 點前都算「前一天」
   habitDays: 66,              // Lally et al. 2010：習慣自動化所需天數中位數
-  maxCustom: 3,               // 自訂習慣最多幾個（不含內建的六件事、Vocus、運動）
-  xp:    { check: 10, habit: 10, exercise: 20, plan: 10, anyhab: 10, pomo: 10, pubchest: 30, period: 30, top3: 15, login: 5 },
-  coins: { task: 15, period: 60, welcome: 60, top3: 30, pubchest: 30, login: 15 },   // 都是 15 的倍數，好記
+  maxCustom: 3,               // 自訂習慣最多幾個（不含內建的運動）
+  xp:    { check: 10, habit: 10, exercise: 20, plan: 10, anyhab: 10, pomo: 10, period: 30, top3: 15, login: 5 },
+  coins: { task: 15, period: 60, welcome: 60, top3: 30, login: 15 },   // 都是 15 的倍數，好記
   rewardRows: 3,              // 六件事每天只有前幾項打勾有獎勵，其餘只做紀錄
   leavePerMonth: 2,           // 每天的習慣每個月可以請幾天假（請假的那天連勝不會中斷）
-  leavePerMonthWeekly: 1,     // 每週/每兩週型的習慣（運動、Vocus）每個月可以請幾次「這一期請假」
+  leavePerMonthWeekly: 1,     // 每週/每兩週型的習慣（例如運動）每個月可以請幾次「這一期請假」
   freeze: { price: 150, max: 2 },   // 連勝保護卡：免費假用完、又漏掉時自動用掉一張；所有習慣共用，最多帶幾張
   coinsPerDay: 120,            // 紀錄不夠時，商店用這個速度估計「要努力幾天」
   // 生物寶箱：在商店用金幣買，一種稀有度一種寶箱，開出那個稀有度裡隨機一種生物。
@@ -42,13 +42,12 @@ const CONFIG = {
   ],
 };
 
-// 內建習慣（可改名、刪除、加回）。weeks: 0 = 每天；1、2 = 每 1／2 週至少 target 天（Vocus 是篇）
-// kind: vocus = 記錄發布的文章、exercise = 可記距離時間、custom = 自訂。六件事只是清單，不算連勝
+// 內建習慣（可改名、刪除、加回）。weeks: 0 = 每天；1、2 = 每 1／2 週至少 target 天（有 unit 的用 unit 當單位）
+// kind: exercise = 可記距離時間、custom = 自訂。六件事只是清單，不算連勝
 const DEFAULT_HABITS = [
-  { id: 'vocus',    e: '✍️', n: 'Vocus',  kind: 'vocus',    weeks: 1, target: 1 },
   { id: 'exercise', e: '🏃', n: '運動',   kind: 'exercise', weeks: 1, target: 3 },
 ];
-// 第一次打開時讓人勾選的習慣（desc＝畫面上的說明）。運動、Vocus 有專屬功能；其他都是一般習慣，unit＝次數的單位
+// 第一次打開時讓人勾選的習慣（desc＝畫面上的說明）。運動有專屬功能；其他都是一般習慣，unit＝次數的單位
 const ONB_HABITS = [
   { id: 'exercise', e: '🏃', n: '運動', kind: 'exercise', weeks: 1, target: 3, desc: '每週 3 天，可記距離和時間' },
   { id: 'write',    e: '📝', n: '寫作', kind: 'custom',   weeks: 1, target: 1, unit: '篇', desc: '每週 1 篇' },

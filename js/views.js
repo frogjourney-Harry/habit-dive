@@ -60,14 +60,14 @@ function dailyTasks(D) {
     { id: 'pomo', name: `專注一段番茄鐘`, how: `滿 ${CONFIG.pomoRewardMin} 分鐘`, go: 'pomo', est: C.task, ex: X.pomo, nx: `專注一段番茄鐘（${CONFIG.pomoRewardMin} 分鐘）`, logs: byKey('pomo:' + d) },
   ];
   for (const h of activeHabits()) {
-    const dayLogs = x => byKey(h.kind === 'vocus' ? 'art:' + x : `hab:${h.id}:${x}`);
+    const dayLogs = x => byKey(`hab:${h.id}:${x}`);
     if (!h.weeks) { T.push({ id: 'h_' + h.id, hab: true, name: h.n, how: onLeave(h.id, d) && !dayLogs(d).length ? '今天已請假' : '', go: 'habits', est: C.task, ex: h.kind === 'exercise' ? X.exercise : X.habit, logs: dayLogs(d) }); continue; }
     // 週期型（例如本週運動 3 天）：每次打卡和達標加碼合成一列，看得出這期的進度
     const p = periodKey(d, h.weeks), days = Array.from({ length: 7 * h.weeks }, (_, i) => addDays(p, i));
-    const bonus = h.kind === 'vocus' ? [] : byKey(h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`);
-    const left = Math.max(h.target - perCount(D, h, p), 0), last = !bonus.length && h.kind !== 'vocus';
-    const est = left * (h.kind === 'vocus' ? C.pubchest : C.task) + (last ? C.period : 0);
-    const ex = left * (h.kind === 'vocus' ? X.pubchest : h.kind === 'exercise' ? X.exercise : X.habit) + (last ? X.period : 0);
+    const bonus = byKey(h.id === 'exercise' && h.weeks === 1 ? 'week:' + p : `per:${h.id}:${p}`);
+    const left = Math.max(h.target - perCount(D, h, p), 0), last = !bonus.length;
+    const est = left * C.task + (last ? C.period : 0);
+    const ex = left * (h.kind === 'exercise' ? X.exercise : X.habit) + (last ? X.period : 0);
     T.push({ id: 'p_' + h.id, hab: true, week: true, est, ex, name: `${h.n}・${periodWord(h)} ${h.target} ${countWord(h)}`, go: 'habits',
       how: `${mdOf(p)}–${mdOf(days[days.length - 1])}`,
       n: Math.min(perCount(D, h, p), h.target), of: h.target, logs: [...days.flatMap(dayLogs), ...bonus] });
@@ -152,13 +152,6 @@ function today(D) {
       return `<div class="warn">昨天漏了「${esc(h.n)}」，剩下的假和保護卡不夠補，連勝從今天重新開始。</div>`;
     return '';
   }).filter(Boolean);
-  const V = habit('vocus');
-  const setup = S.vocusSet || !V ? '' : `<section class="px">${sh('Vocus 發文節奏', 'SETUP')}
-      <div class="mini">不用每天發。選一個做得到的節奏，之後可以在「習慣・編輯」修改。</div>
-      <div class="row" style="margin-top:8px">每 <select id="vW"><option value="1">1 週</option><option value="2">2 週</option></select>
-        至少 <select id="vT">${targetOpts(1)}</select> 篇
-        <button class="pri" data-act="vcfg">確定</button></div>
-      <div class="row" style="margin-top:6px"><button class="ghost" data-act="vdrop">我不寫 Vocus，移除這個習慣</button></div></section>`;
   const hint = UI.pday < 0 ? '補登昨天：只算完成，沒有獎勵'
     : UI.pday > 0 ? `先寫好明天的（至少 ${CONFIG.rewardRows} 件），一樣算「寫好清單」`
     : `前 ${CONFIG.rewardRows} 件有獎勵・按住編號上下拖曳排順序`;
@@ -191,7 +184,7 @@ function today(D) {
   const habits = UI.habEdit ? habitEditor() : `<section class="px" id="habits">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
       <div class="habits">${chips}</div>
       ${risky.join('')}</section>`;
-  return `${UI.pday === 0 ? nextStep(D, P) : ''}${setup}${habits}
+  return `${UI.pday === 0 ? nextStep(D, P) : ''}${habits}
     <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
       <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}・${hint}</div>
       ${UI.pday >= 0 && !S.tipSix ? `<div class="tip row"><span class="sp">小技巧：按住編號拖曳可以排順序，點 ☆ 存成常用。</span><button class="ghost" data-act="tipsix">知道了</button></div>` : ''}
@@ -262,10 +255,9 @@ function finishOnb() {
     if (sel[o.id]) out.push(mk(o));
     else if (o.kind === 'exercise') { const old = S.habits.find(h => h.id === o.id); if (old) out.push({ ...old, off: true }); }   // 運動沒選也留著（編輯畫面可以加回）；沒選的其他習慣直接不放進來
   }
-  const mine = S.habits.filter(h => h.kind !== 'vocus' && !ONB_HABITS.some(o => o.id === h.id));   // 引導以外、舊存檔裡自己加的習慣原樣保留（預設帶的 Vocus 不留：新使用者不需要）
+  const mine = S.habits.filter(h => !ONB_HABITS.some(o => o.id === h.id));   // 引導以外、舊存檔裡自己加的習慣原樣保留
   if (name) mine.push({ id: 'h' + rid(), e: '⭐', n: name, kind: 'custom', weeks: 0, target: 1 });
   S.habits = [...out, ...mine];
-  S.vocusSet = true;
   S.onb = true; Object.assign(UI, { onbStep: 0, onbSel: null, onbName: '' });
   save(); render();
   return true;
@@ -334,11 +326,7 @@ function renderSheet() {
         <span class="dim" id="exPace" style="align-self:center"></span>
         <input id="ex_note" class="f-wide" maxlength="200" placeholder="備註">
       </div><button class="pri wide" data-act="exadd">記錄這次${type}</button>`;
-  } else if (h.kind === 'vocus') body = `
-      ${list.map((e, i) => `<div class="entry"><span class="sp">${esc(e.title || '（無標題）')}</span><button class="ghost" data-act="chkdel" data-v="${i}">✕</button></div>`).join('')}
-      <div class="form"><input id="artTitle" class="f-wide" maxlength="120" placeholder="發布的文章標題（可留空）"></div>
-      <button class="pri wide" data-act="artadd">記錄發布的文章</button>`;
-  else body = list.length
+  } else body = list.length
       ? `<button class="wide" data-act="chk">✓ 已完成，點一下取消</button>`
       : `<button class="pri wide" data-act="chk">完成打卡</button>`;
   // 請假：每天型是「今天／昨天請假」（每月 2 天），每週型是「本週請假」整期（每月 1 次）；已經完成就不用請
@@ -505,12 +493,11 @@ function tank(D) {
   if (UI.tankView === 'dex') return dex(D);
   const n = CREATURES.filter(c => pets(c.id).some(p => inTank(p.id))).length;
   // 沒有框：畫布透明、填滿整個視窗，魚直接游在網站背景的海裡。
-  // 海裡不放任何按鈕：飼料、補充、圖鑑、設定都在最下面一條不透明的工具列（跟分頁列連在一起），海和沙地停在它上面；操作說明幾秒後自己淡掉
+  // 海裡不放任何按鈕：飼料、補充、圖鑑、設定都在最下面一條不透明的工具列（跟分頁列連在一起），海和沙地停在它上面；操作說明常駐在飼料旁邊
   return `<div class="sea"><canvas id="tank" class="tank" aria-label="大海，點水裡撒飼料"></canvas>
-    <div class="seahud seabar"><div id="feedInfo" title="飼料">${tankFeedHTML()}</div><span class="sp"></span>
+    <div class="seahud seabar"><div id="feedInfo" title="飼料">${tankFeedHTML()}</div><small class="feedtip sp">點水裡撒飼料，吃到的那一隻會長大</small>
       <button class="feedbuy" data-act="buyfeed" title="用 ${FEED.price} 金幣買 ${FEED.pack} 顆飼料">+${FEED.pack}<span class="price">${FEED.price}${COIN}</span></button>
-      <button data-act="tankview" data-v="dex" title="${n} 種在大海裡">圖鑑<i class="cnt">${n}</i></button><button data-act="tankedit">設定</button></div>
-    <div class="seahud hint fade"><small>點水裡撒飼料，吃到的那一隻會長大</small></div></div>`;
+      <button data-act="tankview" data-v="dex" title="${n} 種在大海裡">圖鑑<i class="cnt">${n}</i></button><button data-act="tankedit">設定</button></div></div>`;
 }
 // 大海畫面時：頁尾藏起來、整頁不捲動，海填滿整個視窗
 const seaOn = () => UI.tab === 'tank' && !UI.tankEdit && UI.tankView !== 'dex';
@@ -535,11 +522,9 @@ function tankStart() {
   // 海填滿整個視窗；手機的分頁列固定在底下，海底工具列貼在它上面（電腦上貼在畫面最底下），沙地要在工具列上面才看得到
   const nav = document.getElementById('nav'), navFixed = getComputedStyle(nav).position === 'fixed', navH0 = navFixed ? nav.offsetHeight : 0;
   const bar = document.querySelector('.seabar'), navH = navH0 + (bar ? bar.offsetHeight : 0);
-  // 工具列橫跨整個寬度，裡面的東西對齊內容欄；說明放在頂端列（電腦上還有分頁列）下面
+  // 工具列橫跨整個寬度，裡面的東西對齊內容欄
   const col = document.querySelector('.wrap').getBoundingClientRect(), padL = Math.max(12, col.left + 14) + 'px', padR = Math.max(12, innerWidth - col.right + 14) + 'px';
-  const topY = Math.max(...['.brand', '#banner', ...(navFixed ? [] : ['#nav'])].map(s => { const e = document.querySelector(s); return e ? e.getBoundingClientRect().bottom : 0; }));
   if (bar) Object.assign(bar.style, { bottom: navH0 + 'px', paddingLeft: padL, paddingRight: padR });
-  const hint = document.querySelector('.seahud.hint'); if (hint) Object.assign(hint.style, { top: topY + 8 + 'px', left: padL, right: padR });
   const W = Math.floor(cv.clientWidth / 3), H = Math.floor(cv.clientHeight / 3);   // 每一格固定 3 個螢幕像素，手機上也看得清楚
   // 畫布用裝置的實際像素畫（遊戲裡一格＝ K 個裝置像素），位置可以對到裝置像素：慢的魚不再一格一格跳
   const K = Math.round(3 * Math.min(3, Math.max(1, window.devicePixelRatio || 1))), rp = v => Math.round(v * K) / K;
@@ -742,7 +727,7 @@ function recentEntries() {
 }
 function entryText(r) {
   const h = S.habits.find(x => x.id === r.id) || { n: r.id };
-  const body = r.id === 'vocus' ? `發布：${r.e.title || '（無標題）'}` : r.id === 'exercise' ? (exText(r.e) || '運動') : `${h.n} ✓`;
+  const body = r.id === 'exercise' ? (exText(r.e) || '運動') : `${h.n} ✓`;
   return body;
 }
 
@@ -796,8 +781,7 @@ function log(D) {
     ${rec.length ? rec.slice(0, 12).map(r => `<div class="entry"><span class="dim" style="flex:none">${r.d.slice(5).replace('-', '/')}</span><span class="sp">${esc(entryText(r))}</span></div>`).join('')
       : '<div class="dim">點「今日」的習慣卡片打卡，就會記在這裡。</div>'}</section>
   <section class="px">${sh('累積', 'TOTALS')}${(tot => tot ? `<div class="stat">${tot}</div>` : '<div class="dim">完成任務後，累積的數字會出現在這裡。</div>')([
-    ...H.map(h => h.kind === 'vocus' ? D.articles && `<div><small>${esc(h.n)}</small><b>${D.articles}</b><small>篇文章</small></div>`
-      : daysOf(h.id) && `<div><small>${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`),
+    ...H.map(h => daysOf(h.id) && `<div><small>${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`),
     pomoCount && `<div><small>番茄鐘</small><b>${pomoCount}</b><small>段・${pomoHours.toFixed(1)} 小時</small></div>`,
     runs.length && `<div><small>跑步總距離</small><b>${runKm.toFixed(1)}</b><small>km・${runs.length} 次</small></div>`,
   ].filter(Boolean).join(''))}</section>`;
@@ -821,7 +805,7 @@ function about() {
     <div class="row" style="margin-top:6px"><button data-act="export">備份</button><button data-act="import">還原</button></div></section>
   <section class="px">${sh('關於習慣深潛', 'ABOUT')}
     <p>嗨，我是 Harry，喜歡潛水，也在努力每週寫文章。這個遊戲是我為了讓自己持續寫作和運動而做的：每天寫下最重要的事，完成就賺金幣，用金幣開寶箱，收集我在海裡遇過（或還在等）的生物。</p>
-    <p class="dim">從浮潛客一路升到潛水教練的稱號、圖鑑裡的鬼蝠魟和翻車魚，都來自我的潛水經驗。希望它也能陪你一點一點往前進。</p></section>
+    <p class="dim">從浮潛客一路往下潛到海洋傳說的稱號、圖鑑裡的鬼蝠魟和翻車魚，都來自我的潛水經驗。希望它也能陪你一點一點往前進。</p></section>
   <section class="px">${sh('我的沙龍', 'SALON')}
     <div class="salon"><b style="font-size:17px">${SALON.name}</b><p class="dim" style="margin:6px 0 12px">${SALON.desc}</p>
       <a href="${SALON.url}" target="_blank" rel="noopener"><button class="pri" style="margin:0">前往沙龍 ↗</button></a></div></section>
@@ -831,7 +815,6 @@ function about() {
   <section class="px">${sh('資料與隱私', 'PRIVACY')}
     <div class="mini">沒登入時，紀錄只存在你自己的瀏覽器裡，不會上傳到任何地方。</div>
     ${FIREBASE_CONFIG ? '<div class="mini">看到登入按鈕時，網頁會先向 Google 載入登入用的程式，讓登入一次就成功；這一步不會送出你的任何紀錄。</div>' : ''}
-    ${FIREBASE_CONFIG ? `<div class="mini">如果你選擇用 Google 登入，紀錄（六件事、打卡、遊戲進度）會存到 Google 的 Firebase 雲端，用來在不同裝置間同步。只會取得你的 Google 名稱和 email 來辨識帳號，不會發信、不會發文，也看不到你的其他 Google 資料。資料庫規則讓每個人只能讀寫自己的資料；身為網站管理者，我在技術上看得到資料庫，但不會查看或使用你的紀錄。你隨時可以在「紀錄 → 雲端同步」刪除雲端資料和帳號。</div>` : ''}
-    <div class="mini">本工具為個人作品，與方格子 vocus 官方無關。</div></section>`;
+    ${FIREBASE_CONFIG ? `<div class="mini">如果你選擇用 Google 登入，紀錄（六件事、打卡、遊戲進度）會存到 Google 的 Firebase 雲端，用來在不同裝置間同步。只會取得你的 Google 名稱和 email 來辨識帳號，不會發信、不會發文，也看不到你的其他 Google 資料。資料庫規則讓每個人只能讀寫自己的資料；身為網站管理者，我在技術上看得到資料庫，但不會查看或使用你的紀錄。你隨時可以在「紀錄 → 雲端同步」刪除雲端資料和帳號。</div>` : ''}</section>`;
 }
 

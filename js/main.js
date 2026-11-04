@@ -83,9 +83,6 @@ document.addEventListener('click', async e => {
       addCheck(sheetDay(), 'exercise', e); ac(); SFX.tap();
       reward(() => {}, UI.sheet.day === 0); break;
     }
-    case 'artadd':
-      addCheck(sheetDay(), 'vocus', { title: document.getElementById('artTitle').value.trim() || undefined }); ac(); SFX.tap();
-      reward(() => {}, UI.sheet.day === 0); break;
     case 'chkdel': delCheck(sheetDay(), UI.sheet.id, +v); reward(() => {}, false); break;
     case 'habedit': UI.habEdit = true; render(); break;
     case 'habdone': finishHabits(); render(); toast('習慣已更新'); break;
@@ -108,13 +105,6 @@ document.addEventListener('click', async e => {
       renderOnb(); break;
     }
     case 'onbdone': if (finishOnb()) toast('設定好了，先寫下今天最重要的事吧'); break;
-    case 'vdrop':
-      S.habits = S.habits.filter(h => h.id !== 'vocus'); S.vocusSet = true; save(); render(); toast('已移除 Vocus 習慣'); break;
-    case 'vcfg': {
-      const V = habit('vocus');
-      V.weeks = +document.getElementById('vW').value; V.target = +document.getElementById('vT').value;
-      S.vocusSet = true; save(); render(); toast(`設定好了：每 ${V.weeks} 週至少 ${V.target} 篇`); break;
-    }
     case 'shopedit': S.shop = shopItems().map(x => ({ ...x })); UI.shopEdit = true; render(); break;
     case 'shopadd': S.shop = S.shop || []; S.shop.push({ id: 'c' + Date.now(), icon: '🎁', name: '', price: 100 }); save(); render(); break;
     case 'shopdel': if (S.shop) S.shop.splice(+v, 1); save(); render(); break;
