@@ -769,7 +769,11 @@ function log(D) {
     <div class="row"><div class="big-lv"><span>Lv.</span>${lv}</div><div><b>${RANKS[ri][1]}</b><div class="mini" style="margin:0">共 ${D.xp} XP</div></div></div>
     <div class="bar"><i style="width:${Math.max(0, Math.min(100, (D.xp - lo) / (hi - lo) * 100))}%"></i></div>
     <div class="mini">升到 Lv.${lv + 1} 還差 ${hi - D.xp} XP${nxt ? `・Lv.${nxt[0]} 成為「${nxt[1]}」` : ''}</div>
-    <div class="mini xphow" data-act="tab" data-v="quest">經驗值靠完成任務拿，每項寫在「任務」頁 ›</div></section>
+    <div class="mini xphow" data-act="tab" data-v="quest">經驗值靠完成任務拿，每項寫在「任務」頁 ›</div>
+    <button class="ghost rkbtn" data-act="ranks" aria-expanded="${!!UI.ranks}">所有稱號・已拿到 ${ri + 1} / ${RANKS.length} ${UI.ranks ? '▴' : '▾'}</button>
+    ${UI.ranks ? `<div class="ranks"><p class="mini">稱號照著真實潛水證照一路往上升，每升到指定等級就換一個。</p>${RANKS.map(([at, name, en, desc], i) =>
+      `<div class="rk ${i < ri ? 'got' : i === ri ? 'cur' : 'lock'}"><div class="rklv">Lv.${at}<small>${xpFor(at)} XP</small></div>
+        <div class="sp"><b>${i > ri ? '🔒 ' : ''}${name}</b><small class="en">${en}</small>${i === ri ? '<em>現在</em>' : ''}<p>${desc}</p></div></div>`).join('')}</div>` : ''}</section>
   <section class="px">${sh('打卡紀錄', 'ACTIVITY')}
     <div class="streakbox"><div><small>目前連續</small><b>${curRun}</b><small>天</small></div>
       <div><small>最長連續</small><b>${best}</b><small>天</small></div><div><small>總共打卡</small><b>${allDays.length}</b><small>天</small></div></div></section>

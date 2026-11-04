@@ -209,7 +209,7 @@ function nextChest() {
   }
   if (it.level !== undefined) {
     m.innerHTML = `<div class="label">LEVEL UP</div><div class="big-lv pop" style="margin:10px 0"><span>Lv.</span>${it.level}</div>
-      ${it.title ? `<h2>取得稱號：${it.title}</h2>` : `<p class="dim">${RANKS[rankIdx(it.level)][1]}</p>`}
+      ${it.title ? `<h2>取得稱號：${it.title}</h2><p class="dim">${RANKS[rankIdx(it.level)][3]}</p>` :`<p class="dim">${RANKS[rankIdx(it.level)][1]}</p>`}
       <button class="pri" data-act="close">繼續</button>`;
     SFX.rank(); return;
   }

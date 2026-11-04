@@ -338,6 +338,19 @@ nav .badge{display:inline-block;min-width:16px;height:16px;margin-left:4px;paddi
 .nextbar .sp{min-width:0}
 .xphow{cursor:pointer}
 .xphow:hover{color:var(--xp)}
+.rkbtn{display:block;width:100%;margin:10px 0 0;padding:6px 0;text-align:left;color:var(--xp)}
+.ranks{margin-top:4px}
+.rk{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.rklv{flex:none;width:64px;color:var(--xp);font-weight:bold}
+.rklv small{display:block;font-weight:normal;font-size:12px;color:var(--faint)}
+.rk b{font-size:15px}
+.rk .en{margin-left:6px;font-size:12px;color:var(--faint)}
+.rk em{margin-left:8px;padding:0 6px;font-style:normal;font-size:12px;background:var(--xp);color:#1a1c2c}
+.rk p{margin:2px 0 0;font-size:13px;color:var(--dim);line-height:1.5}
+.rk.got b{color:var(--ok)}
+.rk.cur{background:rgba(115,239,247,.08);box-shadow:-3px 0 0 var(--xp);padding-left:8px}
+.rk.lock .rklv,.rk.lock b{color:var(--faint)}
+.rk.lock p{color:var(--faint)}
 .qsum{white-space:nowrap}
 .qtop{height:6px;margin:2px 0 6px}
 .qcnt{font-size:14px;color:var(--dim)}

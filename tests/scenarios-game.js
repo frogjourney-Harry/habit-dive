@@ -63,7 +63,14 @@ test('升級：彈窗、稱號、只慶祝一次、超大等級', async () => {
   await I.dismiss(); await I.claimAll();
   eq(I.ev('levelOf(derive().xp)'), 3, '45 XP = Lv.3');
   const sawTitle = I.S.lvSeen === 3; ok(sawTitle, '記下已慶祝到 Lv.3');
-  const J = await I.reload(); ok(J.$('#ov').classList.contains('hidden'), '重開不會再跳升級彈窗'); J.destroy();
+  const J = await I.reload(); ok(J.$('#ov').classList.contains('hidden'), '重開不會再跳升級彈窗');
+  await J.tab('log'); ok(!J.$('.ranks'), '稱號一覽預設收起來');
+  await J.click('[data-act=ranks]'); const rk = J.$$('.rk');
+  eq(rk.length, J.ev('RANKS.length'), '每個稱號都列出來');
+  ok(rk.every(e => e.querySelector('p').innerText.trim().length > 10), '每個稱號都有介紹');
+  eq(J.$$('.rk.got').length, 1, 'Lv.3：浮潛客已拿到'); ok(J.$('.rk.cur').innerText.includes('體驗潛水員'), 'Lv.3：現在是體驗潛水員');
+  eq(J.$$('.rk.lock').length, rk.length - 2, '其他還鎖著'); ok(J.$('.rkbtn').innerText.includes('2 / '), '按鈕寫已拿到 2 個');
+  J.check('稱號一覽'); await J.click('[data-act=ranks]'); ok(!J.$('.ranks'), '再按一次收起來'); J.destroy();
   const K = await boot({ state: mkState({ logs: [W0, coinLog(0), { id: 'p1', t: 9, d: D0, k: 'plan', key: 'plan:' + D0, xp: 100000, c: 15, pend: true }] }) });
   await K.dismiss(); await K.tab('quest'); await K.click('.qall'); ok(K.has('Lv.'), '超大等級彈窗有顯示'); K.check('升級彈窗'); await K.dismiss();
   for (const t of ['today', 'quest', 'tank', 'shop', 'log', 'about']) { await K.tab(t); K.check('Lv.' + K.ev('levelOf(derive().xp)') + ' ' + t); }
