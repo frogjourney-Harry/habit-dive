@@ -484,7 +484,8 @@ function steer(f, tvx, tvy, dt, vertical = true) {
 // 底下的飼料：小蝦圖示＋還有幾顆，小字寫其中免費的還有幾顆
 function tankFeedHTML() {
   const f = freeLeft(), b = S.feed || 0;
-  return `${img(SHRIMP, 2, false, 'feedic')}<b>${f + b}</b><small>${f ? `今天免費 ${f}` : '免費的用完了'}${b ? `・買的 ${b}` : ''}</small>`;
+  return `<div class="feedrow">${img(SHRIMP, 2, false, 'feedic')}<b>${f + b}</b><small>顆飼料</small></div>
+    <small class="feedsub">${f ? `今天免費 ${f} 顆` : '今天免費的用完了'}${b ? `・買的 ${b} 顆` : ''}</small>`;
 }
 function tankEditor(D) {
   const owned = CREATURES.filter(c => pets(c.id).length);
@@ -507,8 +508,9 @@ function tank(D) {
   // 沒有框：畫布透明、填滿到畫面底，魚直接游在網站背景的海裡；按鈕和說明浮在上面
   return `<div class="sea"><canvas id="tank" class="tank" aria-label="大海，點水裡撒飼料"></canvas>
     <div class="seahud top"><b>大海</b><small>${n} 種</small><span class="sp"></span><button data-act="tankview" data-v="dex">圖鑑</button><button data-act="tankedit">設定</button></div>
-    <div class="seahud hint"><small>點水裡撒飼料，吃到的那一隻會長大</small></div>
-    <div class="seahud bot"><div class="feedchip" id="feedInfo" title="飼料">${tankFeedHTML()}</div><span class="sp"></span><button class="feedbuy" data-act="buyfeed" title="用 ${FEED.price} 金幣買 ${FEED.pack} 顆飼料">買 ${FEED.pack} 顆<span class="price">${FEED.price}${COIN}</span></button></div></div>`;
+    <div class="seahud feed"><div class="feedcard"><div id="feedInfo" title="飼料">${tankFeedHTML()}</div>
+      <button class="feedbuy" data-act="buyfeed" title="用 ${FEED.price} 金幣買 ${FEED.pack} 顆飼料">買 ${FEED.pack} 顆<span class="price">${FEED.price}${COIN}</span></button></div></div>
+    <div class="seahud hint"><small>點水裡撒飼料，吃到的那一隻會長大</small></div></div>`;
 }
 // 大海畫面時：頁尾藏起來、整頁不捲動，海填滿整個視窗
 const seaOn = () => UI.tab === 'tank' && !UI.tankEdit && UI.tankView !== 'dex';
@@ -535,9 +537,10 @@ function tankStart() {
   // 浮在海上的按鈕：左右對齊內容欄，上面那排放在頂端列（電腦上還有分頁列）下面，下面那排放在沙地上
   const col = document.querySelector('.wrap').getBoundingClientRect();
   const topY = Math.max(...['.brand', '#banner', ...(navFixed ? [] : ['#nav'])].map(s => { const e = document.querySelector(s); return e ? e.getBoundingClientRect().bottom : 0; }));
-  for (const h of document.querySelectorAll('.seahud')) { h.style.left = Math.max(12, col.left + 14) + 'px'; h.style.right = Math.max(12, innerWidth - col.right + 14) + 'px'; }
+  for (const h of document.querySelectorAll('.seahud')) { if (!h.classList.contains('feed')) h.style.left = Math.max(12, col.left + 14) + 'px'; h.style.right = Math.max(12, innerWidth - col.right + 14) + 'px'; }
   const hud = s => document.querySelector('.seahud.' + s);
-  if (hud('top')) { hud('top').style.top = topY + 'px'; hud('hint').style.top = topY + 38 + 'px'; hud('bot').style.bottom = navH + 6 + 'px'; }
+  // 飼料牌子靠右、放在圖鑑／設定底下；操作說明放在最下面的沙地上
+  if (hud('top')) { hud('top').style.top = topY + 'px'; hud('feed').style.top = topY + 44 + 'px'; hud('hint').style.bottom = navH + 8 + 'px'; }
   const W = Math.floor(cv.clientWidth / 3), H = Math.floor(cv.clientHeight / 3);   // 每一格固定 3 個螢幕像素，手機上也看得清楚
   // 畫布用裝置的實際像素畫（遊戲裡一格＝ K 個裝置像素），位置可以對到裝置像素：慢的魚不再一格一格跳
   const K = Math.round(3 * Math.min(3, Math.max(1, window.devicePixelRatio || 1))), rp = v => Math.round(v * K) / K;
