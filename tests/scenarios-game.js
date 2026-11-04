@@ -359,13 +359,22 @@ test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不�
     ok(!cv.closest('.px') && I.win.getComputedStyle(cv).boxShadow === 'none', `${w}px：沒有面板和外框`);
     ok(!I.vis(I.$('.foot')), `${w}px：大海頁不顯示頁尾`);
     ok(!I.blocked(I.$('.lvchip')) && !I.blocked(I.$('#nav [data-v=today]')), `${w}px：頂端列和分頁列浮在海上面，點得到`);
-    const H = I.ev('TANK.H'), fy = I.ev('TANK.floorY'), sandTop = fy * r.height / H, floorLine = fixed ? nav.getBoundingClientRect().top : h;
-    ok(floorLine - sandTop >= 40 && floorLine - sandTop <= 56, `${w}px：沙地在${fixed ? '分頁列上面' : '畫面最底下'}看得到（沙地 ${sandTop | 0}，${floorLine | 0}）`);
+    // 海底工具列：不透明、橫跨整個寬度，貼在分頁列上面（電腦上在畫面最底下）；沙地在工具列上面
+    const bar = I.$('.seabar').getBoundingClientRect(), navTop = fixed ? nav.getBoundingClientRect().top : h;
+    ok(bar.left <= 0.5 && bar.right >= w - 0.5 && Math.abs(bar.bottom - navTop) < 1, `${w}px：工具列橫跨整個寬度、貼在${fixed ? '分頁列上面' : '畫面最底下'}（${bar.left | 0}–${bar.right | 0}，底 ${bar.bottom | 0}／${navTop | 0}）`);
+    ok(I.win.getComputedStyle(I.$('.seabar')).backgroundColor.match(/[\d.]+/g).length === 3 || +I.win.getComputedStyle(I.$('.seabar')).backgroundColor.match(/[\d.]+/g)[3] === 1, `${w}px：工具列不透明`);
+    ok(bar.height <= 56, `${w}px：工具列只有一行（${bar.height | 0}px）`);
+    const H = I.ev('TANK.H'), fy = I.ev('TANK.floorY'), sandTop = fy * r.height / H, floorLine = bar.top;
+    ok(floorLine - sandTop >= 40 && floorLine - sandTop <= 56, `${w}px：沙地在工具列上面看得到（沙地 ${sandTop | 0}，${floorLine | 0}）`);
     ok(I.ev('TANK.fish').filter(f => f.ground).every(f => Math.abs(f.y + f.h - 2 - fy) < 1), `${w}px：寄居蟹、海星站在沙地上`);
     const px = cv.getContext('2d').getImageData(1, Math.round((fy + 8) * cv.height / H), 1, 1).data; ok(px[3] === 255 && px[0] > 60 && px[0] > px[2], `${w}px：沙地有畫出來（壓暗的沙色）：${[...px]}`);
-    const top = I.$('.seahud.top').getBoundingClientRect(), brand = I.$('.brand').getBoundingClientRect(), col = I.$('.wrap').getBoundingClientRect();
-    ok(top.top >= brand.bottom - 1, `${w}px：上面那排按鈕在頂端列下面`); ok(top.left >= col.left && top.right <= col.right + 1, `${w}px：按鈕對齊內容欄`);
-    for (const s of ['[data-act=tankview]', '[data-act=tankedit]', '[data-act=buyfeed]']) ok(!I.blocked(I.$(s)), `${w}px：浮在上面的按鈕點得到：${s}`);
+    const col = I.$('.wrap').getBoundingClientRect();
+    for (const s of ['#feedInfo', '[data-act=buyfeed]', '[data-act=tankview]', '[data-act=tankedit]']) {
+      const b = I.$(s).getBoundingClientRect();
+      ok(b.left >= col.left - 1 && b.right <= col.right + 1 && b.top >= bar.top && b.bottom <= bar.bottom, `${w}px：${s} 在工具列裡、對齊內容欄`);
+      if (s !== '#feedInfo') ok(!I.blocked(I.$(s)), `${w}px：工具列的按鈕點得到：${s}`);
+    }
+    ok(!I.$$('.seahud').some(e => e !== I.$('.seabar') && !e.classList.contains('hint')), `${w}px：海裡沒有其他浮著的按鈕`);
     await I.tab('today'); ok(I.vis(I.$('.foot')) && !I.doc.body.classList.contains('sea-on') && !I.$('#tank'), `${w}px：離開大海頁面恢復`);
     await I.tab('tank'); await I.click('[data-act=tankview][data-v=dex]'); ok(!I.doc.body.classList.contains('sea-on'), `${w}px：圖鑑是一般頁面`);
     I.check('全屏 ' + w); I.destroy();

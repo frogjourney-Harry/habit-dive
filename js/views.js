@@ -481,11 +481,10 @@ function steer(f, tvx, tvy, dt, vertical = true) {
   // 魚頭朝實際游的方向（不是朝目的地），掉頭時不會倒著滑
   if (vertical && Math.abs(f.mx) > Math.abs(f.vx) * .15) f.vx = Math.sign(f.mx) * Math.abs(f.vx);
 }
-// 底下的飼料：小蝦圖示＋還有幾顆，小字寫其中免費的還有幾顆
+// 海底工具列的飼料：小蝦圖示＋還有幾顆，小字寫其中免費、買的各幾顆
 function tankFeedHTML() {
   const f = freeLeft(), b = S.feed || 0;
-  return `<div class="feedrow">${img(SHRIMP, 2, false, 'feedic')}<b>${f + b}</b><small>顆飼料</small></div>
-    <small class="feedsub">${f ? `今天免費 ${f} 顆` : '今天免費的用完了'}${b ? `・買的 ${b} 顆` : ''}</small>`;
+  return `${img(SHRIMP, 2, false, 'feedic')}<span class="fnum"><b>${f + b}</b><small>${f ? `免費 ${f}` : '免費用完'}${b ? `・買的 ${b}` : ''}</small></span>`;
 }
 function tankEditor(D) {
   const owned = CREATURES.filter(c => pets(c.id).length);
@@ -505,12 +504,13 @@ function tank(D) {
   if (UI.tankEdit) return tankEditor(D);
   if (UI.tankView === 'dex') return dex(D);
   const n = CREATURES.filter(c => pets(c.id).some(p => inTank(p.id))).length;
-  // 沒有框：畫布透明、填滿到畫面底，魚直接游在網站背景的海裡；按鈕和說明浮在上面
+  // 沒有框：畫布透明、填滿整個視窗，魚直接游在網站背景的海裡。
+  // 海裡不放任何按鈕：飼料、補充、圖鑑、設定都在最下面一條不透明的工具列（跟分頁列連在一起），海和沙地停在它上面；操作說明幾秒後自己淡掉
   return `<div class="sea"><canvas id="tank" class="tank" aria-label="大海，點水裡撒飼料"></canvas>
-    <div class="seahud top"><b>大海</b><small>${n} 種</small><span class="sp"></span><button data-act="tankview" data-v="dex">圖鑑</button><button data-act="tankedit">設定</button></div>
-    <div class="seahud feed"><div class="feedcard"><div id="feedInfo" title="飼料">${tankFeedHTML()}</div>
-      <button class="feedbuy" data-act="buyfeed" title="用 ${FEED.price} 金幣買 ${FEED.pack} 顆飼料">買 ${FEED.pack} 顆<span class="price">${FEED.price}${COIN}</span></button></div></div>
-    <div class="seahud hint"><small>點水裡撒飼料，吃到的那一隻會長大</small></div></div>`;
+    <div class="seahud seabar"><div id="feedInfo" title="飼料">${tankFeedHTML()}</div><span class="sp"></span>
+      <button class="feedbuy" data-act="buyfeed" title="用 ${FEED.price} 金幣買 ${FEED.pack} 顆飼料">+${FEED.pack}<span class="price">${FEED.price}${COIN}</span></button>
+      <button data-act="tankview" data-v="dex" title="${n} 種在大海裡">圖鑑<i class="cnt">${n}</i></button><button data-act="tankedit">設定</button></div>
+    <div class="seahud hint fade"><small>點水裡撒飼料，吃到的那一隻會長大</small></div></div>`;
 }
 // 大海畫面時：頁尾藏起來、整頁不捲動，海填滿整個視窗
 const seaOn = () => UI.tab === 'tank' && !UI.tankEdit && UI.tankView !== 'dex';
@@ -532,15 +532,14 @@ window.addEventListener('resize', () => {
 function tankStart() {
   cancelAnimationFrame(TANK.raf);
   const cv = document.getElementById('tank'); if (!cv) return;
-  // 海填滿整個視窗；手機的分頁列固定在底下，沙地要在它上面才看得到
-  const nav = document.getElementById('nav'), navFixed = getComputedStyle(nav).position === 'fixed', navH = navFixed ? nav.offsetHeight : 0;
-  // 浮在海上的按鈕：左右對齊內容欄，上面那排放在頂端列（電腦上還有分頁列）下面，下面那排放在沙地上
-  const col = document.querySelector('.wrap').getBoundingClientRect();
+  // 海填滿整個視窗；手機的分頁列固定在底下，海底工具列貼在它上面（電腦上貼在畫面最底下），沙地要在工具列上面才看得到
+  const nav = document.getElementById('nav'), navFixed = getComputedStyle(nav).position === 'fixed', navH0 = navFixed ? nav.offsetHeight : 0;
+  const bar = document.querySelector('.seabar'), navH = navH0 + (bar ? bar.offsetHeight : 0);
+  // 工具列橫跨整個寬度，裡面的東西對齊內容欄；說明放在頂端列（電腦上還有分頁列）下面
+  const col = document.querySelector('.wrap').getBoundingClientRect(), padL = Math.max(12, col.left + 14) + 'px', padR = Math.max(12, innerWidth - col.right + 14) + 'px';
   const topY = Math.max(...['.brand', '#banner', ...(navFixed ? [] : ['#nav'])].map(s => { const e = document.querySelector(s); return e ? e.getBoundingClientRect().bottom : 0; }));
-  for (const h of document.querySelectorAll('.seahud')) { if (!h.classList.contains('feed')) h.style.left = Math.max(12, col.left + 14) + 'px'; h.style.right = Math.max(12, innerWidth - col.right + 14) + 'px'; }
-  const hud = s => document.querySelector('.seahud.' + s);
-  // 飼料牌子靠右、放在圖鑑／設定底下；操作說明放在最下面的沙地上
-  if (hud('top')) { hud('top').style.top = topY + 'px'; hud('feed').style.top = topY + 44 + 'px'; hud('hint').style.bottom = navH + 8 + 'px'; }
+  if (bar) Object.assign(bar.style, { bottom: navH0 + 'px', paddingLeft: padL, paddingRight: padR });
+  const hint = document.querySelector('.seahud.hint'); if (hint) Object.assign(hint.style, { top: topY + 8 + 'px', left: padL, right: padR });
   const W = Math.floor(cv.clientWidth / 3), H = Math.floor(cv.clientHeight / 3);   // 每一格固定 3 個螢幕像素，手機上也看得清楚
   // 畫布用裝置的實際像素畫（遊戲裡一格＝ K 個裝置像素），位置可以對到裝置像素：慢的魚不再一格一格跳
   const K = Math.round(3 * Math.min(3, Math.max(1, window.devicePixelRatio || 1))), rp = v => Math.round(v * K) / K;
