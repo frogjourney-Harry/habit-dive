@@ -141,7 +141,13 @@ function today(D) {
       <div class="row"><span class="hn">${esc(h.n)}</span><span class="sp"></span>${badge}</div>
       <div class="hs">${sub}</div></button>`;
   }).join('');
-  const risky = activeHabits().filter(h => st[h.id].risk).map(h => h.n);
+  // 昨天漏了、今天再漏就會斷：一則提醒把兩條路講清楚（今天做到，或補請昨天的假），不用再另外去找請假按鈕
+  const yd = addDays(td, -1);
+  const risky = activeHabits().filter(h => st[h.id].risk).map(h => {
+    const left = leaveLeft(h.id, yd);
+    return `<div class="warn row riskrow"><span class="sp">昨天漏了「${esc(h.n)}」，今天做到${left ? '或補請昨天的假' : ''}，連勝就不會斷。</span>
+      ${left ? `<button class="ghost" data-act="leavey" data-v="${esc(h.id)}">補請昨天的假（本月還剩 ${left} 天）</button>` : ''}</div>`;
+  });
   const V = habit('vocus');
   const setup = S.vocusSet || !V ? '' : `<section class="px">${sh('Vocus 發文節奏', 'SETUP')}
       <div class="mini">不用每天發。選一個做得到的節奏，之後可以在「習慣・編輯」修改。</div>
@@ -180,7 +186,7 @@ function today(D) {
       <div class="mini">每天第一段專注滿 ${CONFIG.pomoRewardMin} 分鐘有獎勵。</div></section>`;
   const habits = UI.habEdit ? habitEditor() : `<section class="px" id="habits">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
       <div class="habits">${chips}</div>
-      ${risky.length ? `<div class="warn">昨天漏了 ${esc(risky.join('、'))}，今天做到就不會斷。</div>` : ''}</section>`;
+      ${risky.join('')}</section>`;
   return `${UI.pday === 0 ? nextStep(D, P) : ''}${setup}${habits}
     <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
       <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}・${hint}</div>

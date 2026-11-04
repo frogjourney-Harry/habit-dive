@@ -67,6 +67,7 @@ document.addEventListener('click', async e => {
       else { addCheck(d, id, {}); clearLeave(id, d); ac(); SFX.tap(); }
       reward(() => {}, UI.sheet.day === 0); break;
     }
+    case 'leavey': { const msg = toggleLeave(v, addDays(dayKey(), -1)); save(); render(); if (msg) toast(msg); break; }   // 首頁提醒上的「補請昨天的假」
     case 'leave': { const msg = toggleLeave(UI.sheet.id, sheetDay()); save(); render(); renderSheet(); if (msg) toast(msg); break; }
     case 'exadd': {
       const type = document.getElementById('exType').value, e = { type };

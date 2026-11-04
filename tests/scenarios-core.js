@@ -348,6 +348,23 @@ test('請假：連勝不中斷、不算漏', async () => {
   I.ev('save()'); I.check('請假連勝'); I.destroy();
 });
 
+test('請假：昨天漏了的提醒裡直接補請昨天的假（不用另外找請假按鈕）', async () => {
+  const I = await startWithWake([-4, -3, -2]);   // 連續 3 天，昨天沒做
+  await I.tab('today'); const row = () => I.$$('#habits .riskrow').find(e => e.innerText.includes('8:00 起床'));
+  ok(row() && row().innerText.includes('今天做到或補請昨天的假'), '提醒寫出兩條路：' + (row() && row().innerText));
+  ok(row().querySelector('[data-act=leavey]').innerText.includes('本月還剩 2 天'), '按鈕寫剩幾天');
+  await I.click(row().querySelector('[data-act=leavey]'));
+  ok(I.ev("onLeave('hwake', addDays(dayKey(), -1))"), '補請了昨天的假'); ok(!row(), '提醒消失'); ok(I.has('請假了，連勝不會中斷'), '提示訊息');
+  eq(streakOf(I).n, 3, '連勝還在'); eq(I.ev("leaveLeft('hwake', addDays(dayKey(), -1))"), 1, '額度少一天');
+  I.check('補請昨天'); I.destroy();
+  const J = await startWithWake([-4, -3, -2]);
+  J.ev("S.leaves = { hwake: { [addDays(dayKey(), 1)]: 1, [addDays(dayKey(), 2)]: 1 } }; save(); render()");   // 這個月的 2 天假已經排掉了
+  eq(J.ev("leaveLeft('hwake', addDays(dayKey(), -1))"), 0, '這個月的假用完了');
+  await J.tab('today'); const r = J.$$('#habits .riskrow').find(e => e.innerText.includes('8:00 起床'));
+  ok(r && !r.querySelector('[data-act=leavey]') && r.innerText.includes('今天做到，連勝'), '假用完了：只剩「今天做到」，沒有請假按鈕：' + (r && r.innerText));
+  J.check('假用完'); J.destroy();
+});
+
 test('請假：每月額度、取消、打卡後自動恢復額度、月份分開算', async () => {
   const I = await startWithWake([]);
   const t = I.ev("dayKey()"), m = t.slice(0, 8), tog = d => I.ev(`toggleLeave('hwake', '${d}')`), left = d => I.ev(`leaveLeft('hwake', '${d}')`);
