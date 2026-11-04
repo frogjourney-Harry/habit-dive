@@ -183,7 +183,8 @@ nav button.sel{color:var(--ink);background:none;box-shadow:inset 0 -3px 0 var(--
 /* 水族箱 */
 .tank{display:block;width:100%;height:340px;image-rendering:pixelated;cursor:pointer;touch-action:manipulation}
 /* 大海：整個視窗都是海，魚也會游過頂端列和分頁列後面；頂端列和分頁列浮在上面，按鈕都在海底工具列（位置由 tankStart 算） */
-.sea{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;z-index:2}
+/* 手機點海撒飼料時，瀏覽器預設會把整片海蓋一層藍色（點擊高亮），關掉 */
+.sea{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;z-index:2;-webkit-tap-highlight-color:transparent}
 .sea .tank{position:absolute;top:0;left:0;width:100%;height:100%}
 .seahud{position:absolute;display:flex;align-items:center;gap:8px;pointer-events:none}
 .seahud > *{pointer-events:auto}

@@ -385,6 +385,7 @@ test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不�
       if (s !== '#feedInfo') ok(!I.blocked(I.$(s)), `${w}px：工具列的按鈕點得到：${s}`);
     }
     ok(!I.$$('.seahud').some(e => e !== I.$('.seabar')), `${w}px：海裡沒有其他浮著的按鈕`);
+    { const th = I.win.getComputedStyle(I.$('#tank')).webkitTapHighlightColor; ok(!th || th === 'rgba(0, 0, 0, 0)' || th === 'transparent', `${w}px：點海不會蓋一層藍色（${th}）`); }
     { const tip = I.$('.seabar .feedtip'); ok(tip && tip.textContent.includes('撒飼料') && tip.offsetWidth > 0 && I.win.getComputedStyle(tip).opacity === '1', `${w}px：撒飼料的說明常駐在飼料旁邊`); }
     await I.tab('today'); ok(I.vis(I.$('.foot')) && !I.doc.body.classList.contains('sea-on') && !I.$('#tank'), `${w}px：離開大海頁面恢復`);
     await I.tab('tank'); await I.click('[data-act=tankview][data-v=dex]'); ok(!I.doc.body.classList.contains('sea-on'), `${w}px：圖鑑是一般頁面`);
