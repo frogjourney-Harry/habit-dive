@@ -435,7 +435,7 @@ const TANK_SPECIES = {
 };
 const SWIM = .5;   // 游動速度倍率（水族箱每格 3 像素，原本的速度看起來太快）
 const STAGE_SCALE = [1, 1, 1.1];   // 幼體圖本身就比較小
-const FEED = { free: 3, pack: 10, price: 30 };            // 每天免費 3 顆；商店 30 金幣買 10 顆
+const FEED = { free: 10, pack: 10, price: 30 };           // 每天免費 10 顆；商店 30 金幣買 10 顆
 // 水族箱設定：哪幾隻放進去記在 S.outTank
 const freeLeft = () => S.feedDay && S.feedDay.d === dayKey() ? Math.max(0, FEED.free - S.feedDay.used) : FEED.free;
 const feedLeft = () => freeLeft() + (S.feed || 0);
@@ -481,7 +481,7 @@ function steer(f, tvx, tvy, dt, vertical = true) {
   // 魚頭朝實際游的方向（不是朝目的地），掉頭時不會倒著滑
   if (vertical && Math.abs(f.mx) > Math.abs(f.vx) * .15) f.vx = Math.sign(f.mx) * Math.abs(f.vx);
 }
-// 海底工具列的飼料：小蝦圖示＋兩個標籤，今天免費的還剩幾顆（共 3 顆）、買的還有幾顆
+// 海底工具列的飼料：小蝦圖示＋兩個標籤，今天免費的還剩幾顆（每天 FEED.free 顆）、買的還有幾顆
 function tankFeedHTML() {
   const f = freeLeft(), b = S.feed || 0;
   return `${img(SHRIMP, 2, false, 'feedic')}<span class="fpills"><span class="fpill free${f ? '' : ' out'}" title="今天免費的飼料，每天 ${FEED.free} 顆">FREE ${f}/${FEED.free}</span><span class="fpill paid" title="用金幣買的飼料">PAID ${b}</span></span>`;
@@ -588,7 +588,7 @@ function tankStart() {
   cv.onclick = e => {
     const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width, py = (e.clientY - r.top) * H / r.height;
     if (py >= floorY - 4) return;
-    if (!useFeed()) { toast('飼料用完了，明天會再送 3 顆，也可以用金幣買'); return; }
+    if (!useFeed()) { toast(`飼料用完了，明天會再送 ${FEED.free} 顆，也可以用金幣買`); return; }
     TANK.food.push({ x: px, y: py, vy: .25 }); ac(); SFX.tap();
     const el = document.getElementById('feedInfo'); if (el) el.innerHTML = tankFeedHTML();
     if (!needFeedTip()) { const tip = document.querySelector('.seacoach'); if (tip) tip.remove(); }

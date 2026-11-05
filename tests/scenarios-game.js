@@ -161,14 +161,16 @@ test('水族箱：撒飼料、成長、設定、放生、圖鑑', async () => {
   const fish = () => I.ev('TANK.fish'); eq(fish().length, 5, '五隻都在水族箱裡');
   const W = I.ev('TANK.W'), H = I.ev('TANK.H');
   for (const f of fish()) ok(f.x >= 0 && f.x <= W - f.w + 1 && f.y >= -2 && f.y <= H, `${f.c.id} 在水族箱範圍內 (${f.x | 0},${f.y | 0})`);
-  // 撒飼料：先用免費 3 顆，再用買的，再沒有
+  // 撒飼料：先用每天免費的 10 顆，再用買的，再沒有
   const cv = I.$('#tank'); const r = cv.getBoundingClientRect();
   const drop = async () => { cv.dispatchEvent(new I.win.MouseEvent('click', { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + 20 })); await flush(); };
   ok(I.$('.seacoach') && I.has('點水裡撒飼料，魚吃到一定數量會長大'), '新手：海中間有撒飼料的提示');
-  eq(I.$('.fpill.free').textContent, 'FREE 3/3', '免費標籤 3/3'); eq(I.$('.fpill.paid').textContent, 'PAID 0', '買的標籤 0');
-  await drop(); await drop(); ok(I.$('.seacoach'), '撒了 2 顆提示還在'); eq(I.$('.fpill.free').textContent, 'FREE 1/3', '免費剩 1/3');
-  await drop(); eq(I.S.feedDay.used, 3, '免費飼料用掉 3 顆'); ok(!I.$('.seacoach'), '撒滿 3 顆提示就消失'); eq(I.S.tossed, 3, '記下撒過 3 顆'); ok(I.$('.fpill.free.out'), '免費用完標籤變灰');
-  await drop(); ok(I.has('飼料用完了'), '沒飼料了要提示');
+  eq(I.$('.fpill.free').textContent, 'FREE 10/10', '免費標籤 10/10'); eq(I.$('.fpill.paid').textContent, 'PAID 0', '買的標籤 0');
+  await drop(); await drop(); ok(I.$('.seacoach'), '撒了 2 顆提示還在'); eq(I.$('.fpill.free').textContent, 'FREE 8/10', '免費剩 8/10');
+  await drop(); ok(!I.$('.seacoach'), '撒滿 3 顆提示就消失'); eq(I.S.tossed, 3, '記下撒過 3 顆');
+  for (let i = 0; i < 7; i++) await drop();
+  eq(I.S.feedDay.used, 10, '每天免費 10 顆用完'); ok(I.$('.fpill.free.out') && I.$('.fpill.free').textContent === 'FREE 0/10', '免費用完標籤變灰');
+  await drop(); ok(I.has('飼料用完了') && I.has('明天會再送 10 顆'), '沒飼料了要提示，寫明天送 10 顆');
   await I.click('[data-act=buyfeed]'); eq(I.S.feed, 10, '買 10 顆'); eq(I.coins(), 470, '扣 30 金幣');
   await drop(); eq(I.S.feed, 9, '用了買的飼料'); eq(I.$('.fpill.paid').textContent, 'PAID 9', '買的標籤跟著減少');
   { const J = await boot({ state: mkState({ fed: { a: 2, b: 1 } }) }); await J.dismiss(); await J.tab('tank'); ok(!J.$('.seacoach'), '以前餵過 3 顆以上的舊存檔不顯示新手提示'); J.destroy(); }
@@ -394,7 +396,7 @@ test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不�
     }
     ok(!I.$$('.seahud').some(e => e !== I.$('.seabar')), `${w}px：海裡沒有其他浮著的按鈕`);
     { const th = I.win.getComputedStyle(I.$('#tank')).webkitTapHighlightColor; ok(!th || th === 'rgba(0, 0, 0, 0)' || th === 'transparent', `${w}px：點海不會蓋一層藍色（${th}）`); }
-    ok(/^FREE \d+\/3$/.test(I.$('.fpill.free').textContent) && /^PAID \d+$/.test(I.$('.fpill.paid').textContent), `${w}px：飼料是 FREE x/3、PAID x 兩個標籤`);
+    ok(/^FREE \d+\/10$/.test(I.$('.fpill.free').textContent) && /^PAID \d+$/.test(I.$('.fpill.paid').textContent), `${w}px：飼料是 FREE x/10、PAID x 兩個標籤`);
     { const tip = I.$('.seacoach'); ok(!tip || !I.blocked(cv), `${w}px：新手提示不會擋住點海撒飼料`); }
     await I.tab('today'); ok(I.vis(I.$('.foot')) && !I.doc.body.classList.contains('sea-on') && !I.$('#tank'), `${w}px：離開大海頁面恢復`);
     await I.tab('tank'); await I.click('[data-act=tankview][data-v=dex]'); ok(!I.doc.body.classList.contains('sea-on'), `${w}px：圖鑑是一般頁面`);
