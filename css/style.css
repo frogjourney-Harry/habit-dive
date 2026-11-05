@@ -132,6 +132,9 @@ nav .badge{display:inline-block;min-width:18px;height:18px;margin-left:5px;paddi
 .fav{display:inline-flex;align-items:center;background:var(--fill);border-radius:99px}
 .fav button{margin:0;padding:4px 2px 4px 11px;font-size:13px;color:var(--ink);background:none}
 .fav .x{padding:4px 9px 4px 5px;color:var(--ink-subtle)}
+.fav button[data-act=carry]{padding:4px 11px}
+.carryall{margin:0;padding:4px 8px;font-size:13px;color:var(--primary)}
+.carryall:hover{color:var(--primary-pressed)}
 .star{flex:none;font-size:18px;color:#e0a93b;padding:0 4px;margin:0;background:none}
 .star:hover{background:none}
 .stages{display:flex;justify-content:center;gap:18px;margin:6px 0}

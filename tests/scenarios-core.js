@@ -471,3 +471,32 @@ test('請假：運動、寫作（每週型）請假那一週不算斷，沒有�
   I.ev("addCheck(dayKey(), 'write', {})"); ok(/已經達標/.test(I.ev("toggleLeave('write', dayKey())")), '這週已經寫作達標：不用請假');
   I.ev('save()'); I.check('每週型請假'); I.destroy();
 });
+
+test('六件事：昨天沒做完的帶到今天（一件一件或全部帶入）', async () => {
+  const Y = '2026-11-01', row = (text, done = false, cat = 'other') => ({ text, done, cat, rw: done });
+  const blank = () => row('');
+  const I = await boot({ state: mkState({ plans: {
+    [Y]: [row('寫報告', false, 'work'), row('回信', true), row('整理房間'), row('看書'), blank(), blank()],
+    [D0]: [row('看書'), blank(), blank(), blank(), blank(), blank()] } }) }); await I.dismiss();
+  await I.tab('today');
+  const tags = () => I.$$('#six [data-act=carry]').map(b => b.innerText.replace('＋', '').trim());
+  eq(tags(), ['寫報告', '整理房間'], '列出昨天沒打勾的（已完成的「回信」和今天已經有的「看書」不列）');
+  ok(I.$('#six [data-act=carryall]'), '兩件以上有「全部帶入」');
+  ok(!I.$('.nextbar button'), '下一步卡片沒有領取按鈕（只導去任務頁）');
+  await I.click(['#six [data-act=carry]', '整理房間']);
+  eq(I.S.plans[D0].map(x => x.text), ['看書', '整理房間', '', '', '', ''], '點一件：帶到第一個空格');
+  eq(tags(), ['寫報告'], '帶過的不再列出'); ok(!I.$('#six [data-act=carryall]'), '只剩一件時不顯示「全部帶入」');
+  await I.click('#six [data-act=carry]');
+  eq(I.S.plans[D0][2], { text: '寫報告', done: false, cat: 'work', rw: false }, '分類一起帶過來、沒有打勾');
+  ok(!I.$('#six .carry'), '都帶完了，整列消失');
+  ok(!I.S.logs.some(l => l.key === 'plan:' + D0), '帶入不算寫好清單（還是要自己按寫好了）');
+  await I.click('#six [data-act=pday][data-v="-1"]'); ok(!I.$('#six .carry'), '昨天的頁面不顯示');
+  I.check('帶入昨天'); I.destroy();
+  // 全部帶入，格子不夠時帶到滿
+  const full = await boot({ state: mkState({ plans: {
+    [Y]: ['a', 'b', 'c'].map(t => row(t)).concat([blank(), blank(), blank()]),
+    [D0]: ['1', '2', '3', '4'].map(t => row(t)).concat([blank(), blank()]) } }) }); await full.dismiss();
+  await full.tab('today'); await full.click('#six [data-act=carryall]');
+  eq(full.S.plans[D0].map(x => x.text), ['1', '2', '3', '4', 'a', 'b'], '全部帶入：填滿剩下的格子'); ok(full.has('六格寫滿了'), '提示有幾件帶不進來');
+  ok(!full.$('#six .carry'), '寫滿了就不再顯示'); full.destroy();
+});

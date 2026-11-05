@@ -63,11 +63,23 @@ function SHIM(o, P) {
   // 5. 假的 Firebase（完全不連網路）
   const DB = P.__cloudDb; let cur = o.cloudUser ? mkUser(o.cloudUser) : null, authCb = null;
   function mkUser(u) { return { uid: u.uid, email: u.email || u.uid + '@test', async delete() { DB.deletedAccounts = (DB.deletedAccounts || []).concat(u.uid); }, async reauthenticateWithPopup() {} }; }
+  // 即時監聽：同一個帳號的文件一有變動，每個開著的裝置都會收到（模擬 Firestore 的 onSnapshot）
+  const L = DB.listeners || (DB.listeners = {});
+  const snapOf = uid => { const d = DB.docs[uid]; return { exists: !!d, data: () => d, metadata: { hasPendingWrites: false } }; };
+  const notify = uid => setTimeout(() => { for (const cb of (L[uid] || []).slice()) { try { cb(snapOf(uid)); } catch (e) {} } }, 0);
   const doc = uid => ({
-    async get() { DB.log.push('get'); if (DB.fail) throw new Error('offline'); const d = DB.docs[uid]; return { exists: !!d, data: () => d }; },
-    async set(v) { DB.log.push('set'); if (DB.fail) throw new Error('offline'); DB.docs[uid] = JSON.parse(JSON.stringify(v)); },
-    async delete() { delete DB.docs[uid]; },
+    async get() { DB.log.push('get'); if (DB.fail) throw new Error('offline'); return snapOf(uid); },
+    // 已經關掉的測驗頁（iframe 被拿掉了）不能再寫入：它還沒跑完的上傳會跑進下一個測驗的雲端
+    async set(v) { if (!window.frameElement) return; DB.log.push('set'); if (DB.fail) throw new Error('offline'); DB.docs[uid] = JSON.parse(JSON.stringify(v)); notify(uid); },
+    async delete() { delete DB.docs[uid]; notify(uid); },
+    onSnapshot(cb) { DB.log.push('listen'); (L[uid] = L[uid] || []).push(cb); setTimeout(() => cb(snapOf(uid)), 0); return () => { L[uid] = (L[uid] || []).filter(f => f !== cb); }; },
   });
+  // 交易：先讀再寫，寫的內容在交易結束時一次寫入
+  async function runTransaction(fn) {
+    let w = null; const out = await fn({ get: ref => ref.get(), set: (ref, v) => { w = [ref, v]; } });
+    if (w) await w[0].set(w[1]);
+    return out;
+  }
   const authObj = {
     get currentUser() { return cur; },
     onAuthStateChanged(cb) { authCb = cb; Promise.resolve().then(() => cb(cur)); return () => {}; },
@@ -78,7 +90,7 @@ function SHIM(o, P) {
   window.firebase = {
     initializeApp() {},
     auth: Object.assign(() => authObj, { GoogleAuthProvider: function () {} }),
-    firestore: Object.assign(() => ({ collection: () => ({ doc }) }), { FieldValue: { serverTimestamp: () => R.now() + ck.off } }),
+    firestore: Object.assign(() => ({ collection: () => ({ doc }), runTransaction }), { FieldValue: { serverTimestamp: () => R.now() + ck.off } }),
   };
   window.__fb = { signIn(u) { cur = mkUser(u); authCb && authCb(cur); } };
   const hd = document.head, apd = Node.prototype.appendChild;

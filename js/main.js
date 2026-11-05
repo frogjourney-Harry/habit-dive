@@ -201,6 +201,18 @@ document.addEventListener('click', async e => {
       slot.text = t; save(); render(); break;
     }
     case 'delfav': S.favs.splice(+v, 1); save(); render(); break;
+    case 'carry': case 'carryall': {   // 昨天沒做完的帶到今天：填進今天的空格（分類一起帶過來），格子不夠就帶到滿為止
+      const P = getPlan(dayKey()), left = carryLeft(P), Y = S.plans[addDays(dayKey(), -1)] || [];
+      const pick = b.dataset.act === 'carryall' ? left : [left[+v]].filter(Boolean);
+      let n = 0;
+      for (const t of pick) {
+        const slot = P.find(x => !x.text.trim()); if (!slot) break;
+        Object.assign(slot, { text: t, cat: (Y.find(x => x.text.trim() === t) || {}).cat || 'other', done: false }); n++;
+      }
+      if (!n) { toast('六格都寫滿了'); break; }
+      UI.showRows = Math.max(UI.showRows || 0, P.reduce((a, x, i) => x.text.trim() ? i + 1 : a, 0));
+      save(); render(); toast(n < pick.length ? `帶入 ${n} 件，六格寫滿了` : `帶入 ${n} 件`); break;
+    }
     case 'petname': {
       UI.nameEdit = UI.nameEdit === v ? null : v; render();
       const i = document.querySelector('input[data-nf]'); if (i) { i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch (_) {} }

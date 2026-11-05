@@ -111,7 +111,6 @@ function quests(D) {
 function questCount(T) { const daily = T.filter(t => !t.hab && t.id !== 'misc' && t.id !== 'login'); return { daily, done: daily.filter(t => t.full).length }; }
 function nextStep(D, P) {
   const all = dailyTasks(D), { daily, done } = questCount(all), T = all.filter(t => !t.week && t.id !== 'login');
-  const pc = all.flatMap(t => t.pend).reduce((a, l) => a + (l.c || 0), 0);
   // 下一步：照順序找還沒完成的
   const nx = T.find(t => !t.full);
   let label = '每日任務都完成了！';
@@ -121,9 +120,13 @@ function nextStep(D, P) {
       : nx.nx || nx.name;
   }
   return `<section class="px nextbar"><div class="row">
-      <div class="sp" ${nx ? `data-act="goto" data-v="${nx.go}"` : ''}><small class="dim">每日任務 ${done}/${daily.length}${nx ? '・下一步' : ''}</small><div class="nx">${esc(label)}${nx ? ' ›' : ''}</div></div>
-      ${pc ? `<button data-act="tab" data-v="quest">領取 +${pc}${COIN}</button>` : ''}</div>
+      <div class="sp" ${nx ? `data-act="goto" data-v="${nx.go}"` : ''}><small class="dim">每日任務 ${done}/${daily.length}${nx ? '・下一步' : ''}</small><div class="nx">${esc(label)}${nx ? ' ›' : ''}</div></div></div>
     <div class="bar c"><i style="width:${done / daily.length * 100}%"></i></div></section>`;
+}
+// 昨天有寫、沒打勾、而且還不在今天清單 P 裡的事（去掉重複）
+function carryLeft(P) {
+  const Y = S.plans[addDays(dayKey(), -1)] || [], have = new Set(P.map(x => x.text.trim()));
+  return [...new Set(Y.filter(x => !x.done).map(x => x.text.trim()).filter(t => t && !have.has(t)))];
 }
 function today(D) {
   const st = streaks(D), td = dayKey(), d = viewDay(), P = getPlan(d);
@@ -160,6 +163,9 @@ function today(D) {
   const favs = S.favs || [];
   // 常用：點一下填進第一個空格，不用每天重打
   const favBar = favs.length ? `<div class="favs"><small class="dim">常用</small>${favs.map((t, i) => `<span class="fav"><button class="ghost" data-act="usefav" data-v="${i}">${esc(t)}</button><button class="ghost x" data-act="delfav" data-v="${i}" title="從常用移除">×</button></span>`).join('')}</div>` : '';
+  // 昨天沒做完的：在今天點一下帶過來（一件一件，或全部帶入），已經在今天清單裡的不再列出；今天寫滿了就不顯示
+  const left = UI.pday === 0 ? carryLeft(P) : [];
+  const carryBar = left.length && P.some(x => !x.text.trim()) ? `<div class="favs carry"><small class="dim">昨天沒做完</small>${left.map((t, i) => `<span class="fav"><button class="ghost" data-act="carry" data-v="${i}" title="帶到今天">＋ ${esc(t)}</button></span>`).join('')}${left.length > 1 ? '<button class="ghost carryall" data-act="carryall">全部帶入</button>' : ''}</div>` : '';
   const last = P.reduce((a, it, i) => it.text.trim() ? i : a, -1), shown = Math.min(P.length, Math.max(CONFIG.rewardRows, last + 1, UI.showRows || 0));
   UI.shownRows = shown;
   const rows = P.slice(0, shown).map((it, i) => {
@@ -190,7 +196,7 @@ function today(D) {
     <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
       <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}${hint ? '・' + hint : ''}</div>
       ${UI.pday >= 0 && !S.tipSix ? `<div class="tip row"><span class="sp">小技巧：按住編號拖曳可以排順序，點 ☆ 存成常用。</span><button class="ghost" data-act="tipsix">知道了</button></div>` : ''}
-      ${UI.pday >= 0 ? favBar : ''}${rows}
+      ${UI.pday >= 0 ? carryBar + favBar : ''}${rows}
       ${shown < P.length && UI.pday >= 0 ? `<button class="ghost addrow" data-act="addrow">＋ 再加一件${shown === CONFIG.rewardRows ? '（只做紀錄）' : ''}</button>` : ''}
       ${UI.pday < 0 || claimed ? '' : '<div class="row" style="margin-top:8px"><button class="pri" data-act="plansave">寫好了</button></div>'}</section>
     ${timer}`;

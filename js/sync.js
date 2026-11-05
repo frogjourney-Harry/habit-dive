@@ -21,7 +21,9 @@ function cloudInit() {
     firebase.auth().onAuthStateChanged(async u => {
       CLOUD.user = u;
       // 這台裝置第一次連到這個帳號（或換了帳號）才需要問要留哪一份；之前登入過的就照「誰比較新」自動同步
-      if (u) { const first = S.cloudUid !== u.uid; S.cloudUid = u.uid; save(false); await cloudPull(first); }
+      if (CLOUD.unsub) { CLOUD.unsub(); CLOUD.unsub = null; }
+      CLOUD.base = null;
+      if (u) { const first = S.cloudUid !== u.uid; S.cloudUid = u.uid; save(false); await cloudPull(first); cloudListen(); }
       else if (S.cloudUid) { delete S.cloudUid; save(false); }
       render();
     });
@@ -52,6 +54,7 @@ async function cloudPull(first) {
     const snap = await userDoc().get();
     if (!snap.exists) { await cloudPush(); return; }
     const cloud = JSON.parse(snap.data().data), cm = cloud.mtime || 0, lm = S.mtime || 0;
+    CLOUD.base = cm;   // 目前知道的雲端版本；上傳時用來判斷雲端有沒有被別台改過
     if (cm === lm) { CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); return; }
     if (!hasProgress(S)) { adopt(cloud, first); if (first) toast('已從雲端載入你的紀錄'); }
     else if (!hasProgress(cloud)) await cloudPush();
@@ -72,16 +75,39 @@ async function cloudPush() {
   const bytes = typeof TextEncoder === 'function' ? new TextEncoder().encode(data).length : data.length * 3;
   if (bytes > 1000000) { CLOUD.error = '紀錄太大，暫時無法同步'; renderCloud(); return; }
   try {
-    await userDoc().set({ data, mtime: S.mtime || 0, v: S.v, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    // 上傳前先看雲端：上次同步之後被別台裝置改過（而且不是這台的版本），就不蓋掉它，改用雲端的最新版
+    const ref = userDoc(), mtime = S.mtime || 0;
+    const newer = await firebase.firestore().runTransaction(async tx => {
+      const snap = await tx.get(ref), cm = snap.exists ? snap.data().mtime || 0 : 0;
+      if (snap.exists && CLOUD.base != null && cm > CLOUD.base && cm !== mtime) return JSON.parse(snap.data().data);
+      tx.set(ref, { data, mtime, v: S.v, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      return null;
+    });
+    if (newer) { CLOUD.base = newer.mtime || 0; adopt(newer); toast('另一台裝置剛更新過，已換成最新的紀錄'); }
+    else CLOUD.base = mtime;
     CLOUD.last = Date.now(); CLOUD.error = '';
-  } catch (e) { CLOUD.error = '同步失敗，稍後會再試'; CLOUD.pending = true; CLOUD.timer = setTimeout(cloudPush, 30000); }
+  } catch (e) { CLOUD.error = '同步失敗，稍後會再試'; CLOUD.pending = true; CLOUD.since = Date.now(); CLOUD.timer = setTimeout(cloudPush, 30000); }
   renderCloud();
 }
-// save() 之後呼叫：幾秒內的變動合併成一次上傳，省寫入次數
+// save() 之後呼叫：幾秒內的變動合併成一次上傳，省寫入次數。
+// 連續操作時不能一直往後延（以前每存一次就重新等 3 秒，一直在用就一直沒上傳）：從第一個還沒上傳的變動算起，最多等 8 秒
 function cloudSchedule() {
   if (!CLOUD.user) return;
-  CLOUD.pending = true; clearTimeout(CLOUD.timer);
-  CLOUD.timer = setTimeout(cloudPush, 3000);
+  const now = Date.now();
+  if (!CLOUD.pending) { CLOUD.pending = true; CLOUD.since = now; }
+  clearTimeout(CLOUD.timer);
+  CLOUD.timer = setTimeout(cloudPush, Math.max(0, Math.min(3000, CLOUD.since + 8000 - now)));
+}
+// 即時接收別台裝置的變動：開著的頁面不用重新整理也會更新。這台還有沒上傳的變動時先不換，上傳時會檢查衝突
+function cloudListen() {
+  if (!CLOUD.user || CLOUD.unsub) return;
+  CLOUD.unsub = userDoc().onSnapshot(snap => {
+    if (!snap.exists || (snap.metadata && snap.metadata.hasPendingWrites)) return;
+    const cm = snap.data().mtime || 0;
+    if (cm === (S.mtime || 0) || (CLOUD.base != null && cm <= CLOUD.base) || CLOUD.pending) return;
+    CLOUD.base = cm; adopt(JSON.parse(snap.data().data));
+    CLOUD.last = Date.now(); CLOUD.error = ''; renderCloud(); catchUp();
+  }, () => {});
 }
 const WEBKIT = /iP(hone|ad|od)/.test(navigator.userAgent) || (/Safari/.test(navigator.userAgent) && !/Chrome|Chromium|Android|Edg|OPR/.test(navigator.userAgent));
 // 看得到登入按鈕時就先把登入程式載好：Safari 只讓「按下去的那一瞬間」開彈出視窗，按了才開始載就來不及，要按第二次

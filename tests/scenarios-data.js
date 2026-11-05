@@ -1,7 +1,7 @@
 // 資料面：存檔、舊版資料遷移、備份匯入匯出、兩個分頁同時開、雲端同步、大量資料
 const loginAs = async (I, uid = 'u1') => { window.__cloudDb.nextUser = { uid }; await I.tab('about'); await I.click('.gbtn'); await flush(12); };
 const hide = (I, hidden) => { Object.defineProperty(I.doc, 'visibilityState', { get: () => hidden ? 'hidden' : 'visible', configurable: true }); I.doc.dispatchEvent(new I.win.Event('visibilitychange')); return flush(12); };
-const resetCloud = () => { Object.assign(window.__cloudDb, { docs: {}, fail: false, log: [], popupBlocked: false, redirected: false, deletedAccounts: [], nextUser: null }); };
+const resetCloud = () => { Object.assign(window.__cloudDb, { docs: {}, fail: false, log: [], listeners: {}, popupBlocked: false, redirected: false, deletedAccounts: [], nextUser: null }); };
 
 test('兩個分頁同時開：一邊改了另一邊不能蓋掉', async () => {
   const A = await boot({ state: mkState() }); await A.dismiss();
@@ -232,5 +232,29 @@ test('雲端：兩台裝置的時鐘差很多，後改的仍然要贏（B 比 A 
   await hide(A, false);
   ok(A.S.plans[D0][1].text === 'B 之後改的', `A 回到畫面要拿到 B 後來的修改（不能被時鐘差蓋掉）：${A.S.plans[D0][1].text}`);
   ok(JSON.parse(window.__cloudDb.docs.u1.data).plans[D0][1].text === 'B 之後改的', '雲端上也是 B 的修改');
+  A.check('A'); B.check('B'); A.destroy(); B.destroy();
+});
+
+test('雲端：兩台同時開著，即時更新；舊的那台不能蓋掉新的', async () => {
+  resetCloud();
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const cloud = () => JSON.parse(window.__cloudDb.docs.u1.data);
+  const A = await boot({ state: mkState({ logs: [W0, coinLog(100)] }) }); await A.dismiss(); await loginAs(A);
+  const B = await boot({ seed: {} }); await B.dismiss(); await loginAs(B);
+  ok(window.__cloudDb.log.includes('listen'), '登入後會即時監聽雲端');
+  // A 改了、上傳：開著的 B 不用重新整理就收到
+  A.ev("S.favs.push('A 加的'); save(); cloudPush()"); await sleep(80); await flush(6);
+  ok(B.S.favs.includes('A 加的'), 'B 即時收到 A 的改動：' + JSON.stringify(B.S.favs));
+  // B 有還沒上傳的改動時，A 又改了：B 上傳時發現雲端比較新，不蓋掉，改用雲端的
+  B.ev("S.favs.push('B 還沒上傳的'); save()");
+  A.ev("S.favs.push('A 第二次'); save(); cloudPush()"); await sleep(80); await flush(6);
+  ok(!B.S.favs.includes('A 第二次'), 'B 還有沒上傳的改動時，先不換掉畫面');
+  await B.ev('cloudPush()'); await flush(6);
+  ok(cloud().favs.includes('A 第二次') && !cloud().favs.includes('B 還沒上傳的'), '雲端上 A 的改動沒有被 B 的舊資料蓋掉');
+  ok(B.S.favs.includes('A 第二次'), 'B 換成雲端的最新版'); ok(B.has('另一台裝置剛更新過'), '告訴使用者換成最新的了');
+  // 連續一直存檔時，上傳不能被一直往後延：從第一個變動算起最多 8 秒
+  const sets = () => window.__cloudDb.log.filter(x => x === 'set').length, n0 = sets();
+  A.ev('save()'); A.clock.advance(7500); A.ev('save()'); await sleep(900);
+  ok(sets() > n0, '連續存檔 7.5 秒後，再存一次也會在 1 秒內上傳（不是又等 3 秒）');
   A.check('A'); B.check('B'); A.destroy(); B.destroy();
 });
