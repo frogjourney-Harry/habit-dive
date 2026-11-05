@@ -42,7 +42,7 @@ const CREATURES = [
   { id:'cuttle', name:'烏賊', r:1, fact:'能在一瞬間改變膚色與紋路。', px: ['..kkkkkkkkkkk','.kwwwwwwwwwwwk','kwssswsssswsskk','kssswssswsssswwk','kswssssswssssswkk.s.s','ksssswssswsssskkssss','kswssssswsssskkss.s.s','.kwwwwwwwwwwwk','..kkkkkkkkkkk'] },
   { id:'seahorse', name:'海馬', r:2, fact:'由爸爸懷孕、生下寶寶。', px: ['..kkk...','.kyyyk..','.kykyyyk','..kyykk.','..kyyk..','.kyyyk..','kyyyyk..','kyyyk...','.kyyk...','..kyk...','.kyk....','.kk.....'] },
   { id:'shark', name:'白鰭鯊', alias:'白鰭礁鯊', r:2, fact:'白天常趴在礁洞底下休息。', px: ['..........kk............','.........kwk............','........kSSk............','kk.....kSSSSkkkkkk......','kwk.kkkSSSSSSSSSSSkkk...','.kSkSSSSSSSSSSSSSSSSkSk.','..kSSSSSSSSSSSSSSSSSSSSk','.kSkwwwwwwwwwwwwwwwwwwk.','kwk.kkkkSkkkkkSkkkkkk...','kk......kk....k.........'] },
-  { id:'moray', name:'裸胸鯙', alias:'錢鰻、海鱔', r:2, fact:'嘴巴一開一合是在呼吸，不是要咬你。', px: ['.............kkkkk..','..........kkkgggggk.','.kkkkkkkkkgggywkgggk','kgggygggyggggggggwwk','kggggggggggggggkk.kk','.kkygggyggggggggwwk.','...kkkkkkkkkkkkkkk..'] },
+  { id:'moray', name:'海鰻', alias:'錢鰻、海鱔', r:2, fact:'嘴巴一開一合是在呼吸，不是要咬你。', px: ['....................kkkkk.....','..................kkgggggkk...','.kkkkkkkkkkkkkkkkkgggwkggggk..','kgggyggggggyggggggggyggggggwwk','kgggggggyggggggggygggggggkk...','kggyggggggggyggggggggygggkk...','.kkgggygggggggyggggggggggwwk..','...kkkkkkkkkkkkkkkkkkkkkkkk...'] },
   { id:'jelly', name:'水母', r:2, fact:'沒有腦也沒有心臟，已在海裡活了五億年。', px: ['...kkkkk...','..kcccccck.','.kcwcccccck','kccccccccck','kkkkkkkkkkk','.c.c.c.c.c.','.c..c.c..c.','..c.c..c.c.','..c..c.c...','.c...c..c..'] },
   { id:'manta', name:'鬼蝠魟', alias:'魔鬼魚', r:3, fact:'Nusa Penida Manta Point 的明星，翼展可達 7 公尺。', px: ['.........kk..........', '........knnk.........', '........knnnk........', '.......knnnnnkk......', '......knnnnnnnnk.....', '......knnnnnnwnnk.kk.', '.....knnnnnnnnnnnkk..', 'kkkkknnnnnnnnnnnnnnk.', '.....knnnnnnnnnnnkk..', '......knnnnnnwnnk.kk.', '......knnnnnnnnk.....', '.......knnnnnkk......', '........knnnk........', '........knnk.........', '.........kk..........'] },
   { id:'mola', name:'翻車魚', r:3, fact:'Crystal Bay 的夢幻魚種，世界最重的硬骨魚。', px: ['.....k.........', '....kSk........', '...kSSk........', '...kSSkkkkk....', '..kkSSSSSSSkk..', '.kSSSSsSSSsSSk.', 'ksSsSsSsssSskwk', '.ksscsssssscsk.', '.kssssscssSssk', 'kkcscscscscscsk', '.kccccwccSccwck.', '..kkcccccwccckk.', '...kSSkkkkk....', '...kSSk........', '....kSk........', '.....k.........'] },
@@ -73,7 +73,7 @@ const JUV = {
   cuttle: ['..kkkk..', '.kwsswk.', 'kswskwsk', '.kwsswk.', '..kkkk..', '.s.s.s..'],   // 剛孵化的小烏賊，大眼睛
   seahorse: ['.kk..', 'kyyk.', 'kykyk', '.kyk.', '.kyk.', 'kyk..', '.k...'],
   shark: ['.......kk.......','......kSk.......','k....kSSSkkkk...','kwkkkSSSSSSSSkk.','.kSSSSSSSSSSSkSk','kwkkwwwwwwwwwwk.','k...kkkSkkkSk...'],
-  moray: ['.........kkkk.','.kkkkkkkkgwkgk','kgggygggygggwk','.kkkkkkkkkkkk.'],
+  moray: ['.............kkkk...','.kkkkkkkkkkkgwkgk...','kgggygggggygggggwwk.','kggggggyggggggkk....','.kkkkkkkkkkkkkkkwk..'],
   jelly: ['..kkk..', '.kccck.', 'kcwccck', 'kkkkkkk', '.c.c.c.', 'c..c.c.', '.c..c.c'],
   manta: ['.....kk......', '....knnnk....', '...knnnnwk.k.', '..knnnnnnnkk.', 'kkknnnnnnnnk.', '..knnnnnnnkk.', '...knnnnwk.k.', '....knnnk....', '.....kk......'],
   mola: ['....k....', '...ksk...', '.kkssskk.', 'kssssskwk', 'ksssssssk', '.kkssskk.', '...ksk...', '....k....'],   // 小翻車魚：上下兩片鰭、圓圓的身體
@@ -91,7 +91,7 @@ const SPECIES_PAL = {
   lion: { r: '#a8362e' },                                    // 魔鬼蓑鮋：紅褐色條紋
   puffer: { y: '#a8957a' },                                  // 白點叉鼻魨：灰褐色
   cuttle: { s: '#9a8466', w: '#e8dcc4' },                    // 白斑烏賊：褐色斑駁
-  moray: { g: '#7a6a3a', y: '#2f2616' },                     // 爪哇裸胸鯙：褐色帶深色斑點
+  moray: { g: '#80868e', y: '#3a3f47' },                     // 灰色帶深灰斑點（原本的橄欖褐看起來偏綠）
   jelly: { c: '#bfe6f5' },                                   // 海月水母：半透明淡藍
   manta: { n: '#555e6e', w: '#f4f4f4' },                     // 鬼蝠魟：深灰黑色背部、白色肩斑（太黑會看不到）
   shark: { S: '#7d7f86' },
@@ -115,7 +115,7 @@ const MORPH = {
   cuttle: { n: '火焰烏賊', map: { s: '#5a2a4a', w: '#f2c94c' } },         // Metasepia pfefferi：深紫底帶黃色
   seahorse: { n: '豆丁海馬', map: { y: '#f19ac0' } },                     // Hippocampus bargibanti
   shark: { n: '白化白鰭鯊', map: { S: '#eceef0' } },                      // 罕見的白化個體
-  moray: { n: '黃邊裸胸鯙', map: { g: '#b59a3a' } },                      // Gymnothorax flavimarginatus：黃褐色
+  moray: { n: '黃邊海鰻', map: { g: '#b59a3a' } },                      // Gymnothorax flavimarginatus：黃褐色
   jelly: { n: '紫紋海刺水母', map: { c: '#c9a6e6' } },                    // Chrysaora colorata
   manta: { n: '黑化鬼蝠魟', map: { n: '#33373f', w: '#33373f' } },        // 黑色型：全身更黑、背上沒有白色肩斑
   mola: { n: '長翻車魚', map: { S: '#8fa3b8', s: '#c3d3e6', c: '#dfe8f1' } },                         // 近親 Ranzania laevis，銀色
