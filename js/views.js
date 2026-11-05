@@ -713,7 +713,7 @@ function shop(D) {
     ${CONFIG.chests.map((ch, i) => `<div class="it chest"><span class="ic">${img(chestPx(i), 2)}</span>
       <span class="sp" data-act="chestpool" data-v="${ch.id}">${ch.name}<span class="more">${UI.chestOpen === ch.id ? '▴' : '▾'}</span><br><small>${chestOdds(ch, D)}</small></span>
       <span class="price">${ch.price}${COIN}</span><button data-act="buychest" data-v="${ch.id}" ${D.coins < ch.price ? 'disabled' : ''}>購買</button>
-      ${UI.chestOpen !== ch.id ? '' : `<div class="cpool">${chestPool(ch).map(c => `<button class="ghost ${D.col[c.id] ? '' : 'new'}" data-act="fact" data-v="${c.id}" title="${c.name}">${img(c.px, 2)}<small>${c.name}</small></button>`).join('')}</div>`}</div>`).join('')}
+      ${UI.chestOpen !== ch.id ? '' : `<div class="cpool">${chestPool(ch).map(c => `<button class="ghost ${D.col[c.id] ? '' : 'new'}" data-act="fact" data-v="${c.id}" title="${c.name}">${stageImg(c, 2, 2)}<small>${c.name}</small></button>`).join('')}</div>`}</div>`).join('')}
     <div class="it chest"><span class="ic">${img(SHRIMP, 2)}</span><span class="sp">飼料 ${FEED.pack} 顆<br><small>每天另有免費 ${FEED.free} 顆・目前還有 ${feedLeft()} 顆</small></span>
       <span class="price">${FEED.price}${COIN}</span><button data-act="buyfeed" ${D.coins < FEED.price ? 'disabled' : ''}>購買</button></div></section>
   <section class="px shop">${sh('連勝保護', 'STREAK')}
