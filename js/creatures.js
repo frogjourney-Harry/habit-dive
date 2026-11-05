@@ -1,7 +1,7 @@
 // 生物：像素圖、圖鑑資料、三種成長型態（幼體 JUV／成體／特殊型態 MORPH）與每種生物的實際顏色。
 /* ========= 像素圖 ========= */
 const PAL = { k:'#1a1c2c', w:'#f4f4f4', o:'#ef7d57', y:'#ffcd75', b:'#41a6f6', n:'#3b5dc9', c:'#73eff7',
-  g:'#38b764', G:'#257179', P:'#b267e6', r:'#e43b44', s:'#94b0c2', S:'#566c86', t:'#a0703c', K:'#2a2016' };
+  g:'#38b764', G:'#257179', P:'#b267e6', r:'#e43b44', s:'#94b0c2', S:'#566c86', t:'#a0703c', K:'#2a2016', 2:'#c58a22' };   // 2＝深金（傳說寶箱的鐵條）
 const FISH = [
   '.....kkkk....',
   '...kkAAAAkk..',
@@ -19,7 +19,12 @@ function fish(body, stripes = {}, top) {
 }
 const CHEST = ['.kkkkkkkkkk.','kttttttttttk','kttttttttttk','kyyyyyyyyyyk','ktttkyyktttk',
   'ktttkyyktttk','kttttkkttttk','kttttttttttk','kyyyyyyyyyyk','.kkkkkkkkkk.'];
+// 每種稀有度的寶箱：箱身和鐵條換成那個稀有度的顏色（普通是木頭配銀條，其他配金條，傳說是金箱配深金條）
+const CHEST_COLORS = [['t', 's'], ['g', 'y'], ['b', 'y'], ['P', 'y'], ['y', '2']];
+const chestPx = r => { const [body, band] = CHEST_COLORS[r] || CHEST_COLORS[0]; return CHEST.map(row => row.replace(/[ty]/g, ch => ch === 't' ? body : band)); };
 
+// 連勝保護卡的像素盾牌
+const SHIELD = ['..kkkkk..', '.kbbbbbk.', 'kbbwbbbbk', 'kbbwbbbbk', 'kbbbbbbbk', '.kbbbbbk.', '..kbbbk..', '...kbk...', '....k....'];
 const SHRIMP = ['k.k.............','.k.k............','..kkkkkkk.......','..kwkooooookk....','..kkoowooooooook.','...koooooooooookk','....kkoooooookk.k','......kokokokk...','.......k.k.k.....'];
 
 const CREATURES = [
@@ -75,7 +80,7 @@ const JUV = {
   dolphin: ['.....k......','....kbk.....','k..kbbbkkk..','kbkbbbbbbbkkk','k..kwwwwwwbbbk','....kkkkkkkk'],
   whaleshark: ['......k.....', '.....knk....', 'k..kknnnkkk.', 'kkknwnnwnnkk', 'k..kkwwwwwk.'],
 };
-// 每種生物的實際顏色（對照真實物種調整，蓋過共用調色盤）
+// 共用調色盤以 Sweetie 16（GrafxKid）為基礎。每種生物的實際顏色（對照真實物種調整，蓋過共用調色盤）
 const SPECIES_PAL = {
   clown: { o: '#ff8a1c' },                                   // 眼斑雙鋸魚：鮮橘色
   damsel: { b: '#2f6bff', c: '#2f6bff', y: '#2f6bff' },      // 藍魔鬼雀鯛：電光藍

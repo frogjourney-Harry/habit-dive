@@ -67,7 +67,11 @@ test('升級：彈窗、稱號、只慶祝一次、超大等級', async () => {
   await J.tab('log'); ok(!J.$('.dive'), '紀錄頁只放入口，不直接列稱號'); ok(J.$('.rkbtn').innerText.includes('2 / '), '入口寫已拿到 2 個');
   await J.click('.rkbtn'); const rk = J.$$('.dive .rk');
   eq(rk.length, J.ev('RANKS.length'), '每個稱號都列出來');
-  ok(rk.every(e => e.querySelector('p').innerText.trim().length > 10), '每個稱號都有介紹');
+  eq(J.$$('.dive .rk p').length, 1, '只有目前的稱號展開介紹，不會一整頁都是字'); ok(J.$('.rk.cur p').innerText.trim().length > 10, '目前的稱號有介紹');
+  ok(!J.$('.dive').innerText.includes('🔒'), '還沒拿到的稱號沒有鎖的圖示');
+  await J.click(J.$$('.rk.lock')[2]); ok(J.$$('.rk.lock')[2].querySelector('p') && J.$$('.rk.lock')[2].querySelector('p').innerText.trim().length > 10, '點還沒拿到的稱號也看得到介紹');
+  await J.click(J.$$('.rk.lock')[2]); ok(!J.$$('.rk.lock')[2].querySelector('p'), '再點一次收起來');
+  ok(J.ev('RANKS').every(r => r[3].length > 10), '每個稱號都有介紹');
   eq(J.$$('.rk.got').length, 1, 'Lv.3：浮潛客已拿到'); ok(J.$('.rk.cur').innerText.includes('體驗潛水員'), 'Lv.3：現在是體驗潛水員');
   eq(J.$$('.rk.lock').length, rk.length - 2, '其他還鎖著'); ok(J.$('.rk.cur').innerText.includes('再 '), '現在的稱號下面寫還差多少 XP');
   J.check('稱號頁'); await J.click('[data-act=logview][data-v=""]'); ok(J.$('.rkbtn') && !J.$('.dive'), '返回紀錄頁');

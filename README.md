@@ -12,6 +12,7 @@
 - [快速開始](#快速開始)
 - [本機開發](#本機開發)
 - [專案結構](#專案結構)
+- [設計規格](#設計規格)
 - [設定](#設定)
 - [雲端同步](#雲端同步)
 - [測試](#測試)
@@ -69,6 +70,8 @@ python -m http.server 8000
 ```
 .
 ├── index.html             頁面骨架
+├── DESIGN.md              設計規格：顏色、字級、元件與規則
+├── design-preview.html    元件目錄：DESIGN.md 每個 token 的實際樣子
 ├── css/
 │   └── style.css          所有樣式，手機版樣式位於檔案最後
 ├── js/
@@ -85,6 +88,12 @@ python -m http.server 8000
 ├── firestore.rules        Firestore 安全規則
 └── bump.sh                更新靜態資源的版本號
 ```
+
+## 設計規格
+
+介面的顏色、字級、圓角、間距和元件樣式都寫在 [DESIGN.md](DESIGN.md)，格式參考 [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) 的 DESIGN.md 寫法。修改介面前請先讀這份文件；用瀏覽器開啟 `design-preview.html` 可以看到每個元件的實際樣子。
+
+像素圖的配色以 [Sweetie 16](https://lospec.com/palette-list/sweetie-16) 調色盤（GrafxKid）為基礎，再依真實物種調整。所有生物、寶箱、道具的像素圖都是本專案自行繪製。
 
 ## 設定
 

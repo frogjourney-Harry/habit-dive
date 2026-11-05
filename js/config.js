@@ -10,6 +10,7 @@ const CONFIG = {
   xp:    { check: 10, habit: 10, exercise: 20, plan: 10, anyhab: 10, pomo: 10, period: 30, top3: 15, login: 5 },
   coins: { task: 15, period: 60, welcome: 60, top3: 30, login: 15 },   // 都是 15 的倍數，好記
   rewardRows: 3,              // 六件事每天只有前幾項打勾有獎勵，其餘只做紀錄
+  sixTipDays: 3,              // 六件事的操作提示（前幾件有獎勵、拖曳排序）：寫過清單滿這麼多天之後就不再顯示
   leavePerMonth: 2,           // 每天的習慣每個月可以請幾天假（請假的那天連勝不會中斷）
   leavePerMonthWeekly: 1,     // 每週/每兩週型的習慣（例如運動）每個月可以請幾次「這一期請假」
   freeze: { price: 150, max: 2 },   // 連勝保護卡：免費假用完、又漏掉時自動用掉一張；所有習慣共用，最多帶幾張

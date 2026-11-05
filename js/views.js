@@ -93,7 +93,7 @@ function quests(D) {
     const sum = k => t.pend.reduce((a, l) => a + (l[k] || 0), 0);
     const [c, xp] = st === 'pend' ? [sum('c'), sum('xp')] : st === 'got' ? [t.c, t.xp] : [t.est, t.ex];
     const amt = `+${c}${COIN}<small>+${xp} XP</small>`;
-    const right = st === 'pend' ? `<button class="pri" data-act="claim" data-v="${t.id}">領取 ${amt}</button>`
+    const right = st === 'pend' ? `<button data-act="claim" data-v="${t.id}">領取 ${amt}</button>`
       : st === 'got' ? '<span class="qend">已完成</span>' : `<span class="qamt">${amt}</span>`;
     const sub = [st === 'todo' && t.how ? esc(t.how) : '', t.of && !t.full ? `<span class="qbar"><i style="width:${t.n / t.of * 100}%"></i></span>${t.n}/${t.of}` : ''].filter(Boolean).join('・');
     return `<div class="qc ${st}"><i class="qbox"></i>
@@ -122,7 +122,7 @@ function nextStep(D, P) {
   }
   return `<section class="px nextbar"><div class="row">
       <div class="sp" ${nx ? `data-act="goto" data-v="${nx.go}"` : ''}><small class="dim">每日任務 ${done}/${daily.length}${nx ? '・下一步' : ''}</small><div class="nx">${esc(label)}${nx ? ' ›' : ''}</div></div>
-      ${pc ? `<button class="pri" data-act="tab" data-v="quest">領取 +${pc}${COIN}</button>` : ''}</div>
+      ${pc ? `<button data-act="tab" data-v="quest">領取 +${pc}${COIN}</button>` : ''}</div>
     <div class="bar c"><i style="width:${done / daily.length * 100}%"></i></div></section>`;
 }
 function today(D) {
@@ -154,7 +154,9 @@ function today(D) {
   }).filter(Boolean);
   const hint = UI.pday < 0 ? '補登昨天：只算完成，沒有獎勵'
     : UI.pday > 0 ? `先寫好明天的（至少 ${CONFIG.rewardRows} 件），一樣算「寫好清單」`
-    : `前 ${CONFIG.rewardRows} 件有獎勵・按住編號上下拖曳排順序`;
+    // 今天的提示只在剛開始用的前幾天出現（以前寫過清單的天數還不到 CONFIG.sixTipDays），之後只留日期
+    : Object.keys(S.plans).filter(x => x < dayKey() && S.plans[x].some(it => it.text.trim())).length < CONFIG.sixTipDays
+      ? `前 ${CONFIG.rewardRows} 件有獎勵・按住編號上下拖曳排順序` : '';
   const favs = S.favs || [];
   // 常用：點一下填進第一個空格，不用每天重打
   const favBar = favs.length ? `<div class="favs"><small class="dim">常用</small>${favs.map((t, i) => `<span class="fav"><button class="ghost" data-act="usefav" data-v="${i}">${esc(t)}</button><button class="ghost x" data-act="delfav" data-v="${i}" title="從常用移除">×</button></span>`).join('')}</div>` : '';
@@ -178,15 +180,15 @@ function today(D) {
       <div class="pomo-set"><div class="presets">${PRESETS.map(m => `<button class="${pm === m && !custom ? 'sel' : ''}" data-act="pomoset" data-v="${m}">${m} 分</button>`).join('')}
           <button class="${custom ? 'sel' : ''}" data-act="pomocustom">${custom ? `${pm} 分` : '自訂'}</button></div>
         <div class="pomo-go">${custom ? `<input type="number" id="pomoMin" min="5" max="120" step="5" value="${pm}" title="總長度（分鐘）"><span class="dim">分</span>` : ''}
-        <button class="pri" data-act="start">開始專注</button></div></div>
+        <button data-act="start">開始專注</button></div></div>
       <div class="segs" id="pomoPlan">${segLine(null, sessionPlan(pm))}</div>
-      <div class="mini">每天第一段專注滿 ${CONFIG.pomoRewardMin} 分鐘有獎勵。</div></section>`;
+</section>`;
   const habits = UI.habEdit ? habitEditor() : `<section class="px" id="habits">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
       <div class="habits">${chips}</div>
       ${risky.join('')}</section>`;
   return `${UI.pday === 0 ? nextStep(D, P) : ''}${habits}
     <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
-      <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}・${hint}</div>
+      <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}${hint ? '・' + hint : ''}</div>
       ${UI.pday >= 0 && !S.tipSix ? `<div class="tip row"><span class="sp">小技巧：按住編號拖曳可以排順序，點 ☆ 存成常用。</span><button class="ghost" data-act="tipsix">知道了</button></div>` : ''}
       ${UI.pday >= 0 ? favBar : ''}${rows}
       ${shown < P.length && UI.pday >= 0 ? `<button class="ghost addrow" data-act="addrow">＋ 再加一件${shown === CONFIG.rewardRows ? '（只做紀錄）' : ''}</button>` : ''}
@@ -204,7 +206,7 @@ function renderFocus() {
   if (!T) { el.innerHTML = ''; return; }
   const seg = T.segs[T.si], br = seg.m === 'break';
   el.innerHTML = `<div class="fbox">
-    <div class="label">${br ? 'BREAK' : 'FOCUS'}・${T.si + 1}/${T.segs.length}</div>
+    <div class="label">${br ? '休息' : '專注'}・${T.si + 1}/${T.segs.length}</div>
     <div class="fsprite">${stageImg(CR.clown, 2, 6)}</div>
     <div>${br ? '休息一下，站起來動一動' : '專注中，先把手機放下'}</div>
     <div class="clock" id="tclock">--:--</div><div class="bar c"><i id="tbar" style="width:0"></i></div>
@@ -226,7 +228,7 @@ function renderOnb() {
   let html;
   if (step === 1) {
     cloudWarm();
-    html = `<div class="label">WELCOME</div><h2>歡迎來到習慣深潛</h2>
+    html = `<div class="label">第 1 步，共 2 步</div><h2>歡迎來到習慣深潛</h2>
       <p class="dim" style="margin:0 0 14px">每天做一點事就賺金幣，開寶箱收集海裡的生物。</p>
       ${IN_APP ? '<div class="warn">你在 App 內建的瀏覽器裡，無法用 Google 登入。請用 Chrome 或 Safari 開啟網站再綁定。</div>'
         : `<b>先綁定 Google 帳號</b><div class="mini">紀錄會備份到雲端，換手機、換瀏覽器都能接續。</div>
@@ -236,7 +238,7 @@ function renderOnb() {
       <button data-act="onbskip">先不綁定，之後再說</button>
       <div class="mini">之後隨時可以到「更多」頁綁定。</div>`;
   } else {
-    html =`<div class="label">${FIREBASE_CONFIG ? 'STEP 2・' : ''}HABITS</div><h2>你想養成什麼習慣？</h2>
+    html =`${FIREBASE_CONFIG ? '<div class="label">第 2 步，共 2 步</div>' : ''}<h2>你想養成什麼習慣？</h2>
       ${CLOUD.user ? `<div class="mini" style="margin:0 0 6px">已綁定 ${esc(CLOUD.user.email || '')}</div>` : ''}
       <div class="mini" style="margin:0 0 10px">可以複選，也可以先不選。之後在「今日」的習慣區按「編輯」隨時修改。</div>
       <div class="onbgrid">${ONB_HABITS.map(h => `<button class="onbopt ${sel[h.id] ? 'sel' : ''}" data-act="onbpick" data-v="${h.id}" aria-pressed="${!!sel[h.id]}"><b>${esc(h.n)}</b><small>${esc(h.desc)}</small></button>`).join('')}</div>
@@ -409,7 +411,7 @@ function stageImg(c, s, scale, sil = false, cls = '') {
 
 function dex(D) {
   return `<section class="px">${sh('水下生物圖鑑', 'COLLECTION', `<span class="dim">${Object.keys(D.col).length} / ${CREATURES.length}</span><button data-act="tankview" data-v="">返回大海</button>`)}
-    <div class="mini">生物從商店的寶箱抽到。點已收集的生物看介紹和成長型態。</div>
+    <div class="mini">點生物看介紹和成長型態。</div>
     ${RARITY.map((R, r) => `<div class="grp row"><span class="rar" style="background:${R.color}">${R.name}</span></div>
       <div class="dex">${CREATURES.filter(c => c.r === r).map(c => D.col[c.id]
         ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${stageImg(c, seenStage(c.id), Math.min(5, Math.floor(100 / stageCanvas(c, seenStage(c.id)).width)))}<div class="nm">${c.name}</div><small>${pets(c.id).length} 隻</small></div>`
@@ -481,7 +483,7 @@ function tankFeedHTML() {
 function tankEditor(D) {
   const owned = CREATURES.filter(c => pets(c.id).length);
   return `<section class="px">${sh('大海設定', 'SEA', '<button class="pri" data-act="tankdone">完成</button>')}
-    <div class="mini">勾選要出現在大海裡的個體，不想養的可以讓牠游走。點「取名」幫牠取名字，名字會跟著牠游。</div>
+    <div class="mini">勾選要放進大海的個體；點「取名」，名字會跟著牠游。</div>
     ${owned.map(c => {
       const P = pets(c.id);
       return `<div class="tset"><div class="row"><b class="sp">${c.name}</b></div>
@@ -676,7 +678,6 @@ function finishHabits() {
   UI.habEdit = false; save();
 }
 // 五種寶箱照稀有度上色：灰、綠、藍、紫、金
-const CHEST_TINT = ['grayscale(1) brightness(1.15)', 'hue-rotate(80deg)', 'hue-rotate(170deg)', 'hue-rotate(230deg) saturate(1.3)', 'saturate(1.5) brightness(1.15)'];
 // 寶箱說明：開出哪個稀有度、有幾種可能，例如「普通生物 6 種隨機一種・25% 開出飼料」
 const chestPool = ch => CREATURES.filter(c => c.r === ch.rates.findIndex(p => p > 0));
 // 寶箱第二行：收集進度；點一下展開能抽到的生物（一次只展開一個）
@@ -702,23 +703,23 @@ function shop(D) {
   const daysFor = p => Math.max(1, Math.ceil(p / rate));
   const items = [...shopItems()].sort((a, b) => a.price - b.price), next = items.find(it => it.price > D.coins);
   return `<section class="px shop">${sh('生物寶箱', 'CHESTS')}
-    <div class="mini">開出的生物會游進你的大海，飼料拿去餵牠們長大。每種最多養 ${MAX_PETS} 隻，抽到重複的另外送金幣。</div>
-    ${CONFIG.chests.map((ch, i) => `<div class="it chest"><span class="ic" style="filter:${CHEST_TINT[i]}">${img(CHEST, 2)}</span>
+    <div class="mini">抽到的生物會游進你的大海。每種最多養 ${MAX_PETS} 隻，重複的換成金幣。</div>
+    ${CONFIG.chests.map((ch, i) => `<div class="it chest"><span class="ic">${img(chestPx(i), 2)}</span>
       <span class="sp" data-act="chestpool" data-v="${ch.id}">${ch.name}<span class="more">${UI.chestOpen === ch.id ? '▴' : '▾'}</span><br><small>${chestOdds(ch, D)}</small></span>
-      <span class="price">${ch.price}${COIN}</span><button class="pri" data-act="buychest" data-v="${ch.id}" ${D.coins < ch.price ? 'disabled' : ''}>購買</button>
+      <span class="price">${ch.price}${COIN}</span><button data-act="buychest" data-v="${ch.id}" ${D.coins < ch.price ? 'disabled' : ''}>購買</button>
       ${UI.chestOpen !== ch.id ? '' : `<div class="cpool">${chestPool(ch).map(c => `<button class="ghost ${D.col[c.id] ? '' : 'new'}" data-act="fact" data-v="${c.id}" title="${c.name}">${img(c.px, 2)}<small>${c.name}</small></button>`).join('')}</div>`}</div>`).join('')}
     <div class="it chest"><span class="ic">${img(SHRIMP, 2)}</span><span class="sp">飼料 ${FEED.pack} 顆<br><small>每天另有免費 ${FEED.free} 顆・目前還有 ${feedLeft()} 顆</small></span>
-      <span class="price">${FEED.price}${COIN}</span><button class="pri" data-act="buyfeed" ${D.coins < FEED.price ? 'disabled' : ''}>購買</button></div></section>
+      <span class="price">${FEED.price}${COIN}</span><button data-act="buyfeed" ${D.coins < FEED.price ? 'disabled' : ''}>購買</button></div></section>
   <section class="px shop">${sh('連勝保護', 'STREAK')}
-    <div class="mini">漏掉習慣時，先自動用當月的免費假，用完了才用保護卡，每張補一天（每週型補一期）。所有習慣共用，最多帶 ${CONFIG.freeze.max} 張。</div>
-    <div class="it"><span class="ic">🛡</span><span class="sp">連勝保護卡<br><small>目前有 ${freezeLeft(D)} / ${CONFIG.freeze.max} 張</small></span>
-      <span class="price">${CONFIG.freeze.price}${COIN}</span><button class="pri" data-act="buyfreeze" ${D.coins < CONFIG.freeze.price || freezeLeft(D) >= CONFIG.freeze.max ? 'disabled' : ''}>購買</button></div></section>
+    <div class="mini">免費假用完時自動補上漏掉的一天，最多帶 ${CONFIG.freeze.max} 張。</div>
+    <div class="it"><span class="ic">${img(SHIELD, 2)}</span><span class="sp">連勝保護卡<br><small>目前有 ${freezeLeft(D)} / ${CONFIG.freeze.max} 張</small></span>
+      <span class="price">${CONFIG.freeze.price}${COIN}</span><button data-act="buyfreeze" ${D.coins < CONFIG.freeze.price || freezeLeft(D) >= CONFIG.freeze.max ? 'disabled' : ''}>購買</button></div></section>
   <section class="px shop">${sh('獎勵商店', 'REWARDS', '<button class="ghost" data-act="shopedit">編輯</button>')}
-    <div class="mini">你可以自行設定想要的獎勵。${activeDays >= 5 ? `最近 14 天平均每天賺 ${rate} 金幣。` : `目前以每天約 ${rate} 金幣估算。`}</div>
+    <div class="mini">${activeDays >= 5 ? `最近 14 天平均每天賺 ${rate} 金幣。` : `目前以每天約 ${rate} 金幣估算。`}</div>
     ${items.length ? '' : '<div class="dim" style="margin-top:8px">還沒有獎勵，按「編輯」新增。</div>'}
     ${items.map(it => `<div class="it ${it === next ? 'next' : ''}"><span class="ic">${esc(it.icon)}</span><span class="sp">${esc(it.name)}</span>
       <span class="price">${it.price}${COIN}</span>
-      ${D.coins >= it.price ? `<button class="pri" data-act="redeem" data-v="${esc(it.id)}">兌換</button>`
+      ${D.coins >= it.price ? `<button data-act="redeem" data-v="${esc(it.id)}">兌換</button>`
         : `<span class="dim need">約 ${daysFor(it.price - D.coins)} 天</span>`}
       ${it === next ? `<div class="nextbar2"><small>下一個目標・${D.coins} / ${it.price}</small><div class="bar c"><i style="width:${Math.max(0, D.coins / it.price * 100)}%"></i></div></div>` : ''}</div>`).join('')}
   </section>
@@ -743,13 +744,14 @@ function ranks(D) {
   const lv = levelOf(D.xp), ri = rankIdx(lv), nxt = RANKS[ri + 1];
   const pct = nxt ? Math.max(0, Math.min(100, (D.xp - xpFor(RANKS[ri][0])) / (xpFor(nxt[0]) - xpFor(RANKS[ri][0])) * 100)) : 100;
   return `<section class="px">${sh('潛水稱號', 'RANKS', `<span class="dim">${ri + 1} / ${RANKS.length}</span><button data-act="logview" data-v="">返回紀錄</button>`)}
-    <div class="mini">稱號照著真實的潛水證照（PADI）一路往下潛，升到指定等級就換一個。深度是那一級能潛到的範圍。</div>
+    <div class="mini">跟著潛水證照（PADI）的進階路線往下潛，點稱號看介紹。</div>
     <div class="dive">${RANKS.map(([at, name, en, desc], i) => {
-      const st = i < ri ? 'got' : i === ri ? 'cur' : 'lock';
-      return `<div class="rk ${st}" style="--d:${i / (RANKS.length - 1)}">
+      // 每個稱號一行：名稱和等級；只有目前的稱號和點開的那一個才顯示英文名稱和介紹，不然太密
+      const st = i < ri ? 'got' : i === ri ? 'cur' : 'lock', open = i === ri || UI.rkOpen === i;
+      return `<div class="rk ${st}${open ? ' open' : ''}" data-act="rkopen" data-v="${i}" aria-expanded="${open}">
         <div class="rkd">${RANK_DEPTH[i] || ''}</div><i class="rkn"></i>
-        <div class="sp"><div class="rkt"><b>${i > ri ? '🔒 ' : ''}${name}</b><small class="en">${en}</small>${st === 'cur' ? '<em>你在這裡</em>' : ''}</div>
-          <div class="rklv">Lv.${at}・${xpFor(at)} XP</div><p>${desc}</p>
+        <div class="sp"><div class="rkt"><b>${name}</b>${st === 'cur' ? '<em>你在這裡</em>' : ''}<span class="sp"></span><span class="rklv">Lv.${at}</span></div>
+          ${open ? `<small class="en">${en}</small><p>${desc}</p>` : ''}
           ${st === 'cur' && nxt ? `<div class="bar"><i style="width:${pct}%"></i></div><div class="mini">再 ${xpFor(nxt[0]) - D.xp} XP 成為「${nxt[1]}」</div>` : ''}</div></div>`;
     }).join('')}</div></section>`;
 }
@@ -805,22 +807,20 @@ const ABOUT_LINKS = [
 // 「更多」：設定、雲端同步在最上面，下面是關於和沙龍
 function about() {
   return `${cloudSection()}
-  <section class="px">${sh('設定與備份', 'SETTINGS')}
+  <section class="px">${sh('設定', 'SETTINGS')}
     <label class="switch"><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button><span>音效</span></label>
-    <div class="mini" style="margin-top:12px">${CLOUD.user ? '紀錄已同步到雲端。也可以另外下載一份備份檔。' : '紀錄只存在這個瀏覽器。換手機、換瀏覽器或清除瀏覽資料就會消失，請定期備份。'}</div>
+    <div class="mini" style="margin-top:12px">${CLOUD.user ? '雲端已同步，也可以另存一份備份檔。' : '紀錄只存在這台裝置，建議定期備份。'}</div>
     <div class="row" style="margin-top:6px"><button data-act="export">備份</button><button data-act="import">還原</button></div></section>
-  <section class="px">${sh('關於習慣深潛', 'ABOUT')}
-    <p>嗨，我是 Harry，喜歡潛水，也在努力每週寫文章。這個遊戲是我為了讓自己持續寫作和運動而做的：每天寫下最重要的事，完成就賺金幣，用金幣開寶箱，收集我在海裡遇過（或還在等）的生物。</p>
-    <p class="dim">從浮潛客一路往下潛到海洋傳說的稱號、圖鑑裡的鬼蝠魟和翻車魚，都來自我的潛水經驗。希望它也能陪你一點一點往前進。</p></section>
+  <section class="px">${sh('關於', 'ABOUT')}
+    <p style="margin:0">我是 Harry，喜歡潛水。這個遊戲是我為了持續寫作和運動做的；稱號、鬼蝠魟和翻車魚，都來自我的潛水經驗。</p></section>
   <section class="px">${sh('我的沙龍', 'SALON')}
-    <div class="salon"><b style="font-size:17px">${SALON.name}</b><p class="dim" style="margin:6px 0 12px">${SALON.desc}</p>
-      <a href="${SALON.url}" target="_blank" rel="noopener"><button class="pri" style="margin:0">前往沙龍 ↗</button></a></div></section>
+    <div class="salon"><b>${SALON.name}</b><p class="dim" style="margin:4px 0 12px">${SALON.desc}</p>
+      <a href="${SALON.url}" target="_blank" rel="noopener"><button class="pri" style="margin:0">前往沙龍</button></a></div></section>
   <section class="px">${sh('推薦文章', 'READ')}
     ${ABOUT_LINKS.map(l => `<a class="link" href="${l.url}" target="_blank" rel="noopener">
       <span class="sp"><b>${esc(l.title)}</b><br><small>${esc(l.sub)}</small></span><span class="dim">↗</span></a>`).join('')}</section>
-  <section class="px">${sh('資料與隱私', 'PRIVACY')}
-    <div class="mini">沒登入時，紀錄只存在你自己的瀏覽器裡，不會上傳到任何地方。</div>
-    ${FIREBASE_CONFIG ? '<div class="mini">看到登入按鈕時，網頁會先向 Google 載入登入用的程式，讓登入一次就成功；這一步不會送出你的任何紀錄。</div>' : ''}
-    ${FIREBASE_CONFIG ? `<div class="mini">如果你選擇用 Google 登入，紀錄（六件事、打卡、遊戲進度）會存到 Google 的 Firebase 雲端，用來在不同裝置間同步。只會取得你的 Google 名稱和 email 來辨識帳號，不會發信、不會發文，也看不到你的其他 Google 資料。資料庫規則讓每個人只能讀寫自己的資料；身為網站管理者，我在技術上看得到資料庫，但不會查看或使用你的紀錄。你隨時可以在「紀錄 → 雲端同步」刪除雲端資料和帳號。</div>` : ''}</section>`;
+  <section class="px">${sh('隱私', 'PRIVACY')}
+    <div class="mini">沒登入時，紀錄只存在這台裝置。</div>
+    ${FIREBASE_CONFIG ? `<div class="mini">用 Google 登入後，紀錄會存到 Firebase 雲端來同步，只用你的名稱和 email 辨識帳號。每個人只能讀寫自己的資料，我不會查看或使用你的紀錄；隨時可以在上方「雲端同步」刪除雲端資料。</div>` : ''}</section>`;
 }
 

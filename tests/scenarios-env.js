@@ -16,7 +16,7 @@ test('沒有音效引擎（舊瀏覽器、部分 App 內建瀏覽器）：所有
   const I = await boot({ state: mkState({ mute: false }), noAudio: true }); await I.dismiss();
   await I.plan(['A', 'B', 'C']); await I.saveList(); await I.tick(0); await I.tick(1); await I.tick(2);
   ok(I.S.logs.some(l => l.key === 'top3:' + D0), '沒有音效也拿得到獎勵');
-  await I.claimAll(); await I.tab('shop'); await I.click('[data-act=buyfeed][class*=pri]'); await I.tab('today'); await I.click('[data-act=start]'); await I.advance(26 * 60e3); await I.dismiss();
+  await I.claimAll(); await I.tab('shop'); await I.click('.shop [data-act=buyfeed]'); await I.tab('today'); await I.click('[data-act=start]'); await I.advance(26 * 60e3); await I.dismiss();
   ok(I.S.logs.some(l => l.key === 'pomo:' + D0), '番茄鐘也正常');
   await I.tab('about'); await I.click('[data-act=mute]'); await I.click('[data-act=mute]');
   I.check('沒有音效'); I.destroy();
@@ -187,7 +187,7 @@ test('對比度：文字和背景至少 3:1（小字建議 4.5:1）', async () =
   const I = await boot({ state: mkState({ logs: [W0, coinLog(500), ...drops(['clown', 'shark'])] }), width: 375, height: 800 }); await I.dismiss();
   const parse = c => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(',').map(Number); return { r: p[0], g: p[1], b: p[2], a: p[3] == null ? 1 : p[3] }; };
   const lum = c => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(c.r) + .7152 * f(c.g) + .0722 * f(c.b); };
-  const bgOf = e => { let layers = []; for (let x = e; x; x = x.parentElement) { const c = parse(I.win.getComputedStyle(x).backgroundColor); if (c && c.a > 0) { layers.push(c); if (c.a >= .99) break; } } let base = { r: 11, g: 37, b: 70 }; for (const c of layers.reverse()) base = { r: base.r * (1 - c.a) + c.r * c.a, g: base.g * (1 - c.a) + c.g * c.a, b: base.b * (1 - c.a) + c.b * c.a }; return base; };
+  const bgOf = e => { if (e.closest(".brand") || (e.closest("nav") && I.win.getComputedStyle(I.$("nav")).position !== "fixed")) return { r: 32, g: 121, b: 180 }; let layers = []; for (let x = e; x; x = x.parentElement) { const c = parse(I.win.getComputedStyle(x).backgroundColor); if (c && c.a > 0) { layers.push(c); if (c.a >= .99) break; } } let base = { r: 11, g: 37, b: 70 }; for (const c of layers.reverse()) base = { r: base.r * (1 - c.a) + c.r * c.a, g: base.g * (1 - c.a) + c.g * c.a, b: base.b * (1 - c.a) + c.b * c.a }; return base; };
   const ratio = (a, b) => { const l1 = lum(a), l2 = lum(b); return (Math.max(l1, l2) + .05) / (Math.min(l1, l2) + .05); };
   const low = new Map();
   for (const t of TABS) {

@@ -115,7 +115,8 @@ document.addEventListener('click', async e => {
       S.mute = !S.mute; save(); render();
       if (!S.mute) { ac(); SFX.tap(); }
       toast(S.mute ? '音效已關閉' : '音效已開啟'); break;
-    case 'logview': UI.logView = v; render(); window.scrollTo(0, 0); break;
+    case 'logview': UI.logView = v; UI.rkOpen = null; render(); window.scrollTo(0, 0); break;
+    case 'rkopen': UI.rkOpen = UI.rkOpen === +v ? null : +v; render(); break;
     case 'seeranks': UI.opened = false; UI.tankEdit = false; UI.tankView = ''; UI.tab = 'log'; UI.logView = 'ranks'; render(); window.scrollTo(0, 0); nextChest(); break;
     case 'chestpool':UI.chestOpen = UI.chestOpen === v ? '' : v; render(); break;
     case 'fact': UI.sheet = { creature: v }; renderSheet(); break;

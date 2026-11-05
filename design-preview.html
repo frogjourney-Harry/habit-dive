@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>習慣深潛 元件目錄</title>
+<style>
+/* 全部數值來自 DESIGN.md 的 tokens */
+:root{--hero-top:#3290c6;--hero-mid:#2079b4;--hero-bottom:#17639a;--sea-deep:#0f4672;--on-hero:#fff;
+  --canvas:#eef3f7;--surface:#fff;--fill:#f1f5f9;--field:#fff;--hairline:#e2e8ee;--hairline-strong:#c9d3dd;
+  --ink:#13212f;--ink-muted:#5d6b7a;--ink-subtle:#6e7b89;
+  --primary:#0b6bcb;--on-primary:#fff;--success:#278a5d;--coin:#9a6512;--coin-fill:#f2b84b;--on-coin:#3a2a05;--warning:#d9653b;--fill-pressed:#e6edf3;
+  --r-sm:8px;--r-md:10px;--r-lg:12px;--r-xl:18px;--r-modal:20px;
+  --shadow-card:0 1px 2px rgba(15,40,70,.05),0 6px 20px rgba(15,40,70,.06)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);font:15px/1.6 "PingFang TC","Noto Sans TC","Microsoft JhengHei UI","Microsoft JhengHei",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.hero{position:relative;height:150px;overflow:hidden;background:linear-gradient(180deg,var(--hero-top),var(--hero-mid) 60%,var(--hero-bottom));color:var(--on-hero)}
+.hero .in{max-width:720px;margin:0 auto;padding:18px 16px;position:relative;z-index:1}
+.hero h1{font-size:19px;font-weight:700;margin:0}
+.hero p{margin:4px 0 0;opacity:.85;font-size:14px}
+main{max-width:720px;margin:-60px auto 40px;padding:0 16px;position:relative;z-index:2}
+.card{background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--shadow-card);padding:18px;margin-bottom:14px}
+h2{font-size:17px;font-weight:600;margin:0 0 4px}
+.note{font-size:12px;color:var(--ink-subtle);margin:0 0 14px}
+.cap{font-size:12px;color:var(--ink-subtle);margin:14px 0 6px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sw{width:118px}
+.sw i{display:block;height:44px;border-radius:var(--r-md);box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}
+.sw b{display:block;font-size:12px;font-weight:600;margin-top:4px}
+.sw small{display:block;font-size:11px;color:var(--ink-subtle);line-height:1.3}
+.ty div{display:flex;gap:16px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--hairline)}
+.ty small{width:120px;flex:none;font-size:12px;color:var(--ink-subtle)}
+button{font:inherit;font-size:14px;border:0;cursor:pointer;border-radius:var(--r-md);padding:7px 14px}
+.b-pri{background:var(--primary);color:var(--on-primary);font-weight:600}
+.b-sec{background:var(--fill);color:var(--ink)}
+.b-ghost{background:none;color:var(--ink-muted)}
+.b-sel{background:var(--ink);color:var(--surface)}
+.seg{display:inline-flex;gap:4px;background:var(--fill);border-radius:var(--r-md);padding:3px}
+.seg button{padding:5px 12px;background:none;color:var(--ink-muted)}.seg .on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(15,40,70,.12)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--fill);border-radius:var(--r-lg);padding:10px 12px}
+.tile b{font-weight:600}.tile small{display:block;font-size:12px;color:var(--ink-muted)}
+.tile .st{float:right;font-size:12px;color:var(--coin);font-weight:600}
+.bar{height:6px;border-radius:99px;background:var(--hairline);overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;border-radius:99px;background:var(--primary)}
+.li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--hairline)}
+.li:first-of-type{border-top:0}
+.li .sp{flex:1;min-width:0}.li b{font-weight:600;display:block}.li small{display:block;font-size:12px;color:var(--ink-muted)}
+.chk{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--hairline-strong);flex:none;position:relative}
+.chk.done{background:var(--success);box-shadow:none}.chk.done::after{content:"";position:absolute;left:8px;top:4px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.chk.pend{background:var(--coin-fill);box-shadow:none}
+.amt{font-size:13px;color:var(--coin);white-space:nowrap}
+.cn{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--coin-fill);margin-left:4px;vertical-align:-1px}
+.pill{display:inline-block;font-size:12px;line-height:1;padding:4px 9px;border-radius:99px}
+.p-free{color:var(--success);background:#dff2e8}.p-paid{color:var(--ink);background:var(--fill)}.p-out{color:var(--ink-subtle);background:var(--fill)}
+.tg{width:44px;height:24px;border-radius:99px;background:var(--hairline);position:relative;display:inline-block;vertical-align:middle;cursor:pointer}
+.tg i{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:left .15s}
+.tg.on{background:var(--success)}.tg.on i{left:23px}
+input[type=text]{font:inherit;font-size:15px;color:var(--ink);background:var(--field);border:1px solid var(--hairline);border-radius:var(--r-md);padding:8px 12px;width:240px;max-width:100%}
+input[type=text]:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(11,107,203,.22)}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--primary)}
+.toast{display:inline-block;background:var(--ink);color:var(--surface);border-radius:99px;padding:9px 18px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:14px}
+.ov{background:rgba(8,20,35,.45);border-radius:var(--r-lg);padding:28px 16px;display:flex;justify-content:center}
+.modal{background:var(--surface);border-radius:var(--r-modal);padding:22px;width:300px;text-align:center}
+.modal img{image-rendering:pixelated;margin:6px auto 4px;display:block}
+.tabs{display:flex;background:var(--surface);box-shadow:0 -1px 0 var(--hairline);border-radius:0 0 var(--r-lg) var(--r-lg);overflow:hidden}
+.tabs span{flex:1;text-align:center;padding:12px 0 10px;font-size:14px;color:var(--ink-muted);position:relative}
+.tabs .on{color:var(--primary);box-shadow:inset 0 2px 0 var(--primary)}
+.badge{display:inline-block;min-width:16px;height:16px;border-radius:99px;background:var(--coin-fill);color:var(--on-coin);font-size:10px;line-height:16px;margin-left:3px}
+.dtabs{display:flex;gap:4px;background:linear-gradient(180deg,var(--hero-mid),var(--hero-bottom));border-radius:var(--r-lg);padding:0 8px}
+.dtabs span{padding:10px 12px;color:rgba(255,255,255,.72);font-size:14px}.dtabs .on{color:#fff;box-shadow:inset 0 -2px 0 #fff}
+.warn{color:var(--warning);font-size:14px}
+</style></head>
+<body>
+<div class="hero" id="hero"><div class="in"><h1>習慣深潛・元件目錄</h1><p>DESIGN.md 裡每個顏色、字級和元件的實際樣子。上方這條藍色就是每一頁的頁首，只放名稱、等級、金幣。</p></div></div>
+<main>
+<section class="card"><h2>顏色</h2><p class="note">每個顏色只做一件事</p><div class="row" id="sw" style="align-items:flex-start"></div></section>
+
+<section class="card ty"><h2>字級</h2><p class="note">只有這六種</p>
+  <div><small>title 17 / 600</small><span style="font-size:17px;font-weight:600">最重要的六件事</span><span style="font-size:17px;font-weight:700;margin-left:auto">習慣深潛</span><small style="width:auto">品牌名稱 同級 700</small></div>
+  <div><small>body 15 / 400</small><span>寫好今天的清單，完成就有獎勵。</span></div>
+  <div><small>ui 14 / 500</small><span style="font-size:14px;font-weight:500">領取 +45</span></div>
+  <div><small>caption 12 / 400</small><span style="font-size:12px;color:var(--ink-muted)">本週 1/3 天</span></div>
+  <div><small>stat 28 / 600</small><span style="font-size:28px;font-weight:600">1,060</span></div>
+  <div style="border:0"><small>clock 56 / 600</small><span style="font-size:56px;font-weight:600;line-height:1">25:00</span></div>
+</section>
+
+<section class="card"><h2>按鈕</h2><p class="note">一個畫面最多一個主要按鈕</p>
+  <div class="row"><button class="b-pri">寫好了</button><button class="b-sec">取消</button><button class="b-ghost">＋ 再加一件</button><button class="b-pri" disabled style="opacity:.4">購買</button></div>
+  <p class="cap">分段切換</p><div class="seg"><button>昨天</button><button class="on">今天</button><button>明天</button></div>
+</section>
+
+<section class="card"><h2>習慣（磚塊）</h2><p class="note">只放兩行：名稱、本週進度。有連勝時名稱右邊一個小金色數字</p>
+  <div class="tiles">
+    <div class="tile"><b>運動</b><span class="st">6</span><small>本週 1/3 天</small></div>
+    <div class="tile"><b>寫作</b><small>本週 0/1 篇</small></div>
+    <div class="tile"><b>冥想</b><span class="st">34</span><small>今天還沒</small></div>
+    <div class="tile" style="box-shadow:inset 0 0 0 1.5px var(--success)"><b>閱讀</b><small style="color:var(--success)">今天完成了</small></div>
+  </div>
+</section>
+
+<section class="card"><h2>清單列</h2><p class="note">任務、商店、紀錄、設定都用這個</p>
+  <div class="li"><span class="chk done"></span><div class="sp"><b>每日登入</b><small>已領取</small></div><span class="amt">+15<span class="cn"></span></span></div>
+  <div class="li"><span class="chk pend"></span><div class="sp"><b>寫好清單</b><small>今天或明天的都可以</small></div><button class="b-sec">領取 +15</button></div>
+  <div class="li"><span class="chk"></span><div class="sp"><b>完成前 3 件事</b><div class="bar" style="width:120px"><i style="width:33%"></i></div></div><span class="amt">+15<span class="cn"></span></span></div>
+  <p class="cap">商店（像素圖只用在內容）</p>
+  <div class="li" id="shoprow"></div>
+  <div class="li"><span style="width:36px;display:flex;justify-content:center" id="shield"></span><div class="sp"><b>連勝保護卡</b><small>目前有 0 / 2 張</small></div><span class="amt">150<span class="cn"></span></span><button class="b-sec">購買</button></div>
+  <p class="cap">設定</p>
+  <div class="li"><div class="sp"><b>音效</b></div><span class="tg on" onclick="this.classList.toggle('on')"><i></i></span></div>
+  <div class="li"><div class="sp"><b>雲端同步</b></div><small style="color:var(--ink-muted)">1 分鐘前</small></div>
+</section>
+
+<section class="card"><h2>其他元件</h2><p class="note">標籤、輸入框、打勾、提示、警告</p>
+  <div class="row"><span class="pill p-free">FREE 3/3</span><span class="pill p-paid">PAID 10</span><span class="pill p-out">FREE 0/3</span></div>
+  <p class="cap">六件事（打勾一律用圓圈）</p><div class="li"><span class="chk done"></span><div class="sp" style="text-decoration:line-through;color:var(--ink-subtle)">整理研究文獻</div></div><div class="li"><span class="chk"></span><div class="sp"><input type="text" placeholder="今天最重要的事" style="width:100%"></div></div>
+  <p class="cap">提示訊息</p><span class="toast">+45 XP　+45 金幣</span>
+  <p class="cap">警告</p><div class="warn">昨天漏了「冥想」，剩下的假和保護卡不夠補。</div>
+</section>
+
+<section class="card"><h2>彈窗</h2><p class="note">白底、圓角 20、背後半透明深藍</p>
+  <div class="ov"><div class="modal" id="modal"><h2 style="margin:0">開到新生物！</h2><div id="mimg"></div><p style="margin:0 0 4px;font-weight:600">小丑魚</p><p class="note" style="margin:0 0 14px">住在海葵裡，出生時全是雄性。</p><button class="b-pri" style="width:100%">放進大海</button></div></div>
+</section>
+
+<section class="card"><h2>分頁列</h2><p class="note">手機在畫面最下方；電腦在頁首裡</p>
+  <div class="tabs"><span class="on">今日</span><span>任務<i class="badge">3</i></span><span>大海</span><span>商店</span><span>紀錄</span><span>更多</span></div>
+  <p class="cap">電腦版（疊在頁首的海上）</p>
+  <div class="dtabs"><span class="on">今日</span><span>任務</span><span>大海</span><span>商店</span><span>紀錄</span><span>更多</span></div>
+</section>
+</main>
+<script src="js/creatures.js"></script>
+<script>
+const SW = [['hero-top','頁首上','只用在頁首、大海'],['hero-bottom','頁首下',''],['canvas','背景','頁面底色'],['surface','卡片','內容卡片'],['fill','磚塊','磚塊、次要按鈕'],['hairline','分隔線','清單列之間、進度軌道'],['ink','主要文字',''],['ink-muted','說明文字',''],['ink-subtle','次要資訊','placeholder、小標題'],['primary','海洋藍','動作和進度'],['success','綠','只表示完成'],['coin-fill','金','金幣、獎勵、待領取'],['warning','橘','只用在警告，很少出現']];
+const cs = getComputedStyle(document.documentElement);
+document.getElementById('sw').innerHTML = SW.map(([k, n, u]) => `<div class="sw"><i style="background:var(--${k})"></i><b>${n}</b><small>--${k}<br>${cs.getPropertyValue('--' + k).trim()}${u ? '<br>' + u : ''}</small></div>`).join('');
+const C = id => CREATURES.find(c => c.id === id);
+document.getElementById('shoprow').innerHTML = `<span style="width:36px;display:flex;justify-content:center">${img(C('seahorse').px, 2)}</span><div class="sp"><b>稀有寶箱</b><small>已收集 2/4</small></div><span class="amt">250<span class="cn"></span></span><button class="b-sec">購買</button>`;
+document.getElementById('mimg').innerHTML = img(C('clown').px, 5);
+const SHIELD = ['..kkkkk..', '.kbbbbbk.', 'kbbwbbbbk', 'kbbwbbbbk', 'kbbbbbbbk', '.kbbbbbk.', '..kbbbk..', '...kbk...', '....k....'];
+document.getElementById('shield').innerHTML = img(SHIELD, 3);
+</script>
+</body></html>

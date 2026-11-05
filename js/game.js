@@ -190,7 +190,8 @@ function tick() {
 
 /* ========= 寶箱彈窗 ========= */
 const COIN = '<i class="cn" aria-label="金幣"></i>';
-const sh = (title, tag, right = '') => `<div class="sh"><b>${title}</b><em>${tag}</em><span class="sp"></span>${right}</div>`;
+// 區塊標題：只用中文（英文小標 tag 保留參數但不顯示，見 DESIGN.md）
+const sh = (title, tag, right = '') => `<div class="sh"><b>${title}</b><span class="sp"></span>${right}</div>`;
 function nextChest() {
   if (UI.opened) return;
   const it = Q.shift(), ov = document.getElementById('ov'), m = document.getElementById('modal');
@@ -206,7 +207,7 @@ function nextChest() {
     return;
   }
   if (it.level !== undefined) {
-    m.innerHTML = `<div class="label">LEVEL UP</div><div class="big-lv pop" style="margin:10px 0"><span>Lv.</span>${it.level}</div>
+    m.innerHTML = `<div class="label">升級了</div><div class="big-lv pop" style="margin:10px 0"><span>Lv.</span>${it.level}</div>
       ${it.title ? `<h2>取得稱號：${it.title}</h2><p class="dim">${RANKS[rankIdx(it.level)][3]}</p>` :`<p class="dim">${RANKS[rankIdx(it.level)][1]}</p>`}
       <button class="pri" data-act="close">繼續</button>${it.title ? '<button class="ghost" data-act="seeranks">看所有稱號</button>' : ''}`;
     SFX.rank(); return;
@@ -214,7 +215,7 @@ function nextChest() {
   // 新手的小丑魚直接出現，不用開箱
   if (it.direct) { openChest(); return; }
   // 商店買的生物寶箱
-  m.innerHTML = `<h2>${esc(it.title)}</h2><div style="filter:${CHEST_TINT[it.tint || 0]}">${img(CHEST, 9, false, 'shake')}</div><p class="dim">點一下打開寶箱</p>
+  m.innerHTML = `<h2>${esc(it.title)}</h2><div>${img(chestPx(it.tint || 0), 9, false, 'shake')}</div><p class="dim">點一下打開寶箱</p>
     <button class="pri" data-act="openchest">開啟</button>`;
   SFX.shake();
 }
@@ -230,7 +231,7 @@ function openChest() {
   document.getElementById('modal').innerHTML = `${it.direct ? `<h2>${esc(it.title)}</h2>` : ''}
     <div><span class="rar" style="background:${R.color}">${R.name}</span></div>
     ${stageImg(cr, 1, Math.min(10, Math.floor(160 / stageCanvas(cr, 1).width)), false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
-    <h2>${cr.name} <small>幼體</small> ${it.isNew ? '<span class="new">NEW</span>' : ''}</h2>
+    <h2>${cr.name} <small>幼體</small> ${it.isNew ? '<span class="new">新發現</span>' : ''}</h2>
     <div class="dim" style="font-size:15px">${cr.fact}</div>
     ${it.xp || it.c > 0 ? `<div class="gain">${it.xp ? `<span style="color:var(--xp)">+${it.xp} XP</span>　` : ''}${it.c > 0 ? `<span class="coin">+${it.c}${COIN}</span>` : ''}</div>` : ''}
     ${it.dup ? `<div class="dim" style="font-size:14px">已經有這種了，另外送 ${it.dup} 金幣</div>` : ''}

@@ -65,7 +65,7 @@ test('取消打卡會收回已領的獎勵：不能讓金幣變負的', async ()
   await I.plan(['A', 'B', 'C']); await I.tick(0);
   await I.claimAll();                       // 60 + 15 = 75
   await I.tab('shop');
-  await I.click('[data-act=buyfeed][class*=pri]'); // -30
+  await I.click('.shop [data-act=buyfeed]'); // -30
   await I.dismiss();
   await I.click('[data-act=buychest][data-v=c0]'); await I.dismiss(); // -40
   const c = I.coins(); ok(c >= 0, '花完之後金幣 ' + c);
@@ -297,12 +297,14 @@ test('每日登入獎勵：每天一份、要手動領、隔天自動入帳、�
   K.check('每日登入'); K.destroy(); J.destroy(); I.destroy();
 });
 
-test('六件事拖曳：把手看得到、一直有提示、手勢被中斷會回到原位', async () => {
+test('六件事拖曳：把手看得到、前幾天有提示、手勢被中斷會回到原位', async () => {
   const I = await boot({ state: mkState({ plans: { [D0]: [{ text: 'a', done: false, cat: 'other' }, { text: 'b', done: false, cat: 'other' }, { text: 'c', done: false, cat: 'other' }, { text: '', done: false, cat: 'other' }, { text: '', done: false, cat: 'other' }, { text: '', done: false, cat: 'other' }] } }) }); await I.dismiss();
   let no = I.$('#six .prow .no');
   ok(I.win.getComputedStyle(no, '::after').content !== 'none', '編號旁邊有拖曳把手（點點）');
-  ok(I.has('按住編號上下拖曳'), '提示一直在（不是只有第一次的小技巧）');
-  await I.click('[data-act=tipsix]').catch(() => {}); ok(I.has('按住編號上下拖曳'), '關掉小技巧後提示還在');
+  ok(I.has('按住編號上下拖曳'), '剛開始用：有拖曳提示');
+  { const P = d => [{ text: 'x', done: false, cat: 'other' }, ...Array.from({ length: 5 }, () => ({ text: '', done: false, cat: 'other' }))];
+    const J = await boot({ state: mkState({ plans: { '2026-10-30': P(), '2026-10-31': P(), '2026-11-01': P() } }) }); await J.dismiss();
+    ok(!J.has('按住編號上下拖曳') && J.has('11/02'), '寫過 3 天清單之後只留日期，不再顯示提示'); J.destroy(); }
   no = I.$('#six .prow .no');
   const r = no.getBoundingClientRect(), ev = (t, y) => new I.win.PointerEvent(t, { bubbles: true, clientX: r.left + 5, clientY: y, pointerId: 3, pointerType: 'touch' });
   no.dispatchEvent(ev('pointerdown', r.top + 5)); I.doc.dispatchEvent(ev('pointermove', r.top + 60)); await flush();
@@ -379,7 +381,7 @@ test('連勝保護卡：假用完了自動用卡、補打卡退卡、不夠補�
   await I.tab('shop'); ok(I.has('目前有 0 / 2 張'), '商店顯示 0 張');
   const c0 = I.coins(); await I.click('[data-act=buyfreeze]'); eq(I.coins(), c0 - 150, '扣 150 金幣');
   eq(I.ev("leavesOf('hwake')[addDays(dayKey(), -1)]"), 'f', '買了卡：馬上補上昨天'); eq(I.ev('freezeLeft()'), 0, '卡用掉了'); eq(streakOf(I).n, 3, '連勝接回來');
-  ok(I.has('消費紀錄') && I.$$('.px').some(e => e.innerText.includes('HISTORY') && e.innerText.includes('連勝保護卡')), '消費紀錄有保護卡');
+  ok(I.has('消費紀錄') && I.$$('.px').some(e => e.innerText.includes('消費紀錄') && e.innerText.includes('連勝保護卡')), '消費紀錄有保護卡');
   await I.tab('today'); ok(I.has('自動用掉 1 張連勝保護卡（還剩 0 張），連勝保住了'), '首頁說用了卡');
   I.ev("addCheck(addDays(dayKey(), -1), 'hwake', {}); clearLeave('hwake', addDays(dayKey(), -1)); save(); render()");
   eq(I.ev('freezeLeft()'), 1, '補打卡昨天：卡退回來');

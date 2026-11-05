@@ -142,7 +142,7 @@ function cloudSection() {
       <div class="row" style="margin-top:6px"><button data-act="logout">登出</button><button class="ghost" data-act="clouddel">刪除雲端資料</button></div>`;
   else if (S.cloudUid && !CLOUD.ready) body = '<div class="mini">連線中…</div>';
   else if (IN_APP) body = '<div class="mini">在 App 內建瀏覽器裡無法用 Google 登入。請用 Chrome 或 Safari 開啟網站後登入，紀錄就能在各裝置同步。</div>';
-  else body = `<div class="mini">登入後紀錄會存到雲端，換手機、換瀏覽器都能接續，也不怕資料不見。不登入也能照常使用。</div>
+  else body = `<div class="mini">登入後，換手機、換瀏覽器都能接續紀錄。不登入也能照常使用。</div>
       <button class="gbtn" data-act="login" ${CLOUD.busy ? 'disabled' : ''}>${GOOGLE_G}${CLOUD.busy ? '準備中…' : CLOUD.armed ? '再按一次，選擇 Google 帳戶' : '用 Google 帳戶登入'}</button>`;
   return `<section class="px" id="cloudBox">${sh('雲端同步', 'CLOUD')}${body}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div>` : ''}</section>`;
 }
