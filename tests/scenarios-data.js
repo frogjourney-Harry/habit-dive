@@ -87,15 +87,18 @@ test('備份：匯出→匯入；壞檔案、空檔案、非 JSON 都不能弄�
   await I.tab('about'); await I.click('[data-act=export]');
   eq(I.win.__downloads.length, 1, '下載一個備份檔'); ok(/習慣深潛-備份-2026-11-02\.json/.test(I.win.__downloads[0].name), '檔名：' + I.win.__downloads[0].name);
   const json = await (await I.win.fetch(I.win.__downloads[0].href)).text(); const parsed = JSON.parse(json); ok(Array.isArray(parsed.logs) && parsed.plans, '備份檔是有效的資料');
-  const feed = async (text, answer = 'askyes') => {
+  // ask＝這個檔案會跳出「要取代嗎」：讀檔是非同步的，電腦忙的時候比較慢，要等到對話框真的出現再按（固定等一下會偶爾等不到）
+  const feed = async (text, answer = 'askyes', ask = false) => {
     const dt = new I.win.DataTransfer(); dt.items.add(new I.win.File([text], 'b.json', { type: 'application/json' }));
     const inp = I.$('#importFile'); inp.files = dt.files; inp.dispatchEvent(new I.win.Event('change', { bubbles: true })); await flush(10);
+    for (let i = 0; ask && i < 200 && I.$('#askov').classList.contains('hidden'); i++) await new Promise(r => setTimeout(r, 10));
     if (!I.$('#askov').classList.contains('hidden')) await I.click('#' + answer);
+    else if (ask) ok(false, '匯入有效的備份檔要問要不要取代');
   };
   for (const bad of ['', 'not json', '{}', '{"logs": "x"}', '[1,2,3]', 'null']) { await feed(bad); eq(I.coins(), coins, `匯入壞檔案「${bad.slice(0, 12)}」後資料不變`); ok(I.has('不是有效的備份檔') || true); }
   I.S.logs.push(coinLog(777)); I.win.render();
-  await feed(json, 'askno'); ok(I.coins() === coins + 777, '匯入時按取消，不會取代資料');
-  await feed(json); eq(I.coins(), coins, '匯入備份後，金幣回到備份時的樣子'); eq(I.xp(), xp, 'XP 也是'); ok(I.has('已還原') || true);
+  await feed(json, 'askno', true); ok(I.coins() === coins + 777, '匯入時按取消，不會取代資料');
+  await feed(json, 'askyes', true); eq(I.coins(), coins, '匯入備份後，金幣回到備份時的樣子'); eq(I.xp(), xp, 'XP 也是'); ok(I.has('已還原') || true);
   I.check('匯入'); I.destroy();
 });
 
@@ -238,16 +241,23 @@ test('雲端：兩台裝置的時鐘差很多，後改的仍然要贏（B 比 A 
 test('雲端：兩台同時開著，即時更新；舊的那台不能蓋掉新的', async () => {
   resetCloud();
   const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const until = async cond => { for (let i = 0; i < 100 && !cond(); i++) await sleep(20); };   // 最多等 2 秒
   const cloud = () => JSON.parse(window.__cloudDb.docs.u1.data);
   const A = await boot({ state: mkState({ logs: [W0, coinLog(100)] }) }); await A.dismiss(); await loginAs(A);
   const B = await boot({ seed: {} }); await B.dismiss(); await loginAs(B);
   ok(window.__cloudDb.log.includes('listen'), '登入後會即時監聽雲端');
+  // 等兩台都同步完（各自補發的登入獎勵之類也上傳、也互相收到了）再開始，不然兩台的上傳時機會重疊，結果時好時壞
+  const synced = () => { const m = (window.__cloudDb.docs.u1 || {}).mtime; return A.ev('S.mtime') === m && B.ev('S.mtime') === m && !A.ev('CLOUD.pending') && !B.ev('CLOUD.pending'); };
+  const settle = async () => { for (let i = 0; i < 5 && !synced(); i++) { await A.ev('CLOUD.pending ? cloudPush() : 0'); await B.ev('CLOUD.pending ? cloudPush() : 0'); await until(synced); } ok(synced(), '兩台同步完成'); };
+  await settle();
   // A 改了、上傳：開著的 B 不用重新整理就收到
-  A.ev("S.favs.push('A 加的'); save(); cloudPush()"); await sleep(80); await flush(6);
+  // 上傳要等它真的寫完（不能只等固定時間：電腦忙的時候，兩台的上傳會重疊）；再等即時通知送到 B
+  await A.ev("S.favs.push('A 加的'); save(); cloudPush()"); await until(() => B.S.favs.includes('A 加的'));
   ok(B.S.favs.includes('A 加的'), 'B 即時收到 A 的改動：' + JSON.stringify(B.S.favs));
+  await settle();
   // B 有還沒上傳的改動時，A 又改了：B 上傳時發現雲端比較新，不蓋掉，改用雲端的
   B.ev("S.favs.push('B 還沒上傳的'); save()");
-  A.ev("S.favs.push('A 第二次'); save(); cloudPush()"); await sleep(80); await flush(6);
+  await A.ev("S.favs.push('A 第二次'); save(); cloudPush()"); await sleep(30); await flush(6);
   ok(!B.S.favs.includes('A 第二次'), 'B 還有沒上傳的改動時，先不換掉畫面');
   await B.ev('cloudPush()'); await flush(6);
   ok(cloud().favs.includes('A 第二次') && !cloud().favs.includes('B 還沒上傳的'), '雲端上 A 的改動沒有被 B 的舊資料蓋掉');

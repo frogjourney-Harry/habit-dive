@@ -31,6 +31,8 @@ function cloudInit() {
   })().catch(e => { CLOUD.error = e.message; CLOUD.loading = null; render(); return false; });
 }
 const userDoc = () => firebase.firestore().collection('users').doc(CLOUD.user.uid);
+// 雲端文件的版本：每次上傳的編號；舊版網頁寫的文件沒有編號，用修改時間代替
+const verOf = d => d.wid || 'm' + (d.mtime || 0);
 // 有沒有實際用過（新手寶箱不算）
 const hasProgress = s => (s.logs || []).some(l => l.k !== 'welcome' && l.k !== 'login') || Object.keys(s.checks || {}).length > 0
   || Object.values(s.plans || {}).some(P => P.some(x => x.text && x.text.trim())) || (s.favs || []).length > 0 || !!s.shop;   // 寫過的六件事、常用、改過的獎勵也是使用者的資料
@@ -54,7 +56,7 @@ async function cloudPull(first) {
     const snap = await userDoc().get();
     if (!snap.exists) { await cloudPush(); return; }
     const cloud = JSON.parse(snap.data().data), cm = cloud.mtime || 0, lm = S.mtime || 0;
-    CLOUD.base = cm;   // 目前知道的雲端版本；上傳時用來判斷雲端有沒有被別台改過
+    CLOUD.base = verOf(snap.data());   // 目前知道的雲端版本；上傳時用來判斷雲端有沒有被別台改過
     if (cm === lm) { CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); return; }
     if (!hasProgress(S)) { adopt(cloud, first); if (first) toast('已從雲端載入你的紀錄'); }
     else if (!hasProgress(cloud)) await cloudPush();
@@ -75,16 +77,17 @@ async function cloudPush() {
   const bytes = typeof TextEncoder === 'function' ? new TextEncoder().encode(data).length : data.length * 3;
   if (bytes > 1000000) { CLOUD.error = '紀錄太大，暫時無法同步'; renderCloud(); return; }
   try {
-    // 上傳前先看雲端：上次同步之後被別台裝置改過（而且不是這台的版本），就不蓋掉它，改用雲端的最新版
-    const ref = userDoc(), mtime = S.mtime || 0;
+    // 上傳前先看雲端：上次同步之後被別台裝置改過，就不蓋掉它，改用雲端的最新版。
+    // 用每次上傳各自的編號（wid）判斷「是不是我上次看到的那一版」，不用修改時間：兩台剛好在同一毫秒存檔時，時間會一樣
+    const ref = userDoc(), mtime = S.mtime || 0, wid = CLOUD.writing = rid();
     const newer = await firebase.firestore().runTransaction(async tx => {
-      const snap = await tx.get(ref), cm = snap.exists ? snap.data().mtime || 0 : 0;
-      if (snap.exists && CLOUD.base != null && cm > CLOUD.base && cm !== mtime) return JSON.parse(snap.data().data);
-      tx.set(ref, { data, mtime, v: S.v, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      const snap = await tx.get(ref);
+      if (snap.exists && CLOUD.base != null && verOf(snap.data()) !== CLOUD.base) return snap.data();
+      tx.set(ref, { data, mtime, wid, v: S.v, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       return null;
     });
-    if (newer) { CLOUD.base = newer.mtime || 0; adopt(newer); toast('另一台裝置剛更新過，已換成最新的紀錄'); }
-    else CLOUD.base = mtime;
+    if (newer) { CLOUD.base = verOf(newer); adopt(JSON.parse(newer.data)); toast('另一台裝置剛更新過，已換成最新的紀錄'); }
+    else CLOUD.base = wid;
     CLOUD.last = Date.now(); CLOUD.error = '';
   } catch (e) { CLOUD.error = '同步失敗，稍後會再試'; CLOUD.pending = true; CLOUD.since = Date.now(); CLOUD.timer = setTimeout(cloudPush, 30000); }
   renderCloud();
@@ -103,9 +106,10 @@ function cloudListen() {
   if (!CLOUD.user || CLOUD.unsub) return;
   CLOUD.unsub = userDoc().onSnapshot(snap => {
     if (!snap.exists || (snap.metadata && snap.metadata.hasPendingWrites)) return;
-    const cm = snap.data().mtime || 0;
-    if (cm === (S.mtime || 0) || (CLOUD.base != null && cm <= CLOUD.base) || CLOUD.pending) return;
-    CLOUD.base = cm; adopt(JSON.parse(snap.data().data));
+    const d = snap.data(), ver = verOf(d);
+    // 已經看過的版本、這台自己剛寫上去的、或這台還有沒上傳的變動（上傳時會處理衝突）：都不換
+    if (ver === CLOUD.base || (d.wid && d.wid === CLOUD.writing) || CLOUD.pending) return;
+    CLOUD.base = ver; adopt(JSON.parse(d.data));
     CLOUD.last = Date.now(); CLOUD.error = ''; renderCloud(); catchUp();
   }, () => {});
 }
