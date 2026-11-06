@@ -324,10 +324,21 @@ document.addEventListener('input', e => {
 document.getElementById('importFile').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
+    if (f.size > 10 * 1024 * 1024) throw new Error('備份檔過大');
     const j = JSON.parse(await f.text());
-    if (!Array.isArray(j.logs)) throw 0;
+    const candidate = prepareBackup(j);
     if (await ask(`備份檔有 ${j.logs.length} 筆紀錄，目前有 ${S.logs.length} 筆。\n確定用備份取代目前資料？`, '還原')) {
-      S = migrate(Object.assign(blank(), j)); save(); render(); toast('已還原');
+      const previous = S;
+      try {
+        S = candidate;
+        render();   // 能正常顯示才取代存檔，失敗則還原記憶體狀態。
+        S.mtime = Math.max(Date.now(), (previous.mtime || 0) + 1);
+        localStorage.setItem(KEY + '.before-import', JSON.stringify(previous));
+        localStorage.setItem(KEY, JSON.stringify(S));
+        STORAGE_OK = true;
+      } catch (err) { S = previous; render(); throw err; }
+      if (typeof cloudSchedule === 'function') cloudSchedule();
+      toast('已還原');
     }
   } catch (err) { toast('這不是有效的備份檔'); }
 });

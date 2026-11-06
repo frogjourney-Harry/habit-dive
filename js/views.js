@@ -35,7 +35,7 @@ function habitEditor() {
     ${S.habits.map((h, i) => h.off ? '' : `<div class="erow">
       <input class="sp" data-hf="n" data-hi="${i}" value="${esc(h.n)}" maxlength="20" placeholder="${h.kind === 'custom' ? '習慣名稱，例如：冥想' : '習慣名稱'}">
       <select data-hf="weeks" data-hi="${i}">${freqOpts(h, h.weeks)}</select>
-      ${h.weeks ? `<span class="dim">至少</span><select data-hf="target" data-hi="${i}">${targetOpts(h.target)}</select><span class="dim">${countWord(h)}</span>` : ''}
+      ${h.weeks ? `<span class="dim">至少</span><select data-hf="target" data-hi="${i}">${targetOpts(h.target)}</select><span class="dim">${esc(countWord(h))}</span>` : ''}
       <button class="ghost" data-act="habdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
     <div class="row" style="margin-top:8px"><button data-act="habadd" ${customCount() >= CONFIG.maxCustom ? 'disabled' : ''}>＋ 新增習慣 ${customCount()}/${CONFIG.maxCustom}</button>
       ${S.habits.filter(h => h.off && h.kind !== 'custom').map(h => `<button data-act="habrestore" data-v="${esc(h.id)}">加回 ${esc(h.n)}</button>`).join('')}</div>
@@ -142,7 +142,7 @@ function today(D) {
     }
     return `<button class="hab ${on ? 'on' : ''} ${!on && leaveHere(h, td) ? 'leave' : ''}" data-act="habtap" data-v="${esc(h.id)}">
       <div class="row"><span class="hn">${esc(h.n)}</span><span class="sp"></span>${badge}</div>
-      <div class="hs">${sub}</div></button>`;
+      <div class="hs">${esc(sub)}</div></button>`;
   }).join('');
   // 昨天（上一期）漏了：已經自動用掉假或保護卡的，告訴他還剩多少；都用完、連勝斷了的，也說一聲。今天做了就不再提
   const yd = addDays(td, -1), cards = freezeLeft(D);
@@ -320,7 +320,7 @@ function renderSheet() {
   const D = derive(), s = streaks(D)[h.id], day = UI.sheet.day, d = addDays(dayKey(), day), list = dayChecks(d, h.id);
   // 這一期的日期範圍，例如「本週（11/2–11/8）」
   const p0 = h.weeks && periodKey(dayKey(), h.weeks), md = mdOf;
-  const goal = h.weeks ? `${h.weeks === 1 ? '每週' : '每兩週'} ${h.target} ${countWord(h)}・${periodWord(h)}（${md(p0)}–${md(addDays(p0, 7 * h.weeks - 1))}）${perCount(D, h, p0)}/${h.target}` : '每天';
+  const goal = h.weeks ? `${h.weeks === 1 ? '每週' : '每兩週'} ${h.target} ${esc(countWord(h))}・${periodWord(h)}（${md(p0)}–${md(addDays(p0, 7 * h.weeks - 1))}）${perCount(D, h, p0)}/${h.target}` : '每天';
   let body;
   if (h.kind === 'exercise') {
     const type = UI.sheet.exType || ETAGS[0];
@@ -687,7 +687,7 @@ function shop(D) {
     ${S.shop.map((it, i) => `<div class="it">
       <input data-sf="icon" data-si="${i}" aria-label="圖示" maxlength="8" value="${esc(it.icon)}" style="width:52px;text-align:center" title="圖示（可貼 emoji）">
       <input class="sp" data-sf="name" data-si="${i}" aria-label="獎勵名稱" maxlength="40" value="${esc(it.name)}" placeholder="獎勵名稱，例如：吃甜點（100 元內）">
-      <input type="number" min="1" data-sf="price" data-si="${i}" aria-label="價格" value="${it.price}" style="width:90px">${COIN}
+      <input type="number" min="1" data-sf="price" data-si="${i}" aria-label="價格" value="${esc(it.price)}" style="width:90px">${COIN}
       <button class="ghost" data-act="shopdel" data-v="${i}" title="刪除">✕</button></div>`).join('')}
     <div class="row" style="margin-top:8px"><button data-act="shopadd">＋ 新增獎勵</button></div></section>`;
   const since = addDays(dayKey(), -13), recent = S.logs.filter(l => l.d >= since && l.c > 0 && l.k !== 'welcome');
@@ -711,12 +711,12 @@ function shop(D) {
     <div class="mini">${activeDays >= 5 ? `最近 14 天平均每天賺 ${rate} 金幣。` : `目前以每天約 ${rate} 金幣估算。`}</div>
     ${items.length ? '' : '<div class="dim" style="margin-top:8px">還沒有獎勵，按「編輯」新增。</div>'}
     ${items.map(it => `<div class="it ${it === next ? 'next' : ''}"><span class="ic">${esc(it.icon)}</span><span class="sp">${esc(it.name)}</span>
-      <span class="price">${it.price}${COIN}</span>
+      <span class="price">${esc(it.price)}${COIN}</span>
       ${D.coins >= it.price ? `<button data-act="redeem" data-v="${esc(it.id)}">兌換</button>`
         : `<span class="dim need">約 ${daysFor(it.price - D.coins)} 天</span>`}
-      ${it === next ? `<div class="nextbar2"><small>下一個目標・${D.coins} / ${it.price}</small><div class="bar c"><i style="width:${Math.max(0, D.coins / it.price * 100)}%"></i></div></div>` : ''}</div>`).join('')}
+      ${it === next ? `<div class="nextbar2"><small>下一個目標・${D.coins} / ${esc(it.price)}</small><div class="bar c"><i style="width:${Math.max(0, D.coins / it.price * 100)}%"></i></div></div>` : ''}</div>`).join('')}
   </section>
-  <section class="px">${sh('消費紀錄', 'HISTORY', '<small class="dim">近五筆</small>')}${hist.length ? hist.map(l => `<div class="row"><span class="dim">${l.d}</span><span>${esc(histName(l))}</span><span class="sp"></span><span class="price">${l.c}${COIN}</span></div>`).join('') : '<div class="dim">還沒有消費過。</div>'}</section>`;
+  <section class="px">${sh('消費紀錄', 'HISTORY', '<small class="dim">近五筆</small>')}${hist.length ? hist.map(l => `<div class="row"><span class="dim">${esc(l.d)}</span><span>${esc(histName(l))}</span><span class="sp"></span><span class="price">${esc(l.c)}${COIN}</span></div>`).join('') : '<div class="dim">還沒有消費過。</div>'}</section>`;
 }
 
 // 最近的打卡紀錄（含運動細節、文章標題）

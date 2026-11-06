@@ -21,12 +21,39 @@ const KEY = 'habitdive.v1';
 const blank = () => ({ v: 5, logs: [], plans: {}, checks: {}, mute: false });
 const OLD_CAT = { '☀️': 'wake', '💻': 'research', '✍️': 'vocus', '🏃': 'exercise', '📘': 'digital', '📌': 'other' };
 // v1：六件事有 line/time/dur；v2：分類用 emoji、習慣寫死；v3：習慣可自訂；v4：習慣改在卡片上打卡（S.checks）
+// 所有外部存檔拒絕原型屬性與過深的結構，避免污染動態查表。
+const dataObject = x => !!x && typeof x === 'object' && !Array.isArray(x);
+function checkDataKeys(value, depth = 0) {
+  if (depth > 40) throw new Error('存檔結構過深');
+  if (!value || typeof value !== 'object') return;
+  for (const key of Object.keys(value)) {
+    if (['__proto__', 'constructor', 'prototype'].includes(key)) throw new Error('不安全的存檔欄位');
+    checkDataKeys(value[key], depth + 1);
+  }
+}
+function prepareBackup(data) {
+  if (!dataObject(data) || !Array.isArray(data.logs)) throw new Error('備份格式錯誤');
+  checkDataKeys(data);
+  for (const key of ['habits', 'shop', 'gcats', 'favs'])
+    if (data[key] != null && !Array.isArray(data[key])) throw new Error('備份欄位型別錯誤');
+  for (const key of ['plans', 'checks', 'fed', 'released', 'outTank', 'held', 'seen', 'names', 'leaves'])
+    if (data[key] != null && !dataObject(data[key])) throw new Error('備份欄位型別錯誤');
+  const date = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && keyOf(parseKey(d)) === d;
+  for (const log of data.logs) {
+    if (!dataObject(log) || (log.d != null && !date(log.d))) throw new Error('備份紀錄錯誤');
+    for (const key of ['c', 'xp']) if (log[key] != null && !Number.isFinite(Number(log[key]))) throw new Error('備份數值錯誤');
+  }
+  for (const key of ['plans', 'checks']) for (const [d, value] of Object.entries(data[key] || {}))
+    if (!date(d) || (key === 'plans' ? !Array.isArray(value) : !dataObject(value))) throw new Error('備份日期或紀錄錯誤');
+  return migrate(Object.assign(blank(), data));
+}
 function migrate(s) {
+  checkDataKeys(s);
   const old = (s.v || 1) < 3;
   s.logs = (Array.isArray(s.logs) ? s.logs : []).filter(l => l && typeof l === 'object');
   for (const l of s.logs) {
     if (!l.id) l.id = rid();
-    for (const k of ['c', 'xp']) if (l[k] != null && typeof l[k] !== 'number') l[k] = Number(l[k]) || 0;   // 字串數字會讓金幣變成字串相加
+    for (const k of ['c', 'xp']) if (l[k] != null) l[k] = Number.isFinite(Number(l[k])) ? Number(l[k]) : 0;   // 字串數字會讓金幣變成字串相加
   }
   s.plans = s.plans && typeof s.plans === 'object' && !Array.isArray(s.plans) ? s.plans : {};
   for (const [d, P] of Object.entries(s.plans)) {
@@ -38,6 +65,9 @@ function migrate(s) {
   }
   for (const k of ['fed', 'released', 'outTank', 'held', 'seen']) if (s[k] && (typeof s[k] !== 'object' || Array.isArray(s[k]))) s[k] = {};
   if (s.shop && !Array.isArray(s.shop)) delete s.shop;
+  if (s.shop) s.shop = s.shop.filter(dataObject).map(x => ({ ...x, id: String(x.id || rid()), name: String(x.name ?? ''), icon: String(x.icon ?? '🎁'), price: Number.isFinite(Number(x.price)) ? Math.max(1, Math.round(Number(x.price))) : 1 }));
+  if (s.gcats && !Array.isArray(s.gcats)) delete s.gcats;
+  if (s.gcats) s.gcats = s.gcats.filter(dataObject).map(c => ({ ...c, id: String(c.id || rid()), n: String(c.n ?? ''), e: String(c.e ?? '🔖') }));
   // 單一數值欄位：型別不對就換成合理的值（字串會讓飼料 5+10 變成 "510"；番茄鐘分鐘太大會讓整個頁面卡死）
   const num = v => (v === null || v === '' || v === true || v === false || !Number.isFinite(+v)) ? 0 : +v;
   for (const k of ['feed', 'lvSeen', 'tossed']) if (s[k] != null) s[k] = Math.max(0, Math.floor(num(s[k])));
@@ -47,9 +77,11 @@ function migrate(s) {
   // 撒過幾顆飼料（新手提示用）：還沒有這個欄位的舊存檔，用吃掉的顆數加今天撒的估計
   if (s.tossed == null && s.fed && typeof s.fed === 'object') s.tossed = Object.values(s.fed).reduce((a, v) => a + Math.max(0, +v || 0), 0) + (s.feedDay ? s.feedDay.used : 0);
   if (s.favs != null) s.favs = (Array.isArray(s.favs) ? s.favs : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 12);
-  if (s.habits) for (const h of s.habits) { if (h.unit != null) h.unit = String(h.unit).slice(0, 4); h.n = String(h.n ?? ''); h.weeks = Math.max(0, Math.min(2, Math.round(num(h.weeks)))); h.target = Math.max(1, Math.min(14, Math.round(num(h.target)) || 1)); }
   if (s.habits && !Array.isArray(s.habits)) delete s.habits;
-  if (s.habits) s.habits = s.habits.filter(h => h && typeof h === 'object' && h.id);
+  if (s.habits) s.habits = s.habits.filter(h => dataObject(h) && typeof h.id === 'string' && h.id);
+  if (s.habits) for (const h of s.habits) { if (h.unit != null) h.unit = String(h.unit).slice(0, 4); h.n = String(h.n ?? ''); h.weeks = Math.max(0, Math.min(2, Math.round(num(h.weeks)))); h.target = Math.max(1, Math.min(14, Math.round(num(h.target)) || 1)); }
+
+
   for (const P of Object.values(s.plans)) for (const it of P) {
     it.text = String(it.text ?? '');
     if (!it.cat) it.cat = it.line || '📌';

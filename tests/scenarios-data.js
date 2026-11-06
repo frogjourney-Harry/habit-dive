@@ -268,3 +268,48 @@ test('雲端：兩台同時開著，即時更新；舊的那台不能蓋掉新�
   ok(sets() > n0, '連續存檔 7.5 秒後，再存一次也會在 1 秒內上傳（不是又等 3 秒）');
   A.check('A'); B.check('B'); A.destroy(); B.destroy();
 });
+
+test('資安：惡意備份價格不執行程式，錯誤結構與原型欄位不取代存檔', async () => {
+  const I = await boot({ state: mkState(), noShare: true }); await I.dismiss();
+  await I.tab('shop');
+  const payload = '"><img src=x onerror="window.__securityProbe=1">';
+  const send = async (text, confirm = false) => {
+    const dt = new I.win.DataTransfer(); dt.items.add(new I.win.File([text], 'security.json', { type: 'application/json' }));
+    const inp = I.$('#importFile'); inp.files = dt.files; inp.dispatchEvent(new I.win.Event('change', { bubbles: true }));
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 10));
+      if (!I.$('#askov').classList.contains('hidden')) { if (confirm) await I.click('#askyes'); break; }
+    }
+    await flush(10);
+  };
+  const original = JSON.stringify(I.S), stored = JSON.stringify(I.stored());
+  for (const bad of ['{"logs":[],"habits":{}}', '{"logs":[],"gcats":{}}', '{"logs":[],"__proto__":{"polluted":1}}', '{"logs":[],"plans":{"not-a-date":[]}}']) {
+    await send(bad);
+    eq(JSON.stringify(I.S), original, '拒絕壞備份，記憶體資料不變');
+    eq(JSON.stringify(I.stored()), stored, '拒絕壞備份，存檔不變');
+    ok(I.$('#askov').classList.contains('hidden'), '驗證失敗不進入還原確認');
+  }
+  const backup = JSON.parse(original);
+  backup.shop = [{ id: 'safe', name: payload, icon: payload, price: payload }];
+  await send(JSON.stringify(backup), true);
+  await I.click('[data-act=shopedit]'); await flush(10);
+  ok(!I.doc.querySelector('[onerror]'), '沒有產生可執行的 HTML 屬性');
+  ok(!I.win.__securityProbe, '惡意程式沒有執行');
+  eq(I.S.shop[0].price, 1, '非法價格轉成安全數值');
+  ok(!!window.__stores[I.storeId].get('habitdive.v1.before-import'), '成功還原前另存原存檔');
+  I.check('資安匯入'); I.destroy();
+});
+
+test('資安：備份顯示失敗不覆寫原資料', async () => {
+  const I = await boot({ state: mkState(), noShare: true }); await I.dismiss(); await I.tab('shop');
+  const original = JSON.stringify(I.S), stored = JSON.stringify(I.stored());
+  // 模擬候選備份於顯示階段才發現錯誤，原本資料仍應完整保留。
+  I.ev("window.__oldRender = render; window.__oldState = S; render = function() { if (S !== window.__oldState) throw new Error('render failure'); return window.__oldRender(); }");
+  const dt = new I.win.DataTransfer(); dt.items.add(new I.win.File([original], 'valid.json', { type: 'application/json' }));
+  const inp = I.$('#importFile'); inp.files = dt.files; inp.dispatchEvent(new I.win.Event('change', { bubbles: true }));
+  for (let i = 0; i < 100 && I.$('#askov').classList.contains('hidden'); i++) await new Promise(r => setTimeout(r, 10));
+  await I.click('#askyes'); await flush(10);
+  eq(JSON.stringify(I.S), original, '顯示失敗還原原始狀態');
+  eq(JSON.stringify(I.stored()), stored, '顯示失敗不覆寫存檔');
+  I.ev('render = window.__oldRender'); I.check('匯入回復'); I.destroy();
+});
