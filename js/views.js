@@ -53,9 +53,9 @@ function dailyTasks(D) {
   const T = [
     { id: 'login', name: '每日登入', go: 'six', est: C.login, ex: X.login, logs: byKey('login:' + d) },
     // how＝一小句提示（名稱看得懂就不寫）；go＝點了跳到「今日」頁的哪一區
-    // 今天或明天的清單都算「寫好清單」（寫兩份就領兩份，沒有加倍）；前 R 件的打勾和「全部完成」加碼合成同一列
+    // 今天或明天的清單都算「寫好清單」（寫兩份就領兩份，沒有加倍）；任意 R 件的打勾和「完成三件」加碼合成同一列
     { id: 'plan', name: '寫好清單', how: `今天或明天的都可以，寫至少 ${R} 件`, go: 'six', est: C.task, ex: X.plan, nx: `寫好清單（至少 ${R} 件）`, logs: [...byKey('plan:' + d), ...byKey('plan:' + d1)] },
-    { id: 'rows', name: `完成前 ${R} 件事`, how: `${R} 件都完成有加碼`, go: 'six', n: checks.length, of: R, est: C.task * Math.max(R - checks.length, 0) + (byKey('top3:' + d).length ? 0 : C.top3), ex: X.check * Math.max(R - checks.length, 0) + (byKey('top3:' + d).length ? 0 : X.top3), logs: [...checks, ...byKey('top3:' + d)] },
+    { id: 'rows', name: `完成 ${R} 件事`, how: `任意完成 ${R} 件有加碼`, go: 'six', n: checks.length, of: R, est: C.task * Math.max(R - checks.length, 0) + (byKey('top3:' + d).length ? 0 : C.top3), ex: X.check * Math.max(R - checks.length, 0) + (byKey('top3:' + d).length ? 0 : X.top3), logs: [...checks, ...byKey('top3:' + d)] },
     { id: 'anyhab', name: '任一個習慣打卡', go: 'habits', est: C.task, ex: X.anyhab, nx: '「習慣」區任選一張卡片打卡', logs: byKey('anyhab:' + d) },
     { id: 'pomo', name: `專注一段番茄鐘`, how: `滿 ${CONFIG.pomoRewardMin} 分鐘`, go: 'pomo', est: C.task, ex: X.pomo, nx: `專注一段番茄鐘（${CONFIG.pomoRewardMin} 分鐘）`, logs: byKey('pomo:' + d) },
   ];
@@ -73,10 +73,10 @@ function dailyTasks(D) {
       n: Math.min(perCount(D, h, p), h.target), of: h.target, logs: [...days.flatMap(dayLogs), ...bonus] });
   }
   // 保險：今天待領取、卻不屬於任何任務的獎勵（例如習慣已刪除）一律放進「其他獎勵」，確保一定領得到
-  const shown = new Set(T.flatMap(t => t.logs.map(l => l.id))), orphans = S.logs.filter(l => l.pend && l.d === d && !shown.has(l.id));
+  const shown = new Set(T.flatMap(t => t.logs.map(l => l.id))), orphans = S.logs.filter(l => isPendingReward(l, d) && l.d === d && !shown.has(l.id));
   if (orphans.length) T.push({ id: 'misc', name: '其他獎勵', how: '', go: 'six', est: 0, ex: 0, logs: orphans });
   for (const t of T) {
-    t.pend = t.logs.filter(l => l.pend);
+    t.pend = t.logs.filter(l => isPendingReward(l, d));
     t.full = t.of ? t.n >= t.of : t.logs.length > 0;
     t.c = t.logs.reduce((a, l) => a + (l.c || 0), 0); t.xp = t.logs.reduce((a, l) => a + (l.xp || 0), 0);
   }
@@ -115,7 +115,7 @@ function nextStep(D, P) {
   const nx = T.find(t => !t.full);
   let label = '每日任務都完成了！';
   if (nx) {
-    const R = CONFIG.rewardRows, i = P.slice(0, R).findIndex(x => !x.done);
+    const i = P.findIndex(x => x.text.trim() && !x.done);
     label = nx.id === 'rows' ? (i < 0 ? nx.name : P[i].text.trim() ? `打勾第 ${i + 1} 件「${P[i].text.trim()}」` : `在六件事寫下第 ${i + 1} 件要做的事`)
       : nx.nx || nx.name;
   }
@@ -159,7 +159,7 @@ function today(D) {
     : UI.pday > 0 ? `先寫好明天的（至少 ${CONFIG.rewardRows} 件），一樣算「寫好清單」`
     // 今天的提示只在剛開始用的前幾天出現（以前寫過清單的天數還不到 CONFIG.sixTipDays），之後只留日期
     : Object.keys(S.plans).filter(x => x < dayKey() && S.plans[x].some(it => it.text.trim())).length < CONFIG.sixTipDays
-      ? `前 ${CONFIG.rewardRows} 件有獎勵・按住編號上下拖曳排順序` : '';
+      ? `每天任意完成 ${CONFIG.rewardRows} 件有獎勵・按住編號上下拖曳排順序` : '';
   const favs = S.favs || [];
   // 常用：點一下填進第一個空格，不用每天重打
   const favBar = favs.length ? `<div class="favs"><small class="dim">常用</small>${favs.map((t, i) => `<span class="fav"><button class="ghost" data-act="usefav" data-v="${i}">${esc(t)}</button><button class="ghost x" data-act="delfav" data-v="${i}" title="從常用移除">×</button></span>`).join('')}</div>` : '';
@@ -169,9 +169,8 @@ function today(D) {
   const last = P.reduce((a, it, i) => it.text.trim() ? i : a, -1), shown = Math.min(P.length, Math.max(CONFIG.rewardRows, last + 1, UI.showRows || 0));
   UI.shownRows = shown;
   const rows = P.slice(0, shown).map((it, i) => {
-    const divider = i === CONFIG.rewardRows ? '<div class="divider">以下只做紀錄</div>' : '';
     const starred = it.text.trim() && favs.includes(it.text.trim());
-    return `${divider}<div class="prow ${it.done ? 'done' : ''}">
+    return `<div class="prow ${it.done ? 'done' : ''}">
       <input type="checkbox" data-act="pdone" data-v="${i}" aria-label="完成第 ${i + 1} 件" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
       <button class="ghost no ${UI.swap === i ? 'sel' : ''}" data-act="swap" data-v="${i}" title="按住拖曳排序，或點兩個編號交換">${i + 1}</button>
       <input class="ptext" data-pf="text" data-i="${i}" aria-label="第 ${i + 1} 件事" maxlength="200" value="${esc(it.text)}" placeholder="${i === 0 ? '今天最重要的事' : ''}">
@@ -196,8 +195,9 @@ function today(D) {
     <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
       <div class="mini" style="margin:-2px 0 4px">${d.slice(5).replace('-', '/')}${hint ? '・' + hint : ''}</div>
       ${UI.pday >= 0 && !S.tipSix ? `<div class="tip row"><span class="sp">小技巧：按住編號拖曳可以排順序，點 ☆ 存成常用。</span><button class="ghost" data-act="tipsix">知道了</button></div>` : ''}
+      ${UI.pday === 0 ? `<div class="mini">已完成 ${Math.min(filled(P).filter(it => it.done).length, CONFIG.rewardRows)}/${CONFIG.rewardRows} 件・任意完成 ${CONFIG.rewardRows} 件有加碼</div>` : ''}
       ${UI.pday >= 0 ? carryBar + favBar : ''}${rows}
-      ${shown < P.length && UI.pday >= 0 ? `<button class="ghost addrow" data-act="addrow">＋ 再加一件${shown === CONFIG.rewardRows ? '（只做紀錄）' : ''}</button>` : ''}
+      ${shown < P.length && UI.pday >= 0 ? `<button class="ghost addrow" data-act="addrow">＋ 再加一件</button>` : ''}
       ${UI.pday < 0 || claimed ? '' : '<div class="row" style="margin-top:8px"><button class="pri" data-act="plansave">寫好了</button></div>'}</section>
     ${timer}`;
 }
@@ -389,19 +389,6 @@ function pets(sp) {
 // 圖鑑裡解鎖到第幾種外觀：看過的最高型態（放生了也算看過）
 const seenStage = sp => Math.max(1, (S.seen && S.seen[sp]) || 1, ...pets(sp).map(p => stageOf(p.fed)));
 // 三種外觀：幼體用各自的幼體圖（JUV）、成體是原圖、特殊型態換成各自的稀有配色（MORPH）
-const stageCv = {};
-function stageCanvas(c, s) {
-  const key = c.id + s; if (stageCv[key]) return stageCv[key];
-  const rows = s === 1 ? JUV[c.id] : s === 3 && MORPH[c.id].px ? MORPH[c.id].px : c.px;
-  const map = { ...(SPECIES_PAL[c.id] || {}), ...(s === 3 ? MORPH[c.id].map : {}) };
-  const cv = document.createElement('canvas'); cv.width = Math.max(...rows.map(r => r.length)); cv.height = rows.length;
-  const x = cv.getContext('2d');
-  rows.forEach((r, j) => [...r].forEach((ch, i) => {
-    if (ch === '.' || !PAL[ch]) return;
-    x.fillStyle = map[ch] || PAL[ch]; x.fillRect(i, j, 1, 1);
-  }));
-  return stageCv[key] = cv;
-}
 const stageUrl = {};
 function stageImg(c, s, scale, sil = false, cls = '') {
   const key = c.id + s + sil;
@@ -709,7 +696,7 @@ function shop(D) {
   const daysFor = p => Math.max(1, Math.ceil(p / rate));
   const items = [...shopItems()].sort((a, b) => a.price - b.price), next = items.find(it => it.price > D.coins);
   return `<section class="px shop">${sh('生物寶箱', 'CHESTS')}
-    <div class="mini">抽到的生物會游進你的大海。每種最多養 ${MAX_PETS} 隻，重複的換成金幣。</div>
+    <div class="mini">抽到的生物會游進你的大海。每種最多養 ${MAX_PETS} 隻；超過時可選擇讓哪一隻游走。</div>
     ${CONFIG.chests.map((ch, i) => `<div class="it chest"><span class="ic">${img(chestPx(i), 2)}</span>
       <span class="sp" data-act="chestpool" data-v="${ch.id}">${ch.name}<span class="more">${UI.chestOpen === ch.id ? '▴' : '▾'}</span><br><small>${chestOdds(ch, D)}</small></span>
       <span class="price">${ch.price}${COIN}</span><button data-act="buychest" data-v="${ch.id}" ${D.coins < ch.price ? 'disabled' : ''}>購買</button>

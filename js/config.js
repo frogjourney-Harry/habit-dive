@@ -4,12 +4,12 @@ const CONFIG = {
   pomodoroMin: 25,            // 一段專注的長度；使用者選的是「整段工作階段」的總長度（5–120 分）
   pomoRewardMin: 25,          // 專注滿這麼多分鐘才有獎勵
   breakMin: 5, longBreakMin: 15, longBreakEvery: 4,   // 工作階段中：每段專注後短休息，每 4 段長休息
-  dayStartHour: 4,            // 凌晨 4 點前都算「前一天」
+  dayStartHour: 0,            // 依裝置當地時間，午夜 00:00 換日
   habitDays: 66,              // Lally et al. 2010：習慣自動化所需天數中位數
   maxCustom: 3,               // 自訂習慣最多幾個（不含內建的運動）
   xp:    { check: 10, habit: 10, exercise: 20, plan: 10, anyhab: 10, pomo: 10, period: 30, top3: 15, login: 5 },
   coins: { task: 15, period: 60, welcome: 60, top3: 30, login: 15 },   // 都是 15 的倍數，好記
-  rewardRows: 3,              // 六件事每天只有前幾項打勾有獎勵，其餘只做紀錄
+  rewardRows: 3,              // 六件事每天任意完成幾件有獎勵，不受排列位置影響
   sixTipDays: 3,              // 六件事的操作提示（前幾件有獎勵、拖曳排序）：寫過清單滿這麼多天之後就不再顯示
   leavePerMonth: 2,           // 每天的習慣每個月可以請幾天假（請假的那天連勝不會中斷）
   leavePerMonthWeekly: 1,     // 每週/每兩週型的習慣（例如運動）每個月可以請幾次「這一期請假」
@@ -25,7 +25,6 @@ const CONFIG = {
     { id: 'c4', name: '傳說寶箱', price: 1500, feed: 0,  rates: [0, 0, 0, 0, 100] },
   ],
   chestFeed: 5,               // 普通寶箱開出飼料時給幾顆
-  dupCoins: [2, 5, 15, 40, 100],         // 抽到重複生物時換成的金幣
   shop: [
     { id: 'tea',     icon: '🧋', name: '喝一杯手搖飲',       price: 300 },
     { id: 'episode', icon: '📺', name: '追一集劇',           price: 300 },

@@ -84,7 +84,7 @@ test('寫好清單的規則：至少 3 件、明天一樣算、不能重複領',
   await I.plan(['X', 'Y', 'Z'], 1); await I.saveList();
   const t = I.S.logs.find(l => l.key === 'plan:2026-11-03'); ok(t && t.c === 15 && t.xp === 10, '提前寫明天不加倍：' + JSON.stringify(t));
   eq(I.S.logs.filter(l => l.k === 'plan').length, 2, '兩份清單獎勵');
-await I.tab('quest'); eq(I.$$('.qc .qn').map(e => e.innerText).filter(x => /清單|前 3 件/.test(x)), ['寫好清單', '完成前 3 件事'], '任務只有兩列：寫好清單（今天明天都算）、前 3 件事（含全部完成加碼）'); ok(!I.has('×2'), '沒有加倍的字樣'); await I.tab('today');
+await I.tab('quest'); eq(I.$$('.qc .qn').map(e => e.innerText).filter(x => /清單|完成 3 件/.test(x)), ['寫好清單', '完成 3 件事'], '任務只有兩列：寫好清單（今天明天都算）、任意 3 件事（含完成三件加碼）'); ok(!I.has('×2'), '沒有加倍的字樣'); await I.tab('today');
   I.check('清單');
   // 隔天：「寫好今天的清單」已經完成，不用再寫
   await I.advance(24 * 3600e3); const J = await I.reload(); await J.dismiss();
@@ -93,19 +93,19 @@ await I.tab('quest'); eq(I.$$('.qc .qn').map(e => e.innerText).filter(x => /清�
   J.check('隔天'); J.destroy(); I.destroy();
 });
 
-test('換日：沒領的隔天自動入帳；凌晨 4 點才換日', async () => {
+test('換日：沒領的隔天自動入帳；午夜 00:00 換日', async () => {
   const Z = await startToday();   // 換日判斷另開一個（來回跳時間會多發當天的登入獎勵，不要混進後面的金額）
   const f = async t => { await Z.setTime(t); return Z.ev('dayKey()'); };
-  eq(await f(ts(2026, 11, 3, 3, 59)), '2026-11-02', '03:59 還是前一天');
-  eq(await f(ts(2026, 11, 3, 4, 0)), '2026-11-03', '04:00 換日');
-  eq(await f(ts(2026, 11, 2, 0, 0)), '2026-11-01', '00:00 算前一天');
+  eq(await f(ts(2026, 11, 2, 23, 59)), '2026-11-02', '23:59 還是當天');
+  eq(await f(ts(2026, 11, 3, 0, 0)), '2026-11-03', '00:00 換日');
+  eq(await f(ts(2026, 11, 3, 3, 59)), '2026-11-03', '凌晨已算新的一天');
   Z.destroy();
   const I = await startToday();
   await I.plan(['A', 'B', 'C']); await I.tick(0);
   eq(I.coins(), 60, '還沒領');
-  await I.setTime(ts(2026, 11, 3, 3, 30));
-  eq(I.coins(), 60, '凌晨 3:30 還是同一天，還沒領的不入帳');
-  await I.setTime(ts(2026, 11, 3, 4, 1));
+  await I.setTime(ts(2026, 11, 2, 23, 59));
+  eq(I.coins(), 60, '23:59 還是同一天，還沒領的不入帳');
+  await I.setTime(ts(2026, 11, 3, 0, 0));
   eq(I.coins(), 90, '換日後沒領的自動入帳（含昨天的登入獎勵 15）');
   const J = await I.reload(); await J.dismiss(); eq(J.coins(), 90, '重開也一樣');
   await J.tab('quest'); ok(![...J.$$('.qc.pend')].some(e => !/每日登入/.test(e.innerText)), '昨天的獎勵不會一直掛在待領取（只剩今天新的登入獎勵）');
@@ -499,4 +499,64 @@ test('六件事：昨天沒做完的帶到今天（一件一件或全部帶入�
   await full.tab('today'); await full.click('#six [data-act=carryall]');
   eq(full.S.plans[D0].map(x => x.text), ['1', '2', '3', '4', 'a', 'b'], '全部帶入：填滿剩下的格子'); ok(full.has('六格寫滿了'), '提示有幾件帶不進來');
   ok(!full.$('#six .carry'), '寫滿了就不再顯示'); full.destroy();
+});
+
+test('任意三件：後三列先完成、交換位置與反覆勾選不多領', async () => {
+  const I = await startToday();
+  await I.plan(['A', 'B', 'C', 'D', 'E', 'F']);
+  for (const i of [5, 3, 4]) await I.tick(i);
+  eq(rewardLogs(I).length, 3, '後三列各有獎勵');
+  eq(rewardLogs(I).reduce((n, l) => n + l.c, 0), 45, '三件共 45 金幣');
+  ok(I.S.logs.some(l => l.key === 'top3:' + D0), '任意完成三件有 30 金幣加碼');
+  await I.tab('quest');
+  const row = I.$$('.qc').find(e => e.innerText.includes('完成 3 件事'));
+  ok(row && row.classList.contains('pend'), '任務顯示完成並可領獎');
+  await I.tab('today');
+  await I.tick(5); await I.tick(5);
+  await I.click('#six [data-act=swap][data-v="0"]');
+  await I.click('#six [data-act=swap][data-v="5"]');
+  for (const i of [1, 2]) await I.tick(i);
+  eq(rewardLogs(I).length, 3, '交換位置後仍最多三份');
+  await I.claimAll(); const coins = I.coins();
+  await I.tab('today'); await I.tick(0); await I.tick(0);
+  eq(I.coins(), coins, '領過再勾不重複入帳');
+  I.check('任意三件'); I.destroy();
+});
+
+test('提前寫清單：忘按寫好了隔天補發，已自動入帳的不再顯示領取', async () => {
+  const I = await startToday();
+  await I.plan(['明天 A', '明天 B', '明天 C'], 1);
+  ok(!I.S.logs.some(l => l.key === 'plan:2026-11-03'), '未按寫好了');
+  await I.advance(24 * 3600e3); const J = await I.reload(); await J.dismiss();
+  const logs = () => J.S.logs.filter(l => l.key === 'plan:2026-11-03');
+  eq(logs().length, 1, '隔天補發清單獎勵');
+  await J.claimAll(); const coins = J.coins();
+  J.ev('catchUp(); catchUp()');
+  eq(logs().length, 1, '重複補檢查不重發');
+  eq(J.coins(), coins, '不重複加金幣');
+  J.destroy(); I.destroy();
+
+  const A = await startToday();
+  await A.plan(['A', 'B', 'C'], 1); await A.saveList();
+  await A.advance(24 * 3600e3); const B = await A.reload(); await B.dismiss();
+  const before = B.coins(); await B.tab('quest');
+  const row = B.$$('.qc').find(e => e.innerText.includes('寫好清單'));
+  ok(row && row.classList.contains('got'), '昨天未領的清單已自動入帳，顯示已完成');
+  ok(row && !row.querySelector('[data-act=claim]'), '不顯示無效的領取按鈕');
+  await B.claimAll();
+  eq(B.coins() - before, 15, '只增加今天登入的 15 金幣');
+  B.check('提前寫清單'); B.destroy(); A.destroy();
+});
+test('獎勵狀態一致：昨天自動入帳的獎勵不能再領，重複傳入不重複計算', async () => {
+  const I = await startToday();
+  I.ev("S.logs.push({ id: 'old-pending', d: addDays(dayKey(), -1), k: 'plan', key: 'plan:' + addDays(dayKey(), -1), c: 15, xp: 10, pend: true }); save(); render()");
+  const before = I.coins();
+  I.ev("claim(S.logs.filter(l => l.id === 'old-pending'))");
+  eq(I.coins(), before, '已自動入帳不再領一次');
+  ok(I.ev("!isPendingReward(S.logs.find(l => l.id === 'old-pending'))"), '昨天待領標記不再算可領');
+  await I.plan(['A', 'B', 'C']); await I.tick(0);
+  const c = I.coins();
+  I.ev("const log = S.logs.find(l => l.k === 'check' && l.d === dayKey()); claim([log, log])");
+  eq(I.coins(), c + 15, '相同紀錄傳入兩次只入帳一次');
+  I.check('統一獎勵狀態'); I.destroy();
 });

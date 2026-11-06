@@ -6,7 +6,7 @@ const viewDay = () => addDays(dayKey(), UI.pday);
 const BONUS = {
   welcome: '歡迎下水！送你一隻小丑魚',
   login: '今天的登入獎勵',
-  top3: '前三件事都完成了！',
+  top3: '完成三件事了！',
   period: '習慣達標！',
   weekly: '本週運動達標！',
 };
@@ -36,10 +36,10 @@ function grant(kind, tag, o = {}) {
 // 在 log 上抽一隻生物（log.id 就是這隻的身分），排進開箱彈窗；超過上限時接著問要讓哪一隻游走
 // fixed：直接給這一隻（新手的小丑魚），不抽
 function dropCreature(log, rates, title, tint = 0, fixed = null) {
-  const D = derive(), cr = fixed || rollCreature(rates), isNew = !D.col[cr.id], dup = isNew ? 0 : CONFIG.dupCoins[cr.r];
-  log.drop = cr.id; log.c = (log.c || 0) + dup;
+  const D = derive(), cr = fixed || rollCreature(rates), isNew = !D.col[cr.id];
+  log.drop = cr.id;
   S.logs.push(log);
-  Q.push({ title, cr, isNew, xp: log.xp || 0, c: log.c - dup, dup, tint, direct: !!fixed });
+  Q.push({ title, cr, isNew, xp: log.xp || 0, c: log.c || 0, tint, direct: !!fixed });
   if (pets(cr.id).length > MAX_PETS) Q.push({ release: cr.id, newId: log.id });
   return log;
 }
@@ -78,7 +78,8 @@ function showGain() {
 }
 // 領取：把這些待領取的獎勵入帳，顯示拿到多少，檢查升級
 function claim(logs) {
-  logs = logs.filter(l => l.pend); if (!logs.length) return;
+  const ids = new Set(logs.map(l => l.id));
+  logs = S.logs.filter(l => ids.has(l.id) && isPendingReward(l)); if (!logs.length) return;
   const before = levelOf(derive().xp);
   let xp = 0, c = 0;
   for (const l of logs) { delete l.pend; xp += l.xp || 0; c += l.c || 0; }
@@ -87,14 +88,14 @@ function claim(logs) {
   ac(); SFX.buy(); toast(`+${xp} XP　+${c} 金幣`);
   save(); render(); nextChest();
 }
-// 今天的獎勵（前三件、每個習慣的打卡、週期達標）跟著條件走：條件不再成立時把獎勵收進 S.held，
+// 今天的獎勵（三件事、每個習慣的打卡、週期達標）跟著條件走：條件不再成立時把獎勵收進 S.held，
 // 條件恢復時原封不動還回來（不重抽，避免用取消再打卡刷稀有生物）
 function reconcile(allowGrant) {
   const d = dayKey(), P = S.plans[d] || [], R = CONFIG.rewardRows;
   S.held = S.held || {};
-  // 前三格都要有寫內容、而且都打勾才算
+  // 任意三件有內容的事情完成就算，不受排序影響
   const conds = [['login:' + d, 'login', true],   // 每天打開就有，不需要條件
-    ['top3:' + d, 'top3', P.length >= R && P.slice(0, R).every(x => x.text.trim() && x.done)],
+    ['top3:' + d, 'top3', P.filter(x => x.text.trim() && x.done).length >= R],
     ['anyhab:' + d, 'anyhab', activeHabits().some(h => dayChecks(d, h.id).length > 0), '今天完成了一個習慣！']];
   for (const h of activeHabits()) {
     const has = dayChecks(d, h.id).length > 0;
@@ -112,14 +113,18 @@ function reconcile(allowGrant) {
       else if (allowGrant) grant(kind, null, { key, title, xp });
     } else if (!ok && has) {
       // 已經領走的就不收回（金幣可能已經花掉，收回會變負的）；還沒領的先收起來，條件回來再還
-      const i = S.logs.findIndex(l => l.key === key && l.pend);
+      const i = S.logs.findIndex(l => l.key === key && isPendingReward(l));
       if (i >= 0) S.held[key] = S.logs.splice(i, 1)[0];
     }
   }
 }
 // 打開網頁（或雲端同步完）時補檢查：條件早就成立、但還沒發的獎勵（例如新任務上線前就打過卡）
 function catchUp() {
-  const n = S.logs.length; reconcile(true);
+  const n = S.logs.length, d = dayKey();
+  // 昨天已填好的今天清單，即使忘記按「寫好了」，也補上獎勵；同一份清單只發一次。
+  if (filled(S.plans[d] || []).length >= CONFIG.rewardRows && !derive().claimed.has('plan:' + d))
+    grant('plan', null, { key: 'plan:' + d, title: '今天的清單寫好了！' });
+  reconcile(true);
   const lv = autoLeave();   // 昨天（上一期）漏掉的：自動用掉假或保護卡
   if (S.logs.length !== n || lv) { save(); render(); if (S.logs.length !== n) showGain(); }
 }
@@ -234,7 +239,7 @@ function openChest() {
     <h2>${cr.name} <small>幼體</small> ${it.isNew ? '<span class="new">新發現</span>' : ''}</h2>
     <div class="dim" style="font-size:15px">${cr.fact}</div>
     ${it.xp || it.c > 0 ? `<div class="gain">${it.xp ? `<span style="color:var(--xp)">+${it.xp} XP</span>　` : ''}${it.c > 0 ? `<span class="coin">+${it.c}${COIN}</span>` : ''}</div>` : ''}
-    ${it.dup ? `<div class="dim" style="font-size:14px">已經有這種了，另外送 ${it.dup} 金幣</div>` : ''}
+
     <button class="pri" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
   SFX.open(cr.r);
 }

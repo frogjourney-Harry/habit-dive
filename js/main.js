@@ -130,7 +130,7 @@ document.addEventListener('click', async e => {
       reward(() => {
         if (UI.pday !== 0) { if (it.done) SFX.tap(); return; }
         if (!it.done) {
-          let i = S.logs.findIndex(l => it.lid && l.id === it.lid && l.pend);   // 已經領走的不收回
+          let i = S.logs.findIndex(l => it.lid && l.id === it.lid && isPendingReward(l));   // 已經領走的不收回
           if (i < 0 && it.rw && !S.logs.some(l => it.lid && l.id === it.lid)) {
             const linked = new Set(Object.values(S.plans).flat().map(x => x.lid).filter(Boolean));
             for (let j = S.logs.length - 1; j >= 0; j--) {
@@ -145,7 +145,7 @@ document.addEventListener('click', async e => {
         // 名額照「今天已經發出去的打勾獎勵」算（含先收起來的），不是看哪幾列有標記：不然把有獎勵的那件換到後面再刪掉，就能多拿
         // （存檔裡有「標記有獎勵、但找不到那筆紀錄」的項目時，也要算進名額）
         const given = Math.max(S.logs.filter(l => l.k === 'check' && l.d === d).length + getPlan(d).filter(x => x.held).length, getPlan(d).filter(x => x.rw).length);
-        if (it.rw || +v >= CONFIG.rewardRows || given >= CONFIG.rewardRows) { SFX.tap(); return; }
+        if (it.rw || given >= CONFIG.rewardRows) { SFX.tap(); return; }
         it.rw = true;
         it.lid = grant('check', c.n, { title: `✔ ${it.text}`, xp: CONFIG.xp.check }).id;
       }, UI.pday === 0);
@@ -154,6 +154,7 @@ document.addEventListener('click', async e => {
     case 'plansave': {
       const d = viewDay();
       if (filled(getPlan(d)).length < CONFIG.rewardRows) { toast(`至少寫下 ${CONFIG.rewardRows} 件事`); break; }
+      if (d < dayKey() || derive().claimed.has('plan:' + d)) break;
       const ahead = d > dayKey();
       ac(); reward(() => grant('plan', null, { key: 'plan:' + d, title: ahead ? '明天的清單寫好了！' : '今天的清單寫好了！' })); break;
     }

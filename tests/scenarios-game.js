@@ -84,17 +84,20 @@ test('升級：彈窗、稱號、只慶祝一次、超大等級', async () => {
   K.destroy(); I.destroy();
 });
 
-test('寶箱：五種價格、稀有度、重複換金幣', async () => {
+test('寶箱：五種價格、稀有度、重複生物不退金幣', async () => {
   const I = await boot({ state: base(coinLog(5000)) }); await I.dismiss(); await I.tab('shop');
-  const exp = [[0, 'clown', 40, 2], [1, 'turtle', 100, 5], [2, 'seahorse', 250, 15], [3, 'manta', 600, 40], [4, 'whaleshark', 1500, 100]];
+  const exp = [[0, 'clown', 40], [1, 'turtle', 100], [2, 'seahorse', 250], [3, 'manta', 600], [4, 'whaleshark', 1500]];
   const rest = stubRandom(I, [], 0);
-  for (const [i, id, price, dup] of exp) {
+  for (const [i, id, price] of exp) {
     rest(); const un = stubRandom(I, [0.5, 0.99, 0, 0]);
     const c0 = I.coins(); await I.click(`[data-act=buychest][data-v=c${i}]`); await I.dismiss(); un();
     eq(I.coins(), c0 - price, `${price} 金幣的寶箱：第一次扣 ${price}`);
     ok(I.ev('derive().col')[id] === 1, `c${i} 開出 ${id}：` + JSON.stringify(I.ev('derive().col')));
     const un2 = stubRandom(I, [0.5, 0.99, 0, 0]); const c1 = I.coins(); await I.click(`[data-act=buychest][data-v=c${i}]`); await I.dismiss(); un2();
-    eq(I.coins(), c1 - price + dup, `重複的${id}要退 ${dup} 金幣`);
+    eq(I.coins(), c1 - price, `重複的 ${id} 仍扣完整 ${price} 金幣`);
+    eq(I.ev('derive().col')[id], 2, '重複生物仍加入收藏');
+    const purchase = I.S.logs.filter(l => l.k === 'chest').slice(-1)[0];
+    eq(purchase.c, -price, '消費紀錄保留完整價格');
     I.check('寶箱 c' + i);
   }
   I.destroy();

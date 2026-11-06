@@ -145,3 +145,18 @@ function img(rows, scale, sil = false, cls = '') {
   return `<img class="sprite ${cls}" src="${s.src}" width="${s.w * scale}" height="${s.h * scale}" alt="">`;
 }
 
+
+// 生物型態共用繪圖：遊戲與圖鑑審查使用同一個入口。
+const stageCv = {};
+function stageCanvas(c, s) {
+  const key = c.id + s; if (stageCv[key]) return stageCv[key];
+  const rows = s === 1 ? JUV[c.id] : s === 3 && MORPH[c.id].px ? MORPH[c.id].px : c.px;
+  const map = { ...(SPECIES_PAL[c.id] || {}), ...(s === 3 ? MORPH[c.id].map : {}) };
+  const cv = document.createElement('canvas'); cv.width = Math.max(...rows.map(r => r.length)); cv.height = rows.length;
+  const x = cv.getContext('2d');
+  rows.forEach((r, j) => [...r].forEach((ch, i) => {
+    if (ch === '.' || !PAL[ch]) return;
+    x.fillStyle = map[ch] || PAL[ch]; x.fillRect(i, j, 1, 1);
+  }));
+  return stageCv[key] = cv;
+}
