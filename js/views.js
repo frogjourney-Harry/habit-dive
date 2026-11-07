@@ -191,12 +191,12 @@ function today(D) {
   const habits = S.introPending ? '' : UI.habEdit ? habitEditor() : `<section class="px" id="habits">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
       <div class="habits">${chips || '<button class="wide" data-act="habedit">新增第一個習慣</button>'}</div>
       ${risky.join('')}</section>`;
-  return `${UI.pday === 0 ? autoNoticeCard() + (S.introPending ? '' : nextStep(D, P)) + backupNudge() : ''}${habits}
-    <section class="px" id="six">${sh(S.introPending ? '今天的一件事' : '最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
+  return `${UI.pday === 0 ? autoNoticeCard() + tutorialResumeCard() + (S.introPending ? '' : nextStep(D, P)) + backupNudge() : ''}${habits}
+    <section class="px" id="six">${S.introPending ? tutorialProgress(2) : ''}${sh(S.introPending ? '今天的一件事' : '最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
       <div class="mini" style="margin:-2px 0 4px">${UI.pday < 0 ? '昨天 ' : UI.pday > 0 ? '明天 ' : '今天 '}${d.slice(5).replace('-', '/')}${hint && !S.introPending ? '・' + hint : ''}</div>
       ${UI.pday >= 0 && !S.tipSix ? `<div class="tip row"><span class="sp">小技巧：按住編號拖曳可以排順序，點 ☆ 存成常用。</span><button class="ghost" data-act="tipsix">知道了</button></div>` : ''}
       ${UI.pday === 0 && !S.introPending ? `<div class="mini">已完成 ${Math.min(filled(P).filter(it => it.done).length, CONFIG.rewardRows)}/${CONFIG.rewardRows} 件・任意完成 ${CONFIG.rewardRows} 件有加碼</div>` : ''}
-      ${UI.pday >= 0 ? carryBar + favBar : ''}${rows}${S.introPending ? introCard() : ''}${UI.planUndo && UI.planUndo.d === d ? '<button class="ghost" data-act="planundo">復原剛才刪除的事項</button>' : ''}
+      ${S.introPending ? '<p class="tutorial-prompt">在下方寫一件今天想完成的事，例如「閱讀五頁書」。輸入會自動儲存，再按下一步領取小丑魚。</p>' : ''}${UI.pday >= 0 ? carryBar + favBar : ''}${rows}${S.introPending ? introCard() : ''}${UI.planUndo && UI.planUndo.d === d ? '<button class="ghost" data-act="planundo">復原剛才刪除的事項</button>' : ''}
       ${shown < P.length && UI.pday >= 0 ? `<button class="ghost addrow" data-act="addrow">＋ 再加一件</button>` : ''}
       ${UI.pday < 0 || claimed || S.introPending ? '' : '<div class="row" style="margin-top:8px"><button class="pri" data-act="plansave">寫好了</button></div>'}</section>
     ${timer}`;
@@ -221,9 +221,9 @@ function renderFocus() {
 }
 
 /* ========= 第一次打開的引導 ========= */
-// 步驟 1：綁定 Google（可以先跳過，但要說清楚資料可能會不見）；步驟 2：勾選想養成的習慣。做完才會發新手禮物（見 startGame）
+// 三步新手導覽：選習慣 → 第一件事 → 餵魚；Google 登入只供接續舊紀錄。
 const onbCustomCount = () => customCount() + ONB_HABITS.filter(h => h.kind === 'custom' && (UI.onbSel || {})[h.id] && !habit(h.id)).length + ((UI.onbName || '').trim() ? 1 : 0);
-const onbLabel = () => ONB_HABITS.some(h => (UI.onbSel || {})[h.id]) || (UI.onbName || '').trim() ? '開始' : '先不選，直接開始';
+const onbLabel = () => '下一步：建立第一件事';
 function renderOnbButton() { const b = document.querySelector('#onbbox [data-act=onbdone]'); if (b) b.textContent = onbLabel(); }   // 打字時只換按鈕上的字，不重畫（輸入框會失去焦點）
 function renderOnb() {
   let el = document.getElementById('onb');
@@ -235,11 +235,11 @@ function renderOnb() {
   if (step === 1) {
     if (UI.onbReturning) cloudWarm();
     html = `<h2>歡迎來到習慣深潛</h2><p>每天完成一點事，收集海洋生物。</p>
-      ${UI.onbReturning ? `<div class="mini">登入後接續你的雲端紀錄。</div>${IN_APP ? '<div class="warn">App 內建瀏覽器無法登入，請用 Chrome 或 Safari 開啟。</div>' : `<button class="gbtn" data-act="login">${GOOGLE_G}${CLOUD.armed ? '再按一次，選擇 Google 帳戶' : '用 Google 帳戶登入'}</button>`}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div>` : ''}<button class="ghost wide" data-act="onbback">返回</button>` : `<button class="pri wide" data-act="onbstart">開始</button><div class="mini">不需註冊，紀錄先存在此瀏覽器。</div><div class="row intro-links"><button class="ghost" data-act="onbskip">先選習慣</button>${FIREBASE_CONFIG ? '<button class="ghost" data-act="onbreturn">已有紀錄？登入接續</button>' : ''}</div>`}`;
+      ${UI.onbReturning ? `<div class="mini">登入後接續你的雲端紀錄。</div>${IN_APP ? '<div class="warn">App 內建瀏覽器無法登入，請用 Chrome 或 Safari 開啟。</div>' : `<button class="gbtn" data-act="login">${GOOGLE_G}${CLOUD.armed ? '再按一次，選擇 Google 帳戶' : '用 Google 帳戶登入'}</button>`}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div>` : ''}<button class="ghost wide" data-act="onbback">返回</button>` : `<ol class="welcome-route"><li>選擇想養成的習慣</li><li>寫下第一件重要的事</li><li>認識小丑魚，試著餵食</li></ol><button class="pri wide" data-act="onbstart">開始新手導覽</button><div class="mini">不需註冊，紀錄先存在此瀏覽器。</div><div class="row intro-links">${FIREBASE_CONFIG ? '<button class="ghost" data-act="onbreturn">已有紀錄？登入接續</button>' : ''}</div>`}`;
   } else {
-    html =`${FIREBASE_CONFIG ? '<div class="label">選用設定</div>' : ''}<h2>你想養成什麼習慣？</h2>
+    html =`${tutorialProgress(1)}<h2>先選擇想養成的習慣</h2>
       ${CLOUD.user ? `<div class="mini" style="margin:0 0 6px">已綁定 ${esc(CLOUD.user.email || '')}</div>` : ''}
-      <div class="mini" style="margin:0 0 10px">可以複選，也可以先不選。之後在「今日」的習慣區按「編輯」隨時修改。</div>
+      <div class="mini" style="margin:0 0 10px">選一個就好，也可以複選；不確定時可先留空。下一步會帶你建立第一件事，之後仍可在「今日」編輯習慣。</div>
       <div class="onbgrid">${ONB_HABITS.map(h => `<button class="onbopt ${sel[h.id] ? 'sel' : ''}" data-act="onbpick" data-v="${h.id}" aria-pressed="${!!sel[h.id]}"><b>${esc(h.n)}</b><small>${esc(h.desc)}</small></button>`).join('')}</div>
       <div class="row onbcustom"><input class="sp" data-onb="name" maxlength="20" placeholder="自訂，例如：喝水" aria-label="自訂習慣名稱" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(UI.onbName || '')}"></div>
       <div class="mini" style="margin:0 0 12px">自訂的習慣預設每天，可以在「編輯」改成每週或每兩週、每週幾天。</div>
@@ -304,7 +304,7 @@ function renderSheet() {
       ${stageImg(c, seen, big, false, 'pop')}
       <h2>${c.name}</h2>${c.alias ? `<div class="alias">俗稱 ${c.alias}</div>` : ''}<p class="dim" style="margin:0 0 8px">${c.fact}</p>
       <div class="stages">${[1, 2, 3].map(s => `<div>${stageImg(c, s, 3, s > seen)}<small class="${s > seen ? 'dim' : ''}">${s > seen ? '？？？' : stageName(c, s)}</small></div>`).join('')}</div>
-      <div class="mini">吃到 ${GROW[1]} 顆長成成體、${GROW[2]} 顆變成特殊型態</div>
+      <div class="mini">吃到 ${GROW[1]} 顆長成成體、${GROW[2]} 顆變成特殊型態</div><div class="mini">不用每天餵，牠們不會餓死，成長進度也不會倒退。</div>
       <div class="sub">${P.length ? `擁有 ${P.length}/${MAX_PETS} 隻` : derive().col[c.id] ? '都游走了，再抽到會回來。' : '還沒抽到，可以從商店的寶箱開出來。'}</div>`;
     return;
   }
@@ -488,7 +488,7 @@ function tank(D) {
     <div class="seahud seabar"><div id="feedInfo">${tankFeedHTML()}</div><span class="sp"></span>
       <button class="sr-only" data-act="feedkeyboard">撒一顆飼料</button><button class="feedbuy" data-act="buyfeed" title="用 ${FEED.price} 金幣買 ${FEED.pack} 顆飼料" aria-label="${FEED.pack} 顆飼料，${FEED.price} 金幣">+${FEED.pack}<span class="price">${FEED.price}${COIN}</span></button>
       <button data-act="tankview" data-v="dex" title="已解鎖 ${Object.keys(D.col).length} 種生物">圖鑑<i class="cnt">${Object.keys(D.col).length}</i></button><button data-act="tankedit">設定</button></div>
-    ${!n ? '<div class="seaempty"><p>這片海還沒有展示生物</p><button data-act="tab" data-v="shop">前往商店</button><button data-act="tankedit">管理生物</button></div>' : ''}${needFeedTip() ? `<div class="seacoach" aria-live="polite"><i class="ring"></i><span>${FEED_TIP}</span></div>` : ''}</div>`;
+    ${tutorialSeaCard()}${!n ? '<div class="seaempty"><p>這片海還沒有展示生物</p><button data-act="tab" data-v="shop">前往商店</button><button data-act="tankedit">管理生物</button></div>' : ''}${needFeedTip() ? `<div class="seacoach" aria-live="polite"><i class="ring"></i><span>${FEED_TIP}</span></div>` : ''}</div>`;
 }
 // 大海畫面時：頁尾藏起來、整頁不捲動，海填滿整個視窗
 const seaOn = () => UI.tab === 'tank' && !UI.tankEdit && UI.tankView !== 'dex';
@@ -568,6 +568,7 @@ function tankStart() {
     if (py >= floorY - 4) return;
     if (!useFeed()) { toast(`飼料用完了，明天會再送 ${FEED.free} 顆，也可以用金幣買`); return; }
     TANK.food.push({ x: px, y: py, vy: .25 }); ac(); SFX.tap();
+    markTutorialFed();
     const el = document.getElementById('feedInfo'); if (el) el.innerHTML = tankFeedHTML();
     if (!needFeedTip()) { const tip = document.querySelector('.seacoach'); if (tip) tip.remove(); }
   };
@@ -800,7 +801,7 @@ function about() {
     ${UI.backupError ? `<div class="warn" role="alert">${esc(UI.backupError)}</div>` : ''}</section>
   <section class="px">${sh('隱私', '')}<p class="mini">未登入時，紀錄只存在此瀏覽器。登出或刪除雲端資料後，本機紀錄仍會保留；共用裝置請留意。</p>
     ${FIREBASE_CONFIG ? '<p class="mini">Google 登入用於辨識帳號，紀錄會存到 Firebase 供跨裝置同步。一般使用者只能存取自己的資料；我不會查看或使用你的紀錄。可在上方刪除雲端資料與帳號。</p>' : ''}</section>
-  <section class="px">${sh('使用協助', '')}<p class="mini">每天午夜 00:00 換日；六件事每天任意三件可獲獎勵，未領獎勵隔天自動入帳，可在「紀錄」查看來源。</p>
+  <section class="px">${sh('使用協助', '')}<p class="mini"><b>沒有餵食會餓死嗎？</b><br>不會。不用每天餵，生物也不會餓死或退化；餵食只會累積成長進度。</p><p class="mini">每天午夜 00:00 換日；六件事每天任意三件可獲獎勵，未領獎勵隔天自動入帳，可在「紀錄」查看來源。</p>
     <p class="mini">回報問題時，可附上版本與瀏覽器資訊；不包含清單、Email 或帳號資料。</p><button data-act="copydiagnostics">複製診斷資訊</button>
     ${UI.diagnostics ? `<textarea readonly aria-label="診斷資訊">${esc(UI.diagnostics)}</textarea>` : ''}
     ${/^https:\/\//.test(CONFIG.feedbackUrl || '') ? `<a class="link" href="${esc(CONFIG.feedbackUrl)}" target="_blank" rel="noopener">回報問題／提供建議 ↗</a>` : ''}</section>

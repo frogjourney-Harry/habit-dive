@@ -108,7 +108,7 @@ document.addEventListener('click', async e => {
     case 'habrestore': { const h = S.habits.find(x => x.id === v); if (!h) break; h.off = false; save(); render(); break; }
     case 'gcatadd': S.gcats.push({ id: 'g' + rid(), e: '🔖', n: '' }); save(); render(); break;
     case 'gcatdel': S.gcats[+v].off = true; save(); render(); break;
-    case 'onbstart': UI.onbSel = {}; UI.onbName = ''; finishOnb(); break;
+    case 'onbstart': UI.onbStep = 2; renderOnb(); break;
     case 'onbreturn': UI.onbReturning = true; renderOnb(); break;
     case 'onbback': UI.onbReturning = false; renderOnb(); break;
     case 'onbskip': UI.onbStep = 2; renderOnb(); break;
@@ -230,10 +230,11 @@ document.addEventListener('click', async e => {
     }
     case 'meetfish':
       if (!filled(getPlan(dayKey())).length) { toast('先寫下今天的一件事'); break; }
-      S.introPending = false;
+      S.introPending = false; S.introFeedPending = true;
       if (!derive().claimed.has('welcome')) reward(() => grant('welcome', null, { key: 'welcome' }));
       else { save(); render(); }
       break;
+    case 'introfinish': S.introCompleteNotice = false; save(); UI.tab = 'today'; render(); toast('新手導覽完成，現在可以開始安排今天了'); break;
     case 'seagoto': UI.opened = false; UI.tab = 'tank'; UI.tankEdit = false; UI.tankView = ''; render(); nextChest(); break;
     case 'backuplater': S.backupNudgeDismissed = true; save(); render(); break;
     case 'backupinvite': UI.tab = 'about'; render(); document.getElementById('cloudBox')?.scrollIntoView(); break;

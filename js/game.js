@@ -260,7 +260,7 @@ function openChest() {
     SFX.open(0); return;
   }
   const R = RARITY[cr.r];
-  document.getElementById('modal').innerHTML = `${it.direct ? `<h2>${esc(it.title)}</h2>` : ''}
+  document.getElementById('modal').innerHTML = `${it.direct && S.introFeedPending ? tutorialProgress(3) : ''}${it.direct ? `<h2>${esc(it.title)}</h2><p class="mini">接下來到大海，試著撒下第一顆飼料，就完成新手導覽。</p>` : ''}
     <div><span class="rar" style="background:${R.color}">${R.name}</span></div>
     ${stageImg(cr, 1, Math.min(10, Math.floor(160 / stageCanvas(cr, 1).width)), false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
     <h2>${cr.name} <small>幼體</small> ${it.isNew ? '<span class="new">新發現</span>' : ''}</h2>

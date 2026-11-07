@@ -3,6 +3,11 @@
 // 操作一律走真的 DOM 點擊（會檢查元素有沒有被別的東西蓋住），不直接呼叫內部函式。
 const REPORT = { pass: 0, fail: 0, fails: [], notes: [], started: Date.now(), tests: [] };
 let CUR = '';
+// 測試檔案本身載入或語法失敗也必須列為失敗，避免只跑部分測試卻顯示全數通過。
+window.addEventListener('error', e => {
+  if (e.target && e.target.tagName === 'SCRIPT') ok(false, '測試檔案無法載入：' + e.target.src);
+  else if (e.message) ok(false, '測試頁錯誤：' + e.message);
+});
 function ok(cond, msg, extra) {
   if (cond) { REPORT.pass++; return true; }
   REPORT.fail++; REPORT.fails.push({ test: CUR, msg, extra: extra === undefined ? undefined : String(extra).slice(0, 400) });

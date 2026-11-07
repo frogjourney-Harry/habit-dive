@@ -283,40 +283,52 @@ const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebK
 const onbOpen = I => { const e = I.$('#onb'); return !!e && !e.classList.contains('hidden'); };
 const activeIds = I => I.ev('activeHabits().map(h => h.id)');
 
-test('第一次打開：不要求登入，先寫一件事再認識小丑魚', async () => {
+test('第一次打開：三步新手導覽清楚呈現且可重開接續', async () => {
   resetCloud(); const I = await boot({onb:true});
   ok(onbOpen(I), '有歡迎畫面'); ok(I.has('每天完成一點事，收集海洋生物。'), '採用指定文案');
   ok(!I.$('#onb [data-act=login]'), '預設不要求 Google 登入');
   ok(!I.ev('CLOUD.loading'), '還沒選登入時不載入 SDK');
   await I.click('#onb [data-act=onbstart]');
-  ok(!onbOpen(I) && I.S.onb, '按開始直接進今日');
-  ok(I.$('[data-act=meetfish]').disabled, '未寫第一件事前不能領小丑魚');
-  await I.plan(['今天先閱讀一頁']); await I.click('[data-act=meetfish]');
-  ok(I.S.logs.some(l=>l.k==='welcome' && l.drop==='clown'), '寫一件事即可取得小丑魚');
-  ok(I.$('#modal [data-act=seagoto]'), '有去大海入口');
-  await I.click('#modal [data-act=seagoto]'); eq(I.UI.tab,'tank','直接看自己的海');
-  const J=await I.reload({onb:true}); await J.dismiss(); ok(!onbOpen(J),'重開不再引導');
+  ok(onbOpen(I) && I.$('#onb').textContent.includes('第 1 步，共 3 步'), '主按鈕進入選習慣第一步');
+  await I.click('#onb [data-act=onbpick][data-v=read]');
+  await I.click('#onb [data-act=onbdone]');
+  ok(!onbOpen(I) && I.S.onb, '下一步進入第一件事');
+  ok(I.$('#six').textContent.includes('第 2 步，共 3 步'), '清單明確標示正在新手導覽第二步');
+  ok(I.$('#six').textContent.includes('例如「閱讀五頁書」'), '有具體輸入範例');
+  ok(I.$('[data-act=meetfish]').disabled, '未寫第一件事前不能繼續');
+  await I.plan(['今天先閱讀一頁']);
+  const J = await I.reload({onb:true}); await J.dismiss();
+  ok(J.S.introPending && J.$('#six').textContent.includes('第 2 步，共 3 步'), '重開保持第二步及已輸入內容');
+  await J.click('[data-act=meetfish]');
+  ok(J.S.logs.some(l=>l.k==='welcome' && l.drop==='clown'), '寫一件事即可取得小丑魚');
+  await J.click('#modal [data-act=seagoto]'); eq(J.UI.tab,'tank','直接進入大海');
+  ok(J.$('.sea-guide').textContent.includes('第 3 步，共 3 步'), '第三步清楚教餵魚');
+  const used=J.S.feedDay?.used||0; await J.click('.sea-guide [data-act=feedkeyboard]');
+  eq(J.S.feedDay.used,used+1,'按下教學按鈕真的撒出一顆飼料');
+  ok(J.$('.sea-guide').textContent.includes('新手導覽完成'),'有明確完成回饋');
+  await J.click('[data-act=introfinish]');
+  eq(J.UI.tab,'today','完成後回今日'); ok(!J.S.introPending && !J.S.introFeedPending && !J.S.introCompleteNotice,'結束導覽狀態');
   eq(J.S.logs.filter(l=>l.k==='welcome').length,1,'新手禮物不重發');
-  I.check('新手體驗'); J.check('新手重開'); J.destroy(); I.destroy();
+  I.destroy(); J.check('三步導覽'); J.destroy();
 });
 test('引導：寫作是一般習慣；舊的 Vocus 習慣；不選也能開始；自訂習慣和上限；用過的存檔不引導', async () => {
   resetCloud();
-  const A = await boot({ onb: true }); await A.click('#onb [data-act=onbskip]'); await A.click('#onb [data-act=onbpick][data-v=write]'); ok(!A.$('#onb [data-act=onbvocus]') && !A.$('#onb').textContent.includes('Vocus'), '選了寫作也沒有 Vocus 選項'); await A.click('#onb [data-act=onbdone]'); await A.plan(['我的第一件事']); await A.click('[data-act=meetfish]'); await A.dismiss();
+  const A = await boot({ onb: true }); await A.click('#onb [data-act=onbstart]'); await A.click('#onb [data-act=onbpick][data-v=write]'); ok(!A.$('#onb [data-act=onbvocus]') && !A.$('#onb').textContent.includes('Vocus'), '選了寫作也沒有 Vocus 選項'); await A.click('#onb [data-act=onbdone]'); await A.plan(['我的第一件事']); await A.click('[data-act=meetfish]'); await A.dismiss();
   eq(activeIds(A), ['write'], '寫作就是一般習慣'); ok(!A.S.habits.some(h => h.kind === 'vocus'), '新使用者沒有 Vocus 專屬習慣'); ok(!A.$('#main').innerText.includes('Vocus') && !A.has('發文節奏'), '畫面上沒有 Vocus、沒有發文設定');
   await A.click('[data-act=habtap][data-v=write]'); await A.click('#sheet [data-act=chk]'); const wk = A.S.logs.filter(l => l.k === 'habit' || l.k === 'pubchest'); ok(!A.S.logs.some(l => l.k === 'pubchest') && A.S.logs.some(l => l.key === 'hab:write:' + D0), '寫作打卡只是一般習慣獎勵，沒有發文額外獎勵'); A.check('寫作'); A.destroy();
   const OLDV = [{ id: 'vocus', e: '✍️', n: 'Vocus', kind: 'vocus', weeks: 1, target: 1 }, { id: 'exercise', e: '🏃', n: '運動', kind: 'exercise', weeks: 1, target: 3 }];
   const L = await boot({ onb: true, state: mkState({ v: 7, vocusSet: false, habits: OLDV, checks: { [D0]: { exercise: [{ t: 1 }] } } }) }); await L.dismiss();   // 舊版預設帶 Vocus 習慣、沒設定過節奏的人
   ok(!L.S.habits.some(h => h.id === 'vocus') && !L.$('#main').innerText.includes('Vocus') && !L.has('發文節奏'), '沒用過的舊 Vocus 習慣直接移除，不再問節奏'); L.check('移除 Vocus'); L.destroy();
-  const B = await boot({ onb: true }); await B.click('#onb [data-act=onbskip]'); await B.click('#onb [data-act=onbdone]'); await B.plan(['我的第一件事']); await B.click('[data-act=meetfish]'); await B.dismiss();
+  const B = await boot({ onb: true }); await B.click('#onb [data-act=onbstart]'); await B.click('#onb [data-act=onbdone]'); await B.plan(['我的第一件事']); await B.click('[data-act=meetfish]'); await B.dismiss();
   eq(activeIds(B), [], '什麼都沒選也能開始'); ok(!B.has('Vocus'), '沒有 Vocus'); ok(B.S.habits.some(h => h.id === 'exercise' && h.off), '運動留著，可以到編輯畫面加回');
   await B.click('[data-act=habedit]'); ok(B.has('加回 運動') && !B.has('加回 Vocus'), '編輯畫面只能加回運動'); B.check('空習慣'); B.destroy();
-  const C = await boot({ onb: true }); await C.click('#onb [data-act=onbskip]');
+  const C = await boot({ onb: true }); await C.click('#onb [data-act=onbstart]');
   for (const id of ['write', 'read', 'meditate']) await C.click(`#onb [data-act=onbpick][data-v=${id}]`);
   await C.type('#onb [data-onb=name]', '  喝水  ');
   await C.click('#onb [data-act=onbdone]'); ok(onbOpen(C) && !C.S.onb, '自訂型習慣超過 ' + C.CONFIG.maxCustom + ' 個：不能開始'); ok(C.has('最多'), '要說明原因');
   await C.type('#onb [data-onb=name]', ''); await C.click('#onb [data-act=onbdone]');
   eq(activeIds(C), ['write', 'read', 'meditate'], '拿掉自訂就能開始'); eq(C.S.habits.find(h => h.id === 'read').target, 3, '閱讀每週 3 天'); eq(C.S.habits.find(h => h.id === 'meditate').weeks, 0, '冥想每天'); C.destroy();
-  const D = await boot({ onb: true }); await D.click('#onb [data-act=onbskip]'); await D.click('#onb [data-act=onbpick][data-v=read]'); await D.type('#onb [data-onb=name]', '<img src=x onerror=window.__xss=1>喝');
+  const D = await boot({ onb: true }); await D.click('#onb [data-act=onbstart]'); await D.click('#onb [data-act=onbpick][data-v=read]'); await D.type('#onb [data-onb=name]', '<img src=x onerror=window.__xss=1>喝');
   await D.click('#onb [data-act=onbdone]'); await D.plan(['我的第一件事']); await D.click('[data-act=meetfish]'); await D.dismiss(); const my = D.S.habits.find(h => h.kind === 'custom' && h.id !== 'read');
   ok(my && my.n.length === 20 && my.weeks === 0 && my.target === 1, '自訂習慣：名稱最多 20 字、預設每天：' + JSON.stringify(my)); ok(!D.win.__xss && !D.$('#main img[src=x]'), 'XSS：自訂習慣名稱'); D.check('自訂習慣'); D.destroy();
   const used = { checks: { [D0]: { exercise: [{ t: 1 }] } } };   // 舊存檔（沒有 onb 欄位）但用過了
@@ -334,7 +346,7 @@ test('引導：已有紀錄的登入入口、iPhone 登入與 App 內建瀏覽�
   ok(B.S.cloudUid==='u1' && !onbOpen(B),'有雲端紀錄便接續遊戲'); ok(B.S.checks[D0],'拿到原紀錄'); B.check('接續');
   const M=await boot({onb:true,ua:'Mozilla/5.0 TikTok_26.0'}); await M.click('#onb [data-act=onbreturn]');
   ok(M.has('App 內建') && !M.$('#onb [data-act=login]'),'App 內建瀏覽器說明替代方案');
-  await M.click('#onb [data-act=onbback]'); await M.click('#onb [data-act=onbstart]'); ok(!onbOpen(M),'仍可先開始玩');
+  await M.click('#onb [data-act=onbback]'); await M.click('#onb [data-act=onbstart]'); ok(M.$('#onb').textContent.includes('第 1 步，共 3 步'),'仍可不登入開始導覽');
   M.destroy(); B.destroy(); A.destroy();
 });
 test('專注畫面的結束：一分鐘內直接結束，之後才確認；按鈕夠大', async () => {
