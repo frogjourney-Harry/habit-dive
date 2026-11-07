@@ -283,6 +283,17 @@ const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebK
 const onbOpen = I => { const e = I.$('#onb'); return !!e && !e.classList.contains('hidden'); };
 const activeIds = I => I.ev('activeHabits().map(h => h.id)');
 
+async function feedTutorialClown(I, count) {
+  const pet = I.S.logs.find(l => l.k === 'welcome' && l.drop === 'clown');
+  for (let n=0; n<count; n++) {
+    const before = I.S.fed?.[pet.id] || 0;
+    const button = I.$('.seabar [data-act=feedkeyboard]'); button.focus();
+    await I.click(button);
+    for (let i=0;i<80 && (I.S.fed?.[pet.id] || 0)<=before;i++) await new Promise(resolve=>setTimeout(resolve,20));
+    ok((I.S.fed?.[pet.id] || 0)>before,'飼料實際被小丑魚吃到');
+  }
+}
+
 test('第一次打開：三步新手導覽清楚呈現且可重開接續', async () => {
   resetCloud(); const I = await boot({onb:true});
   ok(onbOpen(I), '有歡迎畫面'); ok(I.has('每天完成一點事，收集海洋生物。'), '採用指定文案');
@@ -313,15 +324,16 @@ test('第一次打開：三步新手導覽清楚呈現且可重開接續', async
   eq(J.$$('#modal button').length,1,'新手領魚只保留一個前進按鈕');
   ok(!J.$('#modal [data-act=close]'),'不提供跳過大海的選項');
   await J.click('#modal [data-act=seagoto]'); eq(J.UI.tab,'tank','直接進入大海');
-  ok(J.$('.sea-guide').textContent.includes('第 3 步，共 3 步'), '第三步清楚教餵魚');
-  const used=J.S.feedDay?.used||0; await J.click('.sea-guide [data-act=feedkeyboard]');
-  eq(J.S.feedDay.used,used+1,'按下教學按鈕真的撒出一顆飼料');
-  for (let i=0;i<80 && !J.S.introCompleteNotice;i++) await new Promise(r=>setTimeout(r,20));
-  ok(Object.values(J.S.fed||{}).some(n=>n>0),'小丑魚實際吃到飼料才完成餵食');
-  ok(J.$('.sea-guide').textContent.includes('小丑魚吃到飼料了'),'先顯示吃到飼料的回饋');
-  ok(!J.$('[data-act=introbackup]'),'成功回饋期間不打斷成就感');
+  ok(!J.$('.sea-guide'),'餵魚途中不顯示大型教學卡片');
+  ok(J.vis(J.$('.seacoach')),'只保留點擊提示');
+  const used=J.S.feedDay?.used||0; await feedTutorialClown(J,9);
+  ok(J.vis(J.$('.seacoach')) && !J.$('[data-act=introbackup]'),'未長大前持續顯示提示，不提前邀請備份');
+  await feedTutorialClown(J,1);
+  eq(J.S.feedDay.used,used+10,'用十顆飼料完成首次成長');
+  ok(J.S.introCompleteNotice && J.ev("stageOf(fedOf(S.logs.find(l=>l.k==='welcome').id))")===2,'長成成體才完成導覽');
+  ok(!J.$('.seacoach'),'長大後移除點擊提示');
+  ok(J.$('.sea-guide').textContent.includes('小丑魚長大了'),'先顯示成長回饋');
   for (let i=0;i<100 && !J.$('[data-act=introfinish]');i++) await new Promise(r=>setTimeout(r,20));
-  ok(J.$('.sea-guide').textContent.includes('新手導覽完成'),'回饋後才出現完成與備份操作');
   await J.click('[data-act=introfinish]');
   eq(J.UI.tab,'today','完成後回今日');
   ok(J.$('#six .intro-target') && J.has('完成這件事後，回來打勾領獎勵'),'接回剛寫的事項');
@@ -412,20 +424,19 @@ test('導覽備份邀請：已登入與 App 內建瀏覽器可直接完成', asy
  await J.click('[data-act=introfinish]');eq(J.UI.tab,'today','內建瀏覽器也不阻擋遊戲');J.destroy();
 });
 
-test('導覽餵食：撒下飼料不等於吃到，成果之後才邀請備份', async () => {
+test('導覽餵食：提示保留到十顆長大，重開後接續且不提前要求登入', async () => {
  resetCloud();const I=await boot({state:mkState({onb:true,introFeedPending:true})});await I.dismiss();await I.tab('tank');
- const cv=I.$('#tank'),r=cv.getBoundingClientRect(),f=I.ev('TANK.fish.find(f=>f.c.id==="clown")');
- const ratio=f.x<I.ev('TANK.W')/2?.95:.05;
- cv.dispatchEvent(new I.win.MouseEvent('click',{clientX:r.left+r.width*ratio,clientY:r.top+r.height*.5}));
- await new Promise(resolve=>setTimeout(resolve,20));
- ok(I.S.introFeedPending && !I.S.introCompleteNotice,'遠處撒飼料後仍等待魚吃到');
- ok(!I.$('[data-act=introbackup]'),'尚未吃到不出現登入邀請');
- await I.click('.sea-guide [data-act=feedkeyboard]');
- for(let i=0;i<80&&!I.S.introCompleteNotice;i++)await new Promise(resolve=>setTimeout(resolve,20));
- ok(I.S.introCompleteNotice && I.S.fed.w0>0,'實際吃到才完成');
- ok(I.$('.sea-guide').textContent.includes('小丑魚吃到飼料了'),'顯示成果');
- for(let i=0;i<100&&!I.$('[data-act=introbackup]');i++)await new Promise(resolve=>setTimeout(resolve,20));
- ok(I.$('[data-act=introbackup]'),'成果之後顯示可跳過的備份邀請');I.destroy();
+ await feedTutorialClown(I,9);
+ ok(I.S.introFeedPending && !I.S.introCompleteNotice,'九顆仍在養成階段');
+ ok(I.vis(I.$('.seacoach')) && !I.$('.sea-guide'),'撒超過三顆後仍保留氣泡，沒有大型卡片');
+ const J=await I.reload();await J.dismiss();await J.tab('tank');
+ eq(J.S.fed.w0,9,'重開保留已吃的九顆');
+ ok(J.vis(J.$('.seacoach')) && !J.$('[data-act=introbackup]'),'重開後提示仍在，不提前要求登入');
+ await feedTutorialClown(J,1);
+ ok(J.S.introCompleteNotice && J.S.fed.w0===10,'第十顆實際吃到才完成');
+ ok(!J.$('.seacoach'),'長成成體後移除提示');
+ for(let i=0;i<100&&!J.$('[data-act=introbackup]');i++)await new Promise(resolve=>setTimeout(resolve,20));
+ ok(J.$('[data-act=introbackup]'),'長大後才顯示備份邀請');J.destroy();
 });
 
 test('導覽儲存：已有雲端存檔時仍直接載入，不覆蓋為試玩', async () => {

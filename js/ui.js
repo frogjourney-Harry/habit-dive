@@ -121,31 +121,33 @@ function tutorialProgress(step) {
 }
 function tutorialResumeCard() {
   if (!S.introFeedPending && !S.introCompleteNotice) return '';
-  return `<section class="px tutorial-resume">${tutorialProgress(3)}<b>${S.introCompleteNotice?'你已完成第一次餵食':'還差最後一步：試著餵魚'}</b><p class="mini">到大海完成這段導覽，再開始安排今天。</p><button data-act="seagoto">${S.introCompleteNotice?'查看導覽完成畫面':'繼續新手導覽'}</button></section>`;
+  return `<section class="px tutorial-resume">${tutorialProgress(3)}<b>${S.introCompleteNotice?'小丑魚已長大':'最後一步：把小丑魚餵大'}</b><p class="mini">到大海餵小丑魚，看牠長大。你也可以先安排今天。</p><button data-act="seagoto">${S.introCompleteNotice?'查看導覽完成畫面':'繼續新手導覽'}</button></section>`;
 }
 function scrollToIntroTask() { document.querySelector('#six .intro-target')?.scrollIntoView({ block: 'center' }); }
 function tutorialSeaContents() {
-  if (UI.introCelebration) return '<b>小丑魚吃到飼料了！</b><p class="mini">牠正在慢慢長大，這就是你的第一步。</p>';
+  if (UI.introCelebration) return '<b>小丑魚長大了！</b><p class="mini">你已把第一隻幼魚養成成體。</p>';
   if (S.introCompleteNotice) {
     if (FIREBASE_CONFIG && !CLOUD.user && !IN_APP) {
       cloudWarm();
       return `<b>新手導覽完成！</b><p>要把進度存到 Google 帳號嗎？</p><p class="mini">登入後可以換裝置接著玩；已有雲端紀錄的帳號會自動接續原進度。</p><button class="pri" data-act="introbackup">用 Google 儲存進度</button><button class="ghost" data-act="introfinish">先玩看看</button>`;
     }
-    return '<b>新手導覽完成！</b><p class="mini">小丑魚已吃到第一顆飼料，會慢慢長大。</p><button class="pri" data-act="introfinish">完成導覽，回到今日</button>';
+    return '<b>新手導覽完成！</b><p class="mini">小丑魚已長成成體，接著依自己的步調玩吧。</p><button class="pri" data-act="introfinish">完成導覽，回到今日</button>';
   }
-  return `${tutorialProgress(3)}<b>最後一步：餵食小丑魚</b><p class="mini">${UI.introFoodPending ? '飼料已撒下，等小丑魚游過來吃一口。' : '點一下水裡撒飼料，也可以按下方按鈕。每天有 10 顆免費飼料。'}</p><p class="mini">不用每天餵，牠們不會餓死，成長進度也不會倒退。餵食只是讓牠們長大。</p><button class="pri" data-act="feedkeyboard">試著撒一顆飼料</button>`;
+  return '';
 }
 function tutorialSeaCard() {
-  return S.introFeedPending || S.introCompleteNotice ? `<section class="sea-guide" aria-live="polite">${tutorialSeaContents()}</section>` : '';
+  return S.introCompleteNotice ? `<section class="sea-guide" aria-live="polite">${tutorialSeaContents()}</section>` : '';
 }
 function markTutorialFed(petId) {
   const pet = S.logs.find(l => l.k === 'welcome' && l.drop === 'clown');
-  if (!S.introFeedPending || petId !== pet?.id) return;
+  if (!S.introFeedPending || petId !== pet?.id || stageOf(fedOf(petId)) < 2) return;
   S.introFeedPending = false; S.introCompleteNotice = true;
-  UI.introFoodPending = false;
   const celebration = UI.introCelebration = {}, context = dataContext();
-  const guide = document.querySelector('.sea-guide'); if (guide) guide.innerHTML = tutorialSeaContents();
-  // 吃到飼料的實際結果由水族箱迴圈保存；先留一段時間看見成果。
+  document.querySelector('.seacoach')?.remove();
+  const guide = document.querySelector('.sea-guide');
+  if (guide) guide.innerHTML = tutorialSeaContents();
+  else document.querySelector('.sea')?.insertAdjacentHTML('beforeend', tutorialSeaCard());
+  // 吃到飼料的實際結果由水族箱迴圈保存；長成成體後先留一段時間看見成果。
   setTimeout(() => {
     if (UI.introCelebration !== celebration) return;
     delete UI.introCelebration;

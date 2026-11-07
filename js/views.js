@@ -420,7 +420,13 @@ const freeLeft = () => S.feedDay && S.feedDay.d === dayKey() ? Math.max(0, FEED.
 const feedLeft = () => freeLeft() + (S.feed || 0);
 // 新手提示：撒滿這麼多顆飼料以前，海中間會有一句說明（S.tossed＝總共撒過幾顆）
 const FEED_TIP_UNTIL = 3, FEED_TIP = '點水裡撒飼料，魚吃到一定數量會長大';
-const needFeedTip = () => (S.tossed || 0) < FEED_TIP_UNTIL;
+const needFeedTip = () => {
+  if (S.introFeedPending) {
+    const pet = S.logs.find(l => l.k === 'welcome' && l.drop === 'clown');
+    return !pet || stageOf(fedOf(pet.id)) < 2;
+  }
+  return (S.tossed || 0) < FEED_TIP_UNTIL;
+};
 function useFeed() {
   if (freeLeft() > 0) { if (!S.feedDay || S.feedDay.d !== dayKey()) S.feedDay = { d: dayKey(), used: 0 }; S.feedDay.used++; }
   else if ((S.feed || 0) > 0) S.feed--;
@@ -569,7 +575,6 @@ function tankStart() {
     if (py >= floorY - 4) return;
     if (!useFeed()) { toast(`飼料用完了，明天會再送 ${FEED.free} 顆，也可以用金幣買`); return; }
     TANK.food.push({ x: px, y: py, vy: .25 }); ac(); SFX.tap();
-    if (S.introFeedPending) { UI.introFoodPending = true; const guide = document.querySelector('.sea-guide'); if (guide) guide.innerHTML = tutorialSeaContents(); }
     const el = document.getElementById('feedInfo'); if (el) el.innerHTML = tankFeedHTML();
     if (!needFeedTip()) { const tip = document.querySelector('.seacoach'); if (tip) tip.remove(); }
   };
