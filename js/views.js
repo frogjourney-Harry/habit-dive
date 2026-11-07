@@ -791,17 +791,17 @@ const ABOUT_LINKS = [
 // 「更多」：常用操作直接顯示，協助與關於按需展開。
 function about() {
   return `<div class="more-page">
-  <h2 class="more-heading">資料與設定</h2>
-  ${cloudSection()}
-  <section class="px" id="backupSection">${sh('備份與還原', '')}
-    <p class="mini">清除瀏覽資料可能遺失本機紀錄，建議定期下載備份。</p>
-    <div class="row"><button data-act="export">下載備份</button><button data-act="import">從檔案還原</button></div>
-    <div class="mini">還原會取代目前紀錄，並先保留一份本機副本。檔案上限 10 MiB。</div>
-    ${hasBackupUndo() ? '<button class="ghost" data-act="backupundo">復原上次還原</button>' : ''}
-    ${UI.backupError ? `<div class="warn" role="alert">${esc(UI.backupError)}</div>` : ''}</section>
-  <section class="px"><label class="switch more-sound"><span>音效</span><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button></label></section>
-  <h2 class="more-heading">協助</h2>
-  <section class="px more-links">
+  <section class="px">${sh('資料與同步', '')}
+    ${cloudSection()}
+    <details class="more-detail manual-backup" id="backupSection" ${UI.backupError ? 'open' : ''}><summary>手動備份與還原</summary><div class="more-content">
+      <p class="mini">需要另存一份紀錄或從檔案復原時再使用，平常不必手動操作。</p>
+      <div class="row"><button data-act="export">下載備份</button><button data-act="import">從檔案還原</button></div>
+      ${hasBackupUndo() ? '<button class="ghost" data-act="backupundo">復原上次還原</button>' : ''}
+      ${UI.backupError ? `<div class="warn" role="alert">${esc(UI.backupError)}</div>` : ''}
+    </div></details>
+  </section>
+  <section class="px">${sh('設定', '')}<label class="switch more-sound"><span>音效</span><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button></label></section>
+  <section class="px more-links">${sh('協助', '')}
     <details class="more-detail"><summary>常見問題</summary><div class="more-content">
       <h3>需要每天餵魚嗎？</h3><p class="mini">不用，生物不會餓死或退化，餵食只會幫助成長。</p>
       <h3>獎勵什麼時候領？</h3><p class="mini">六件事每天任意完成三件可獲獎勵，請到「任務」領取。每天午夜 00:00 換日，未領獎勵會自動入帳，可在「紀錄」查看來源。</p>
@@ -812,8 +812,7 @@ function about() {
       ${/^https:\/\//.test(CONFIG.feedbackUrl || '') ? `<a class="link" href="${esc(CONFIG.feedbackUrl)}" target="_blank" rel="noopener">回報問題／提供建議 ↗</a>` : ''}
     </div></details>
   </section>
-  <h2 class="more-heading">關於</h2>
-  <section class="px more-links">
+  <section class="px more-links">${sh('關於', '')}
     <details class="more-detail"><summary>隱私說明</summary><div class="more-content">
       <p class="mini">未登入時，紀錄只存在此瀏覽器。登出或刪除雲端資料後，本機紀錄仍會保留；共用裝置請留意。</p>
       ${FIREBASE_CONFIG ? '<p class="mini">Google 登入用於辨識帳號，紀錄會存到 Firebase 供跨裝置同步。一般使用者只能存取自己的資料；我不會查看或使用你的紀錄。可在上方刪除雲端資料與帳號。</p>' : ''}

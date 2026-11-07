@@ -41,7 +41,7 @@ test('App 內建瀏覽器（FB / LINE / IG）：提示橫幅、Google 登入說�
 
 test('Edge / 少見環境：預設分享 API、系統時區與語系不影響日期', async () => {
   const I = await boot({ state: mkState(), noShare: true }); await I.dismiss();
-  await I.tab('about'); await I.click('[data-act=export]'); eq(I.win.__downloads.length, 1, '沒有分享 API 時改用下載');
+  await I.tab('about'); await I.click('#backupSection > summary'); await I.click('[data-act=export]'); eq(I.win.__downloads.length, 1, '沒有分享 API 時改用下載');
   const names = I.win.__downloads.map(d => d.name); ok(!/[\\/:*?"<>|]/.test(names[0]), '檔名沒有不合法字元：' + names[0]);
   I.destroy();
 });

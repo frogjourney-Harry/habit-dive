@@ -7,7 +7,7 @@ const CLOUD = { ready: false, loading: null, user: null, last: 0, timer: 0, pend
 function loadScript(src) {
   return new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = src; s.onload = res; s.onerror = () => rej(new Error('無法載入 ' + src));
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error('暫時無法準備 Google 登入，請稍後重試。不登入也能繼續使用。'));
     document.head.appendChild(s);
   });
 }
@@ -178,7 +178,7 @@ const GOOGLE_G = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="t
 
 // 設定頁的「雲端同步」區塊
 function cloudSection() {
-  if (!FIREBASE_CONFIG) return '';
+  if (!FIREBASE_CONFIG) return '<div id="cloudBox"><p class="mini">紀錄會自動儲存在此瀏覽器，清除瀏覽資料可能遺失紀錄。</p></div>';
   let body;
   cloudWarm();
   if (CLOUD.choice) body = `<p>這台裝置與雲端各有一份紀錄，請選擇要接續哪一份。兩份都已另存備份。</p><p class="mini">雲端：${summary(CLOUD.choice.cloud)}<br>此裝置：${summary(CLOUD.choice.local)}</p><button data-act="cloudchoose" data-v="cloud">接續雲端紀錄</button><button data-act="cloudchoose" data-v="local">保留這次試玩</button>`; else if (CLOUD.user) body = `<div class="mini">已登入 ${esc(CLOUD.user.email || '')}</div>
@@ -190,7 +190,7 @@ function cloudSection() {
   else if (IN_APP) body = '<div class="mini">在 App 內建瀏覽器裡無法用 Google 登入。請用 Chrome 或 Safari 開啟網站後登入，紀錄就能在各裝置同步。</div>';
   else body = `<div class="mini">登入後，換手機、換瀏覽器都能接續紀錄。不登入也能照常使用。</div>
       <button class="gbtn" data-act="login" ${CLOUD.busy ? 'disabled' : ''}>${GOOGLE_G}${CLOUD.busy ? '準備中…' : CLOUD.armed ? '再按一次，選擇 Google 帳戶' : '用 Google 帳戶登入'}</button>`;
-  return `<section class="px" id="cloudBox">${sh('雲端同步', 'CLOUD')}${body}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div><button data-act="cloudretry">重試同步</button>` : ''}</section>`;
+  return `<div id="cloudBox">${body}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div><button data-act="cloudretry">重試同步</button>` : ''}</div>`;
 }
 function cloudStatusText() {
   if (!STORAGE_OK) return '此裝置無法儲存，請立即下載備份';

@@ -84,7 +84,7 @@ test('備份：匯出→匯入；壞檔案、空檔案、非 JSON 都不能弄�
   const I = await boot({ state: mkState(), noShare: true }); await I.dismiss();
   await I.plan(['寫文章', '跑步', '整理']); await I.saveList(); await I.tick(0); await I.claimAll();
   const coins = I.coins(), xp = I.xp();
-  await I.tab('about'); await I.click('[data-act=export]');
+  await I.tab('about'); await I.click('#backupSection > summary'); await I.click('[data-act=export]');
   eq(I.win.__downloads.length, 1, '下載一個備份檔'); ok(/習慣深潛-備份-2026-11-02\.json/.test(I.win.__downloads[0].name), '檔名：' + I.win.__downloads[0].name);
   const json = await (await I.win.fetch(I.win.__downloads[0].href)).text(); const parsed = JSON.parse(json); ok(Array.isArray(parsed.logs) && parsed.plans, '備份檔是有效的資料');
   // ask＝這個檔案會跳出「要取代嗎」：讀檔是非同步的，電腦忙的時候比較慢，要等到對話框真的出現再按（固定等一下會偶爾等不到）

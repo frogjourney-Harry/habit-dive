@@ -345,7 +345,7 @@ document.getElementById('importFile').addEventListener('change', async e => {
     if (f.size > 10 * 1024 * 1024) throw new Error('備份檔過大');
     const j = JSON.parse(await f.text());
     const candidate = prepareBackup(j);
-    if (await ask(`備份檔有 ${j.logs.length} 筆紀錄，目前有 ${S.logs.length} 筆。\n確定用備份取代目前資料？`, '還原')) {
+    if (await ask(`備份檔有 ${j.logs.length} 筆紀錄，目前有 ${S.logs.length} 筆。\n還原會取代目前紀錄，取代前會先保留一份本機副本。\n確定還原？`, '還原')) {
 
       restoreBackup(candidate); toast('已還原');
     }
