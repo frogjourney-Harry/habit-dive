@@ -235,13 +235,17 @@ document.addEventListener('click', async e => {
       if (!derive().claimed.has('welcome')) reward(() => grant('welcome', null, { key: 'welcome' }));
       else { save(); render(); }
       break;
-    case 'introfinish': S.introCompleteNotice = false; save(); UI.tab = 'today'; render(); toast('新手導覽完成，現在可以開始安排今天了'); break;
+    case 'introbackup':
+      if (!S.introCompleteNotice || !FIREBASE_CONFIG || CLOUD.user || IN_APP) break;
+      S.introCompleteNotice = false; S.backupNudgeDismissed = true; save();
+      UI.tab = 'about'; render(); cloudLogin(); break;
+    case 'introfinish': S.backupNudgeDismissed = true; S.introCompleteNotice = false; save(); UI.tab = 'today'; render(); toast('新手導覽完成，現在可以開始安排今天了'); break;
     case 'seagoto': UI.opened = false; UI.tab = 'tank'; UI.tankEdit = false; UI.tankView = ''; render(); nextChest(); break;
     case 'backuplater': S.backupNudgeDismissed = true; save(); render(); break;
     case 'backupinvite': UI.tab = 'about'; render(); document.getElementById('cloudBox')?.scrollIntoView(); break;
-    case 'cloudbackuprestore': { const backup = cloudChoiceBackup(); if (backup && await ask('改用選擇前的雲端紀錄？目前紀錄會先另存備份。', '還原雲端紀錄')) { restoreBackup(prepareBackup(backup.s), context); render(); } break; }
+    case 'cloudbackuprestore': { const backup = cloudChoiceBackup(); if (backup && await ask('改用選擇前的雲端紀錄？目前紀錄會先另存備份。', '還原雲端紀錄')) { restoreWithFeedback(backup.s, context, '已還原備份'); } break; }
     case 'cloudchoose': chooseCloud(v); break;
-    case 'syncbackuprestore': { const backup = syncBackup(); if (backup && await ask('改用同步前的本機紀錄？目前的紀錄會先另存備份。', '還原本機紀錄')) { restoreBackup(prepareBackup(backup.s), context); render(); } break; }
+    case 'syncbackuprestore': { const backup = syncBackup(); if (backup && await ask('改用同步前的本機紀錄？目前的紀錄會先另存備份。', '還原本機紀錄')) { restoreWithFeedback(backup.s, context, '已還原備份'); } break; }
     case 'cloudretry': if (!CLOUD.ready) { CLOUD.error = ''; cloudInit(); } else if (CLOUD.pending) cloudPush(); else cloudPull(false); break;
     case 'autodismiss': S.autoSeen = dayKey(); UI.autoNotice = null; save(); render(); break;
     case 'feedkeyboard': {
@@ -251,7 +255,7 @@ document.addEventListener('click', async e => {
     case 'backupundo': {
       let stored; try { stored = JSON.parse(localStorage.getItem(KEY + '.before-import')); } catch (_) {}
       if (!stored || !(await ask('復原上次還原前的紀錄？目前紀錄也會另存一份。', '復原'))) break;
-      try { if (restoreBackup(prepareBackup(stored), context)) toast('已復原上次還原'); } catch (_) { UI.backupError = '無法復原，原紀錄已保留。請先下載目前的備份。'; render(); }
+      restoreWithFeedback(stored, context, '已復原上次還原');
       break;
     }
     case 'copydiagnostics': copyDiagnostics(); break;
@@ -360,7 +364,7 @@ document.getElementById('importFile').addEventListener('change', async e => {
 
       if (restoreBackup(candidate, context)) toast('已還原');
     }
-  } catch (err) { UI.backupError = err.message === '備份檔過大' ? '檔案超過 10 MiB，請選擇較小的備份。' : err.name === 'QuotaExceededError' ? '此裝置的儲存空間不足，原紀錄已保留。請先下載備份。' : '這不是有效的備份檔，或資料無法還原；目前紀錄已保留。'; render(); toast(UI.backupError); }
+  } catch (err) { UI.backupError = err.message === '備份檔過大' ? '檔案超過 10 MiB，請選擇較小的備份。' : err.name === 'QuotaExceededError' ? '此裝置的儲存空間不足，原紀錄已保留。請先下載備份。' : '這不是有效的備份檔，或資料無法還原；目前紀錄已保留。'; renderBackupSection(true); toast(UI.backupError); }
 });
 
 // 另一個分頁存了新的紀錄：這一頁跟上（正在打字就等放開輸入框再重畫，免得打到一半被洗掉）
@@ -372,7 +376,10 @@ function refreshFromStorage() {
   if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { syncPending = true; return; }
   render(); renderSheet(); tick();
 }
-window.addEventListener('storage', e => { if (!e.key || e.key === KEY) refreshFromStorage(); });
+window.addEventListener('storage', e => {
+  if (!e.key || e.key === KEY) refreshFromStorage();
+  if (!e.key || ACCOUNT_BACKUPS.some(suffix => e.key === KEY + suffix)) renderBackupSection();
+});
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFromStorage(); });
 document.addEventListener('focusout', () => { if (syncPending) { syncPending = false; setTimeout(() => { render(); renderSheet(); tick(); }, 0); } });
 

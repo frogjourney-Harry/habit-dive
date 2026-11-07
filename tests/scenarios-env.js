@@ -370,3 +370,38 @@ test('專注畫面的結束：一分鐘內直接結束，之後才確認；按�
   I.check('結束'); I.destroy();
 });
 
+
+test('導覽備份邀請：可跳過，重開不重複要求登入', async () => {
+ resetCloud(); const I=await boot({state:mkState({onb:true,introCompleteNotice:true,logs:[W0,{id:'h1',d:D0,k:'habit',c:15,xp:1}]})});await I.dismiss();
+ I.ev("UI.tab='tank';render()");await flush(14);
+ ok(I.$('[data-act=introbackup]'),'完成第一次餵食後提供 Google 儲存入口');
+ eq(I.$('[data-act=introfinish]').textContent,'先玩看看','可以略過綁定');
+ const coins=I.coins();await I.click('[data-act=introfinish]');
+ eq(I.UI.tab,'today','略過後回到今日');eq(I.coins(),coins,'略過不影響進度');
+ ok(!I.S.introCompleteNotice && I.S.backupNudgeDismissed,'記住已略過');
+ const J=await I.reload();await J.dismiss();
+ ok(!J.$('[data-act=introbackup]') && !J.$('[data-act=backupinvite]'),'重開不重複邀請');
+ await J.tab('about');ok(J.$('.gbtn'),'仍可從更多頁登入');J.destroy();
+});
+
+test('導覽備份邀請：Google 按鈕沿用安全的首次儲存流程', async () => {
+ resetCloud(); const I=await boot({state:mkState({onb:true,introCompleteNotice:true})});await I.dismiss();await I.plan(['導覽後的清單']);
+ I.ev("UI.tab='tank';render()");await flush(14);window.__cloudDb.nextUser={uid:'tutorial-user'};
+ await I.click('[data-act=introbackup]');await flush(14);
+ eq(I.UI.tab,'about','登入與同步狀態在資料與同步頁呈現');
+ eq(I.S.cloudUid,'tutorial-user','按鈕啟動 Google 登入');
+ ok(I.ev('CLOUD.choice?.kind === "new"'),'新帳號仍需確認儲存試玩');
+ await I.click('[data-act=cloudchoose][data-v=local]');await flush(14);
+ eq(JSON.parse(window.__cloudDb.docs['tutorial-user'].data).plans[D0][0].text,'導覽後的清單','原進度正確存入帳號');
+ ok(!I.S.introCompleteNotice,'不再顯示導覽邀請');I.destroy();
+});
+
+test('導覽備份邀請：已登入與 App 內建瀏覽器可直接完成', async () => {
+ resetCloud(); const I=await boot({state:mkState({onb:true,cloudUid:'u1',introCompleteNotice:true}),cloudUser:{uid:'u1'}});await I.dismiss();await flush(14);
+ I.ev("UI.tab='tank';render()");await flush(8);
+ ok(!I.$('[data-act=introbackup]'),'已登入不再次邀請綁定');
+ await I.click('[data-act=introfinish]');eq(I.UI.tab,'today','已登入者直接完成');I.destroy();
+ const J=await boot({state:mkState({onb:true,introCompleteNotice:true}),ua:'Mozilla/5.0 Line/13.0'});await J.dismiss();J.ev("UI.tab='tank';render()");
+ ok(!J.$('[data-act=introbackup]'),'不提供內建瀏覽器無法使用的登入操作');
+ await J.click('[data-act=introfinish]');eq(J.UI.tab,'today','內建瀏覽器也不阻擋遊戲');J.destroy();
+});

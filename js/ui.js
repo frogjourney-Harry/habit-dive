@@ -41,20 +41,38 @@ function sameDataContext(context) {
   if (context.session !== CLOUD.session || context.uid !== (CLOUD.user?.uid || null) || context.owner !== (S.accountOwner || S.cloudUid || null)) return false;
   try { const owner = localStorage.getItem(KEY + '.owner'); return owner === context.localOwner && (!context.owner || !owner || context.owner === owner); } catch (_) { return false; }
 }
+// 只更新備份內容，保留展開狀態與焦點，避免同步狀態變動打斷操作。
+function renderBackupSection(open) {
+  const previous = document.getElementById('backupSection'); if (!previous) return;
+  const action = previous.contains(document.activeElement) ? document.activeElement.dataset.act : null;
+  const focused = previous.contains(document.activeElement);
+  const template = document.createElement('template'); template.innerHTML = manualBackupSection();
+  const next = template.content.firstElementChild;
+  next.open = (open ?? previous.open) || !!UI.backupError;
+  if (previous.outerHTML === next.outerHTML) return;
+  previous.replaceWith(next);
+  if (focused) (action && next.querySelector(`[data-act="${action}"]`) || next.querySelector('summary')).focus({ preventScroll: true });
+}
+function restoreWithFeedback(data, context, message) {
+  try { if (restoreBackup(prepareBackup(data), context)) { toast(message); return true; } }
+  catch (_) { UI.backupError = '無法還原這份備份，目前紀錄已保留。'; renderBackupSection(true); toast(UI.backupError); }
+  return false;
+}
 function restoreBackup(candidate, context = dataContext()) {
   if (!sameDataContext(context)) { toast('帳號已變更，請重新操作'); return false; }
   // 備份只還原遊戲資料；不還原來源帳號的登入身分與待選狀態。
   delete candidate.cloudUid; delete candidate.accountOwner; delete candidate.cloudChoicePending;
   if (context.owner) candidate.accountOwner = context.owner;
   if (context.uid) candidate.cloudUid = context.uid;
-  const previous = S;
+  const previous = S, backupOpen = document.getElementById('backupSection')?.open;
   try {
     S = candidate; render();
     S.mtime = Math.max(Date.now(), (previous.mtime || 0) + 1);
     localStorage.setItem(KEY + '.before-import', JSON.stringify(previous));
     localStorage.setItem(KEY, JSON.stringify(S)); STORAGE_OK = true;
-  } catch (err) { S = previous; render(); throw err; }
-  UI.backupError = ''; if (typeof cloudSchedule === 'function') cloudSchedule();
+  } catch (err) { S = previous; render(); renderBackupSection(backupOpen); throw err; }
+  UI.backupError = ''; renderBackupSection(backupOpen);
+  if (typeof cloudSchedule === 'function') cloudSchedule();
   return true;
 }
 function hasBackupUndo() { if (!sameDataContext(dataContext())) return false; try { return !!localStorage.getItem(KEY + '.before-import'); } catch (_) { return false; } }
@@ -106,7 +124,14 @@ function tutorialResumeCard() {
   return `<section class="px tutorial-resume">${tutorialProgress(3)}<b>${S.introCompleteNotice?'你已完成第一次餵食':'還差最後一步：試著餵魚'}</b><p class="mini">到大海完成這段導覽，再開始安排今天。</p><button data-act="seagoto">${S.introCompleteNotice?'查看導覽完成畫面':'繼續新手導覽'}</button></section>`;
 }
 function tutorialSeaContents() {
-  return S.introCompleteNotice ? `<b>新手導覽完成！</b><p class="mini">你已認識習慣與清單，並撒下第一顆飼料。魚吃到飼料就會慢慢長大。</p><button class="pri" data-act="introfinish">完成導覽，回到今日</button>` : `${tutorialProgress(3)}<b>最後一步：餵食小丑魚</b><p class="mini">點一下水裡撒飼料，也可以按下方按鈕。每天有 10 顆免費飼料。</p><p class="mini">不用每天餵，牠們不會餓死，成長進度也不會倒退。餵食只是讓牠們長大。</p><button class="pri" data-act="feedkeyboard">試著撒一顆飼料</button>`;
+  if (S.introCompleteNotice) {
+    if (FIREBASE_CONFIG && !CLOUD.user && !IN_APP) {
+      cloudWarm();
+      return `<b>新手導覽完成！</b><p>要把進度存到 Google 帳號嗎？</p><p class="mini">登入後可以換裝置接著玩；已有雲端紀錄的帳號會自動接續原進度。</p><button class="pri" data-act="introbackup">用 Google 儲存進度</button><button class="ghost" data-act="introfinish">先玩看看</button>`;
+    }
+    return '<b>新手導覽完成！</b><p class="mini">你已撒下第一顆飼料，魚吃到飼料就會慢慢長大。</p><button class="pri" data-act="introfinish">完成導覽，回到今日</button>';
+  }
+  return `${tutorialProgress(3)}<b>最後一步：餵食小丑魚</b><p class="mini">點一下水裡撒飼料，也可以按下方按鈕。每天有 10 顆免費飼料。</p><p class="mini">不用每天餵，牠們不會餓死，成長進度也不會倒退。餵食只是讓牠們長大。</p><button class="pri" data-act="feedkeyboard">試著撒一顆飼料</button>`;
 }
 function tutorialSeaCard() {
   return S.introFeedPending || S.introCompleteNotice ? `<section class="sea-guide" aria-live="polite">${tutorialSeaContents()}</section>` : '';

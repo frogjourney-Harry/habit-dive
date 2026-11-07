@@ -790,20 +790,23 @@ const ABOUT_LINKS = [
   { title: '潛水日誌 #3｜印尼・Nusa Penida・PED：蘇眉魚、桶狀海綿與一整片珊瑚花園', sub: '珊瑚、大魚、小生物通通有的一潛', url: 'https://vocus.cc/article/6ae17a47fd89780001bf3b6f' },
   { title: 'OW 潛水考照心得｜課程都在學什麼？我的完整考照紀錄', sub: '從零開始學潛水的紀錄', url: 'https://vocus.cc/article/6a45ddadfd89780001dff50b' },
 ];
-// 「更多」：常用操作直接顯示，協助與關於按需展開。
-function about() {
-  return `<div class="more-page">
-  <section class="px">${sh('資料與同步', '')}
-    ${cloudSection()}
-    <details class="more-detail manual-backup" id="backupSection" ${UI.backupError ? 'open' : ''}><summary>手動備份與還原</summary><div class="more-content">
+function manualBackupSection() {
+  return `<details class="more-detail manual-backup" id="backupSection" ${UI.backupError ? 'open' : ''}><summary>手動備份與還原</summary><div class="more-content">
       <p class="mini">需要另存一份紀錄或從檔案復原時再使用，平常不必手動操作。</p>
-      ${preLogin() ? `<p class="mini">登入前的本機紀錄（${summary(preLogin().s)}）已另存備份，還原會取代目前帳號的雲端進度。</p><div class="row"><button data-act="prerestore">還原登入前的紀錄</button><button class="ghost" data-act="predrop">刪除此備份</button></div>` : ''}
+      ${preLogin() ? `<div id="preloginBackup"><p class="mini">登入前的本機紀錄（${summary(preLogin().s)}）已另存備份，還原會取代目前帳號的雲端進度。</p><div class="row"><button data-act="prerestore">還原登入前的紀錄</button><button class="ghost" data-act="predrop">刪除此備份</button></div></div>` : ''}
       ${cloudChoiceBackup() ? '<button class="ghost" data-act="cloudbackuprestore">還原選擇前的雲端紀錄</button>' : ''}
       ${syncBackup() ? '<button class="ghost" data-act="syncbackuprestore">還原同步前的本機紀錄</button>' : ''}
       <div class="row"><button data-act="export">下載備份</button><button data-act="import">從檔案還原</button></div>
       ${hasBackupUndo() ? '<button class="ghost" data-act="backupundo">復原上次還原</button>' : ''}
       ${UI.backupError ? `<div class="warn" role="alert">${esc(UI.backupError)}</div>` : ''}
-    </div></details>
+    </div></details>`;
+}
+// 「更多」：常用操作直接顯示，協助與關於按需展開。
+function about() {
+  return `<div class="more-page">
+  <section class="px">${sh('資料與同步', '')}
+    ${cloudSection()}
+    ${manualBackupSection()}
   </section>
   <section class="px">${sh('設定', '')}<label class="switch more-sound"><span>音效</span><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button></label></section>
   <section class="px more-links">${sh('協助', '')}
