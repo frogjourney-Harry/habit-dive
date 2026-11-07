@@ -192,6 +192,8 @@ function probeStorage() { try { localStorage.setItem(KEY + '.probe', '1'); local
 probeStorage();
 // push=true：使用者真的改了東西，記下修改時間並排入雲端同步；false：只寫回本機（例如剛從雲端載入）
 function save(push = true) {
+  // 別的分頁已切換帳號時，舊分頁不得覆寫新帳號的本機存檔。
+  try { const owner = localStorage.getItem(KEY + '.owner'); if (S.accountOwner && owner && S.accountOwner !== owner) return; } catch (_) {}
   // 修改時間只增不減：這台的時鐘比別台慢（甚至慢好幾分鐘）時，接手別台的紀錄後再改，新的修改時間仍然比對方大，不會被當成「比較舊」而被蓋掉
   if (push) S.mtime = Math.max(Date.now(), (S.mtime || 0) + 1);
   try { localStorage.setItem(KEY, JSON.stringify(S)); STORAGE_OK = true; } catch (e) { STORAGE_OK = false; }
@@ -201,6 +203,7 @@ function save(push = true) {
 function syncFromStorage() {
   let j; try { j = JSON.parse(localStorage.getItem(KEY)); } catch (e) { return false; }
   if (!j || typeof j !== 'object' || !Array.isArray(j.logs) || (j.mtime || 0) <= (S.mtime || 0)) return false;
+  if ((S.accountOwner || S.cloudUid || null) !== (j.accountOwner || j.cloudUid || null)) return false;
   const old = S;
   try { S = migrate(Object.assign(blank(), j)); } catch (e) { S = old; return false; }
   carryEditDrafts(old);

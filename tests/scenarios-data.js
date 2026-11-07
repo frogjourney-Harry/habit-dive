@@ -327,3 +327,182 @@ test('登入選擇：先試玩再登入，兩份紀錄皆保留，可選擇保�
  eq(C.S.plans[D0][0].text,'本機試玩','明確選擇後保留試玩');
  eq(JSON.parse(window.__cloudDb.docs.u1.data).plans[D0][0].text,'本機試玩','同步選擇的紀錄'); C.check('保留試玩'); C.destroy();
 });
+test('帳號隔離：A 登出後登入 B，不可保留或還原 A 的資料', async () => {
+  resetCloud();
+  const I = await boot({state:mkState()}); await I.dismiss();
+  await I.plan(['A 的私人清單','二','三']); await I.saveList(); await loginAs(I,'account-a');
+  I.win.localStorage.setItem('habitdive.v1.before-import',JSON.stringify(I.S));
+  await I.tab('about'); await I.click('[data-act=logout]'); await flush(14);
+  ok(!I.S.cloudUid && I.S.accountOwner==='account-a','登出保留本機資料的帳號歸屬');
+  const J = await I.reload(); await J.dismiss();
+  // B 已有自己的資料，且比 A 舊，也不能採用 A 的資料。
+  const b = mkState({onb:true,plans:{[D0]:Array.from({length:6},(_,i)=>({text:i===0?'B 的清單':'',cat:'other',done:false,rw:false}))}});
+  window.__cloudDb.docs['account-b']={data:JSON.stringify(b),mtime:1,wid:'b0'};
+  await loginAs(J,'account-b');
+  eq(J.S.plans[D0][0].text,'B 的清單','B 只載入自己的清單');
+  ok(!J.ev('CLOUD.choice'),'沒有保留 A 為試玩的選擇');
+  ok(!J.$('[data-act=prerestore]') && !J.$('[data-act=backupundo]') && !J.$('[data-act=syncbackuprestore]'),'不顯示 A 的還原入口');
+  ok(!JSON.stringify(window.__cloudDb.docs['account-b']).includes('A 的私人清單'),'B 雲端沒有 A 的紀錄');
+  await J.click('[data-act=logout]'); await flush(14);
+  await loginAs(J,'account-a');
+  eq(J.S.plans[D0][0].text,'A 的私人清單','重新登入 A 可接續原資料');
+  ok(J.win.localStorage.getItem('habitdive.v1.before-import')?.includes('A 的私人清單'),'A 的備份只在 A 恢復');
+  J.check('帳號切換'); J.destroy();
+});
+
+test('帳號隔離：B 沒有雲端存檔，也不能上傳 A 的資料', async () => {
+  resetCloud(); const I=await boot({state:mkState()}); await I.dismiss();
+  await I.plan(['只屬於 A','二','三']); await I.saveList(); await loginAs(I,'account-a');
+  await I.tab('about'); await I.click('[data-act=logout]'); await flush(14);
+  window.__cloudDb.nextUser={uid:'new-b'}; await I.click('.gbtn'); await flush(20);
+  ok(!I.ev('CLOUD.choice'),'新帳號不提供 A 的試玩選項');
+  ok(!JSON.stringify(I.S).includes('只屬於 A'),'新帳號的本機狀態沒有 A');
+  ok(!JSON.stringify(window.__cloudDb.docs['new-b']).includes('只屬於 A'),'新帳號的雲端狀態沒有 A');
+  ok(I.win.localStorage.getItem('habitdive.v1.account.account-a')?.includes('只屬於 A'),'A 另存保留，沒有刪除');
+  I.destroy();
+});
+
+test('帳號隔離：A 的延遲回應不能在 B 登入後覆寫畫面', async () => {
+  resetCloud(); const I=await boot({state:mkState()}); await I.dismiss();
+  await I.plan(['A 延遲資料','二','三']); await I.saveList(); await loginAs(I,'account-a');
+  I.win.__oldSnapshot = window.__cloudDb.docs['account-a'];
+  I.ev(`window.__originalFirestore=firebase.firestore; firebase.firestore=Object.assign(()=>({collection:()=>({doc:()=>({get:()=>new Promise(resolve=>window.__resolveOldPull=resolve)})})}),__originalFirestore); window.__oldPull=cloudPull(false); firebase.firestore=__originalFirestore;`);
+  await I.tab('about'); await I.click('[data-act=logout]'); await flush(14);
+  window.__cloudDb.nextUser={uid:'new-b'}; await I.click('.gbtn'); await flush(20);
+  I.ev('__resolveOldPull({exists:true,data:()=>__oldSnapshot})'); await flush(14);
+  eq(I.S.cloudUid,'new-b','延遲回應沒有改變目前帳號');
+  ok(!JSON.stringify(I.S).includes('A 延遲資料'),'沒有套用 A 的延遲回應'); I.destroy();
+});
+
+test('帳號隔離：儲存空間不足時阻止切換，不把 A 上傳給 B', async () => {
+  resetCloud(); const I=await boot({state:mkState()}); await I.dismiss();
+  await I.plan(['A 空間不足保留','二','三']); await I.saveList(); await loginAs(I,'account-a');
+  await I.tab('about'); await I.click('[data-act=logout]'); await flush(14);
+  const before=window.__stores[I.storeId].get('habitdive.v1');
+  window.__storageMode=window.__storageMode || {}; window.__storageMode[I.storeId]='full';
+  window.__cloudDb.nextUser={uid:'new-b'}; await I.click('.gbtn'); await flush(20);
+  ok(!I.ev('CLOUD.user'),'無法保存原資料時取消新登入');
+  eq(window.__stores[I.storeId].get('habitdive.v1'),before,'A 的本機存檔保留');
+  ok(!window.__cloudDb.docs['new-b'],'沒有上傳到 B');
+  window.__storageMode[I.storeId]='ok'; I.destroy();
+});
+
+test('帳號隔離：另一分頁切到 B，A 的草稿和存檔不能混入 B', async () => {
+  resetCloud(); const I=await boot({state:mkState()}); await I.dismiss();
+  await I.plan(['A 多分頁','二','三']); await I.saveList(); await loginAs(I,'account-a');
+  const J=await boot({storeId:I.storeId,cloudUser:{uid:'account-a'}}); await J.dismiss(); await flush(14);
+  await I.tab('about'); await I.click('[data-act=logout]'); await flush(14);
+  window.__cloudDb.nextUser={uid:'new-b'}; await I.click('.gbtn'); await flush(20);
+  const bStored=window.__stores[I.storeId].get('habitdive.v1');
+  J.ev('S.mtime=Date.now()+100000; save()'); await flush(8);
+  ok(J.ev("try { adopt(JSON.parse(JSON.stringify(S))); false } catch (_) { true }"),'舊帳號回應也不能寫入新帳號的復原副本');
+  eq(window.__stores[I.storeId].get('habitdive.v1'),bStored,'A 舊分頁不得覆寫 B 的主存檔');
+  J.win.__fb.signIn({uid:'new-b'}); await flush(20);
+  eq(J.S.cloudUid,'new-b','另一分頁完成切換至 B');
+  ok(!JSON.stringify(J.S).includes('A 多分頁'),'切換後沒有 A 的草稿');
+  ok(!JSON.stringify(window.__cloudDb.docs['new-b']).includes('A 多分頁'),'B 的雲端沒有 A 的內容');
+  I.destroy(); J.destroy();
+});
+
+test('資料邊界：匯入其他帳號的備份不切換登入歸屬', async () => {
+  resetCloud(); const I=await boot({state:mkState()}); await I.dismiss(); await loginAs(I,'account-b');
+  I.win.__backup=mkState({cloudUid:'account-a',accountOwner:'account-a',cloudChoicePending:true,logs:[W0,coinLog(888)]});
+  ok(I.ev('restoreBackup(prepareBackup(__backup))'),'明確匯入可還原遊戲資料');
+  eq(I.S.cloudUid,'account-b','登入帳號仍是 B'); eq(I.S.accountOwner,'account-b','本機歸屬仍是 B');
+  ok(!I.S.cloudChoicePending,'不還原來源的待選狀態');
+  await I.ev('cloudPush()');
+  eq(JSON.parse(window.__cloudDb.docs['account-b'].data).accountOwner,'account-b','可正常同步回目前帳號');
+  I.check('匯入歸屬'); I.destroy();
+});
+
+test('資料邊界：讀取備份期間換帳號，不能套用舊檔案', async () => {
+  resetCloud(); const I=await boot({state:mkState()}); await I.dismiss(); await loginAs(I,'account-a');
+  I.ev('File.prototype.text=()=>new Promise(resolve=>window.__resolveFile=resolve)');
+  const dt=new I.win.DataTransfer();dt.items.add(new I.win.File(['{}'],'backup.json',{type:'application/json'}));
+  I.$('#importFile').files=dt.files; I.$('#importFile').dispatchEvent(new I.win.Event('change',{bubbles:true})); await flush(4);
+  I.win.__fb.signIn({uid:'account-b'}); await flush(20);
+  const before=JSON.stringify(I.S);
+  I.win.__resolveFile(JSON.stringify(mkState({logs:[W0,coinLog(9876)]}))); await flush(14);
+  eq(JSON.stringify(I.S),before,'B 不會採用 A 開始讀取的備份');
+  ok(I.$('#askov').classList.contains('hidden'),'不顯示過期的還原確認'); I.destroy();
+});
+
+test('資料邊界：還原確認期間換帳號會取消原操作', async () => {
+  resetCloud(); const I=await boot({state:mkState()}); await I.dismiss(); await loginAs(I,'account-a');
+  const previous=JSON.parse(JSON.stringify(I.S)); previous.logs.push(coinLog(3456));
+  I.win.localStorage.setItem('habitdive.v1.prelogin',JSON.stringify({s:previous}));
+  I.ev('window.__restore=cloudRestorePre()'); await flush(4);
+  ok(!I.$('#askov').classList.contains('hidden'),'A 的還原正在等待確認');
+  I.win.__fb.signIn({uid:'account-b'}); await flush(20);
+  ok(!I.ev('ask.res'),'帳號切換後取消舊確認');
+  ok(I.coins()<3456,'沒有把 A 的還原資料寫入 B'); I.destroy();
+});
+
+test('同步邊界：同一毫秒的不同版本也要接收新資料', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await I.plan(['舊清單']);await loginAs(I);
+  await I.ev('cloudPush()'); await flush(8);
+  const remote=JSON.parse(JSON.stringify(I.S));remote.plans[D0][0].text='相同時間的新版本';
+  window.__cloudDb.docs.u1={data:JSON.stringify(remote),mtime:I.S.mtime,wid:'another-device-same-time'};
+  await I.ev('cloudPull(false)');
+  eq(I.S.plans[D0][0].text,'相同時間的新版本','不同版本不可因 mtime 相同而跳過'); I.destroy();
+});
+
+test('同步邊界：採用壞資料失敗後仍可重新選擇', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  I.ev("CLOUD.choice={local:JSON.parse(JSON.stringify(S)),cloud:{...JSON.parse(JSON.stringify(S)),names:[]}};UI.tab='about';render()");
+  await I.click('[data-act=cloudchoose][data-v=cloud]'); await flush(8);
+  ok(I.ev('!!CLOUD.choice'),'驗證失敗不移除選擇入口');
+  await I.click('[data-act=cloudchoose][data-v=local]'); await flush(14);
+  ok(!I.ev('CLOUD.choice') && !I.ev('CLOUD.error'),'可以改選有效的本機紀錄'); I.destroy();
+});
+
+test('刪除邊界：重新驗證失敗不得先刪雲端資料', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  I.ev("CLOUD.user.reauthenticateWithPopup=async()=>{throw new Error('cancelled')}");
+  await I.tab('about');await I.click('[data-act=clouddel]');await I.click('#askyes');await flush(14);
+  ok(!!window.__cloudDb.docs.u1,'取消驗證仍保留雲端資料');
+  ok(!(window.__cloudDb.deletedAccounts||[]).includes('u1'),'帳號未刪除'); I.destroy();
+});
+
+test('刪除邊界：等待舊寫入結束，刪除後不會被重建', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  I.ev(`window.__fs=firebase.firestore;const db=__fs();firebase.firestore=Object.assign(()=>({...db,runTransaction:async fn=>{await new Promise(resolve=>window.__releaseWrite=resolve);return db.runTransaction(fn)}}),__fs);window.__write=cloudPush()`);
+  await flush(4);await I.tab('about');await I.click('[data-act=clouddel]');await I.click('#askyes');await flush(4);
+  ok(I.ev('CLOUD.suspended'),'刪除期間停止新上傳');
+  ok(!!window.__cloudDb.docs.u1,'先等已送出的交易，尚未刪除');
+  I.ev('__releaseWrite()');await flush(20);
+  ok(!window.__cloudDb.docs.u1,'完成後雲端資料已刪除');
+  ok(!I.ev('CLOUD.user'),'刪除成功後已登出');
+  await I.ev('cloudPush()');ok(!window.__cloudDb.docs.u1,'舊操作不會重建文件');I.destroy();
+});
+
+test('刪除邊界：只刪掉資料但帳號刪除失敗時不自動補上傳', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  I.ev("CLOUD.user.delete=async()=>{throw new Error('failed')}");
+  await I.tab('about');await I.click('[data-act=clouddel]');await I.click('#askyes');await flush(14);
+  ok(!window.__cloudDb.docs.u1,'雲端文件已刪除');
+  ok(I.has('帳號尚未刪除'),'清楚顯示部分完成');
+  await I.ev('save();cloudPush()');await flush(8);
+  ok(!window.__cloudDb.docs.u1,'不會自動重建已刪除的文件');
+  const J=await I.reload({cloudUser:{uid:'u1'}});await flush(20);
+  ok(!window.__cloudDb.docs.u1,'重新整理仍不會重建');
+  await J.tab('about');
+  ok(J.has('同步已暫停'),'重開後提示繼續完成刪除');
+  await J.click('[data-act=clouddel]');await J.click('#askyes');await flush(20);
+  ok(!J.ev('CLOUD.user'),'可重試並完成刪除');J.destroy();
+});
+
+test('登入重試：首次讀取失敗不能略過試玩與雲端的選擇', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await I.plan(['未登入的試玩']);
+  const remote=JSON.parse(JSON.stringify(I.S)); remote.logs=[W0,coinLog(4321)]; remote.plans={}; remote.mtime=1;
+  window.__cloudDb.docs.u1={data:JSON.stringify(remote),mtime:1,wid:'existing'};
+  window.__cloudDb.fail=true;await loginAs(I);
+  ok(I.S.cloudChoicePending,'首次讀取失敗後保留需確認狀態');
+  window.__cloudDb.fail=false;
+  await I.ev('cloudPush()');
+  eq(JSON.parse(window.__cloudDb.docs.u1.data).logs.length,remote.logs.length,'重試前不能直接上傳覆蓋雲端');
+  await I.ev('cloudPull(false)');await flush(8);
+  ok(I.ev('!!CLOUD.choice'),'恢復連線後仍要明確選擇');
+  eq(I.S.plans[D0][0].text,'未登入的試玩','選擇前保留試玩清單');
+  I.destroy();
+});

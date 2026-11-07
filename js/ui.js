@@ -29,7 +29,21 @@ function rewardHistory() {
   const rows = logs.map(l=>`<div class="entry"><span class="sp">${esc(l.d)}・${names[l.k]}<small class="reward-state">${isPendingReward(l)?'待領取':l.auto?'已自動入帳':'已入帳'}</small></span><span class="coin">+${l.c}</span></div>`);
   return `<section class="px">${sh('獎勵紀錄', '')}${compactHistory(rows, 3) || '<div class="mini">完成第一件事後，這裡會留下獎勵紀錄。</div>'}</section>`;
 }
-function restoreBackup(candidate) {
+// 非同步讀檔與確認操作只對開始操作時的帳號有效。
+function dataContext() {
+  let localOwner = null; try { localOwner = localStorage.getItem(KEY + '.owner'); } catch (_) {}
+  return { session: CLOUD.session, uid: CLOUD.user?.uid || null, owner: S.accountOwner || S.cloudUid || null, localOwner };
+}
+function sameDataContext(context) {
+  if (context.session !== CLOUD.session || context.uid !== (CLOUD.user?.uid || null) || context.owner !== (S.accountOwner || S.cloudUid || null)) return false;
+  try { const owner = localStorage.getItem(KEY + '.owner'); return owner === context.localOwner && (!context.owner || !owner || context.owner === owner); } catch (_) { return false; }
+}
+function restoreBackup(candidate, context = dataContext()) {
+  if (!sameDataContext(context)) { toast('帳號已變更，請重新操作'); return false; }
+  // 備份只還原遊戲資料；不還原來源帳號的登入身分與待選狀態。
+  delete candidate.cloudUid; delete candidate.accountOwner; delete candidate.cloudChoicePending;
+  if (context.owner) candidate.accountOwner = context.owner;
+  if (context.uid) candidate.cloudUid = context.uid;
   const previous = S;
   try {
     S = candidate; render();
@@ -38,8 +52,9 @@ function restoreBackup(candidate) {
     localStorage.setItem(KEY, JSON.stringify(S)); STORAGE_OK = true;
   } catch (err) { S = previous; render(); throw err; }
   UI.backupError = ''; if (typeof cloudSchedule === 'function') cloudSchedule();
+  return true;
 }
-function hasBackupUndo() { try { return !!localStorage.getItem(KEY + '.before-import'); } catch (_) { return false; } }
+function hasBackupUndo() { if (!sameDataContext(dataContext())) return false; try { return !!localStorage.getItem(KEY + '.before-import'); } catch (_) { return false; } }
 function diagnosticsText() { return `習慣深潛 ${document.querySelector('script[src*="config.js"]')?.src.split('?v=')[1] || '本機版'}\n瀏覽器：${navigator.userAgent}\n畫面：${innerWidth} × ${innerHeight}\n連線：${navigator.onLine ? '線上' : '離線'}`; }
 async function copyDiagnostics() {
   const t = diagnosticsText();

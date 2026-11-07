@@ -814,7 +814,7 @@ function about() {
   </section>
   <section class="px more-links">${sh('關於', '')}
     <details class="more-detail"><summary>隱私說明</summary><div class="more-content">
-      <p class="mini">未登入時，紀錄只存在此瀏覽器。登出或刪除雲端資料後，本機紀錄仍會保留；共用裝置請留意。</p>
+      <p class="mini">未登入時，紀錄只存在此瀏覽器。登出後，本機紀錄仍會保留；切換帳號不會帶入另一個帳號的紀錄。共用裝置請留意，登出不會清除本機資料。</p>
       ${FIREBASE_CONFIG ? '<p class="mini">Google 登入用於辨識帳號，紀錄會存到 Firebase 供跨裝置同步。一般使用者只能存取自己的資料；我不會查看或使用你的紀錄。可在上方刪除雲端資料與帳號。</p>' : ''}
     </div></details>
     <details class="more-detail"><summary>關於習慣深潛</summary><div class="more-content">

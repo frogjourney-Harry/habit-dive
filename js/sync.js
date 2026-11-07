@@ -2,8 +2,53 @@
 // 沒看到登入畫面的人不會載入任何外部程式；看到登入畫面時先載入登入程式（不送出紀錄）；登入過的裝置下次打開會自動恢復登入。
 // 資料放在 Firestore 的 users/{uid}，整份紀錄存成一個 JSON 字串；以 S.mtime（最後修改時間）決定哪一份比較新。
 const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
-const CLOUD = { ready: false, loading: null, user: null, last: 0, timer: 0, pending: false, error: '' };
+const CLOUD = { ready: false, loading: null, user: null, last: 0, timer: 0, pending: false, error: '', session: 0, writes: new Set(), suspended: false };
 
+// 帳號歸屬獨立存在本機，不因登出或雲端存檔內容而遺失。
+const OWNER_KEY = KEY + '.owner';
+const ACCOUNT_BACKUPS = ['.prelogin', '.cloud-before-choice', '.sync-backup', '.before-import', '.corrupt'];
+const deletionKey = uid => KEY + '.deletion.' + encodeURIComponent(uid);
+function cloudDeletionPending() {
+  if (!CLOUD.user) return false;
+  if (CLOUD.deletedUid === CLOUD.user.uid) return true;
+  try { return !!localStorage.getItem(deletionKey(CLOUD.user.uid)); } catch (_) { return true; }
+}
+function cloudAccountActive() {
+  if (!CLOUD.user || ((S.accountOwner || S.cloudUid) && (S.accountOwner || S.cloudUid) !== CLOUD.user.uid)) return false;
+  try { const owner = localStorage.getItem(OWNER_KEY); return !owner || owner === CLOUD.user.uid; } catch (_) { return false; }
+}
+function selectAccount(uid) {
+  const owner = S.cloudUid || S.accountOwner || localStorage.getItem(OWNER_KEY);
+  if (owner && owner !== uid) {
+    const accountKey = id => KEY + '.account.' + encodeURIComponent(id);
+    const activeOwner = localStorage.getItem(OWNER_KEY);
+    const files = Object.fromEntries(ACCOUNT_BACKUPS.map(suffix => [suffix, localStorage.getItem(KEY + suffix)]));
+    const previousRaw = localStorage.getItem(accountKey(owner));
+    const previous = previousRaw ? JSON.parse(previousRaw) : null;
+    // 另一個分頁可能已先切換：共用的主存檔與復原檔此時已屬於新帳號。
+    const currentRaw = activeOwner === uid ? localStorage.getItem(KEY) : null;
+    const current = currentRaw ? JSON.parse(currentRaw) : null;
+    if (!previous || (S.mtime || 0) >= (previous.s.mtime || 0))
+      localStorage.setItem(accountKey(owner), JSON.stringify({ s: S, files: activeOwner === owner ? files : previous?.files || {} }));
+    const raw = localStorage.getItem(accountKey(uid));
+    const cached = current?.accountOwner === uid ? { s: current, files } : raw ? JSON.parse(raw) : null;
+    const next = cached ? prepareBackup(cached.s) : migrate(blank());
+    for (const suffix of ACCOUNT_BACKUPS) {
+      const value = cached?.files?.[suffix];
+      if (value != null) localStorage.setItem(KEY + suffix, value);
+      else localStorage.removeItem(KEY + suffix);
+    }
+    S = next;
+    // 草稿、彈窗、計時畫面與復原入口也不能帶進另一個帳號。
+    for (const key of Object.keys(UI)) delete UI[key];
+    Object.assign(UI, { tab: 'about', pday: 0, opened: false, sheet: null });
+    Q.length = 0;
+    if (ask.res) ask.res(false);
+    for (const id of ['ov', 'sheetov', 'askov', 'focus']) document.getElementById(id)?.classList.add('hidden');
+  }
+  localStorage.setItem(OWNER_KEY, uid);
+  S.accountOwner = uid;
+}
 function loadScript(src) {
   return new Promise((res, rej) => {
     const s = document.createElement('script');
@@ -19,12 +64,33 @@ function cloudInit() {
     firebase.initializeApp(FIREBASE_CONFIG);
     CLOUD.ready = true;
     firebase.auth().onAuthStateChanged(async u => {
-      CLOUD.user = u;
-      // 這台裝置第一次連到這個帳號（或換了帳號）才需要問要留哪一份；之前登入過的就照「誰比較新」自動同步
+      const session = ++CLOUD.session;
+      clearTimeout(CLOUD.timer);
       if (CLOUD.unsub) { CLOUD.unsub(); CLOUD.unsub = null; }
-      CLOUD.base = null;
-      if (u) { const first = S.cloudUid !== u.uid || !!S.cloudChoicePending; S.cloudUid = u.uid; save(false); await cloudPull(first); cloudListen(); }
-      else if (S.cloudUid) { delete S.cloudUid; save(false); }
+      CLOUD.choice = null; CLOUD.pending = false; CLOUD.base = null; CLOUD.last = 0; CLOUD.error = ''; CLOUD.writing = null;
+      if (u) {
+        try { selectAccount(u.uid); }
+        catch (_) {
+          CLOUD.user = null;
+          await firebase.auth().signOut();
+          CLOUD.error = '無法安全切換帳號，原紀錄已保留。請先下載備份並確認瀏覽器儲存空間。';
+          render(); return;
+        }
+      } else if (S.cloudUid) {
+        // 舊版資料也在失去登入時保留歸屬，避免下次誤認成試玩。
+        try { localStorage.setItem(OWNER_KEY, S.cloudUid); S.accountOwner = S.cloudUid; } catch (_) {}
+      }
+      CLOUD.user = u;
+      if (u) {
+        const first = S.cloudUid !== u.uid || !!S.cloudChoicePending;
+        S.cloudUid = u.uid;
+        if (first && hasProgress(S)) S.cloudChoicePending = true;
+        save(false);
+        if (cloudDeletionPending()) { CLOUD.error = '刪除尚未完成，請再次刪除帳號；同步已暫停'; render(); return; }
+        await cloudPull(first);
+        if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return;
+        cloudListen();
+      } else if (S.cloudUid) { delete S.cloudUid; save(false); }
       if (u && !S.onb) { UI.onbReturning = false; UI.onbStep = 1; }
       render();
     });
@@ -41,28 +107,35 @@ const summary = s => { const D = deriveOf(s); return `Lv.${levelOf(D.xp)}・${D.
 function deriveOf(s) { const keep = S; S = s; try { return derive(); } finally { S = keep; } }
 
 function adopt(cloud, keepTimer = false) {
+  if (!cloudAccountActive()) throw new Error('帳號已在另一個分頁變更');
   const timer = S.timer, old = S;
   const candidate = prepareBackup(cloud);
+  delete candidate.cloudChoicePending;
   if (hasProgress(old) && JSON.stringify(old) !== JSON.stringify(candidate)) localStorage.setItem(KEY + '.sync-backup', JSON.stringify({ t: Date.now(), s: old }));
   S = candidate; carryEditDrafts(old);
   if (keepTimer && !S.timer && timer) S.timer = timer;
-  S.cloudUid = CLOUD.user.uid;
+  S.cloudUid = CLOUD.user.uid; S.accountOwner = CLOUD.user.uid;
   save(false); render();
 }
 // 這台裝置登入前的紀錄：登入時一律改用雲端的，原本的另存在這裡，需要時可以還原
 const PRE_KEY = KEY + '.prelogin';
-function preLogin() { try { return JSON.parse(localStorage.getItem(PRE_KEY)); } catch (e) { return null; } }
-// 拉雲端：first＝這台裝置剛登入。兩邊都有紀錄時直接用雲端的（不讓人誤選而蓋掉雲端），這台的另存一份
+function preLogin() { if (!sameDataContext(dataContext())) return null; try { return JSON.parse(localStorage.getItem(PRE_KEY)); } catch (e) { return null; } }
+// 拉雲端：first＝首次連接此帳號；只有未綁定的試玩資料可選擇帶入。
 async function cloudPull(first) {
-  if (!CLOUD.user || CLOUD.choice) return;
+  if (CLOUD.suspended || !cloudAccountActive() || !CLOUD.user || cloudDeletionPending() || CLOUD.choice) return;
+  first = first || !!S.cloudChoicePending;
+  if (!first && (CLOUD.pending || (CLOUD.pushSession === CLOUD.session && CLOUD.pushPromise))) { await cloudPush(); return; }
+  const session = CLOUD.session;
   try {
     const snap = await userDoc().get();
-    if (!snap.exists) { await cloudPush(); return; }
+    if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return;
+    if (!snap.exists) { delete S.cloudChoicePending; save(false); await cloudPush(); return; }
     const cloud = JSON.parse(snap.data().data), cm = cloud.mtime || 0, lm = S.mtime || 0;
+    const previousBase = CLOUD.base;
     CLOUD.base = verOf(snap.data());   // 目前知道的雲端版本；上傳時用來判斷雲端有沒有被別台改過
-    if (cm === lm && !first) { CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); return; }
+    if (cm === lm && !first) { if (previousBase !== CLOUD.base) adopt(cloud); CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); return; }
     if (!hasProgress(S)) { adopt(cloud, first); if (first) toast('已從雲端載入你的紀錄'); }
-    else if (!hasProgress(cloud)) { await cloudPush(); if (CLOUD.error) return; }
+    else if (!hasProgress(cloud)) { delete S.cloudChoicePending; save(false); await cloudPush(); if (CLOUD.error) return; }
     else if (first) {
       // 先保留兩份，再讓使用者選擇；選擇前不啟動任何上傳或採用快照。
       localStorage.setItem(PRE_KEY, JSON.stringify({ t: Date.now(), s: S }));
@@ -72,21 +145,39 @@ async function cloudPull(first) {
     }
     else if (cm > lm) adopt(cloud);
     else { await cloudPush(); if (CLOUD.error) return; }
+    if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return;
     CLOUD.last = Date.now(); CLOUD.error = ''; renderCloud(); catchUp();
-  } catch (e) { CLOUD.error = '同步失敗，稍後會再試'; renderCloud(); }
+  } catch (e) { if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return; CLOUD.error = '同步失敗，稍後會再試'; renderCloud(); }
 }
 async function chooseCloud(source) {
-  const choice = CLOUD.choice; if (!choice) return;
-  CLOUD.choice = null; clearTimeout(CLOUD.timer); CLOUD.pending = false;
-  if (source === 'local') {
-    S = prepareBackup(choice.local); delete S.cloudChoicePending; S.cloudUid = CLOUD.user.uid; save(false); await cloudPush();
-  } else adopt(choice.cloud, true);
-  CLOUD.last = Date.now(); render(); catchUp();
+  const choice = CLOUD.choice, context = dataContext(); if (!choice || !CLOUD.user) return;
+  try {
+    // 先驗證資料，再移除選擇入口；失敗時仍可重新選擇。
+    const candidate = prepareBackup(source === 'local' ? choice.local : choice.cloud);
+    delete candidate.cloudChoicePending;
+    if (source === 'cloud') adopt(candidate, true);
+    CLOUD.choice = null; clearTimeout(CLOUD.timer); CLOUD.pending = false;
+    if (source === 'local') {
+      S = candidate; S.cloudUid = context.uid; S.accountOwner = context.uid; save(false); await cloudPush();
+    } else { delete S.cloudChoicePending; save(false); }
+    if (!sameDataContext(context)) return;
+    render(); catchUp();
+  } catch (_) { if (sameDataContext(context)) { CLOUD.error = '無法採用這份紀錄，請重新選擇或下載備份'; render(); } }
 }
-function cloudChoiceBackup() { try { return JSON.parse(localStorage.getItem(KEY + '.cloud-before-choice')); } catch (_) { return null; } }
-function syncBackup() { try { return JSON.parse(localStorage.getItem(KEY + '.sync-backup')); } catch (_) { return null; } }
-async function cloudPush() {
-  if (!CLOUD.user || CLOUD.choice) return;
+function cloudChoiceBackup() { if (!sameDataContext(dataContext())) return null; try { return JSON.parse(localStorage.getItem(KEY + '.cloud-before-choice')); } catch (_) { return null; } }
+function syncBackup() { if (!sameDataContext(dataContext())) return null; try { return JSON.parse(localStorage.getItem(KEY + '.sync-backup')); } catch (_) { return null; } }
+function cloudPush() {
+  if (CLOUD.suspended || cloudDeletionPending()) return Promise.resolve();
+  if (CLOUD.pushSession === CLOUD.session && CLOUD.pushPromise) return CLOUD.pushPromise;
+  const promise = pushCloudNow();
+  CLOUD.pushSession = CLOUD.session; CLOUD.pushPromise = promise; CLOUD.writes.add(promise);
+  const done = () => { CLOUD.writes.delete(promise); if (CLOUD.pushPromise === promise) CLOUD.pushPromise = null; };
+  promise.then(done, done);
+  return promise;
+}
+async function pushCloudNow() {
+  if (CLOUD.suspended || !cloudAccountActive() || !CLOUD.user || cloudDeletionPending() || CLOUD.choice || S.cloudChoicePending || (S.accountOwner && S.accountOwner !== CLOUD.user.uid)) return;
+  const session = CLOUD.session, base = CLOUD.base, version = S.v;
   clearTimeout(CLOUD.timer); CLOUD.pending = false;
   const data = JSON.stringify(S);
   // 文件上限是 1 MiB（以位元組算）；中文一個字 3 位元組，所以不能用字元數
@@ -98,20 +189,22 @@ async function cloudPush() {
     const ref = userDoc(), mtime = S.mtime || 0, wid = CLOUD.writing = rid();
     const newer = await firebase.firestore().runTransaction(async tx => {
       const snap = await tx.get(ref);
-      if (snap.exists && CLOUD.base != null && verOf(snap.data()) !== CLOUD.base) return snap.data();
-      tx.set(ref, { data, mtime, wid, v: S.v, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return null;
+      if (snap.exists && base != null && verOf(snap.data()) !== base) return snap.data();
+      tx.set(ref, { data, mtime, wid, v: version, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       return null;
     });
+    if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return;
     if (newer) { CLOUD.base = verOf(newer); adopt(JSON.parse(newer.data)); toast('另一台裝置剛更新過，已換成最新的紀錄'); }
     else CLOUD.base = wid;
     CLOUD.last = Date.now(); CLOUD.error = '';
-  } catch (e) { CLOUD.error = '同步失敗，稍後會再試'; CLOUD.pending = true; CLOUD.since = Date.now(); CLOUD.timer = setTimeout(cloudPush, 30000); }
+  } catch (e) { if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return; CLOUD.error = '同步失敗，稍後會再試'; CLOUD.pending = true; CLOUD.since = Date.now(); CLOUD.timer = setTimeout(cloudPush, 30000); }
   renderCloud();
 }
 // save() 之後呼叫：幾秒內的變動合併成一次上傳，省寫入次數。
 // 連續操作時不能一直往後延（以前每存一次就重新等 3 秒，一直在用就一直沒上傳）：從第一個還沒上傳的變動算起，最多等 8 秒
 function cloudSchedule() {
-  if (!CLOUD.user || CLOUD.choice) return;
+  if (CLOUD.suspended || !cloudAccountActive() || !CLOUD.user || cloudDeletionPending() || CLOUD.choice || S.cloudChoicePending || (S.accountOwner && S.accountOwner !== CLOUD.user.uid)) return;
   const now = Date.now();
   if (!CLOUD.pending) { CLOUD.pending = true; CLOUD.since = now; }
   clearTimeout(CLOUD.timer);
@@ -119,9 +212,10 @@ function cloudSchedule() {
 }
 // 即時接收別台裝置的變動：開著的頁面不用重新整理也會更新。這台還有沒上傳的變動時先不換，上傳時會檢查衝突
 function cloudListen() {
-  if (!CLOUD.user || CLOUD.unsub) return;
+  if (CLOUD.suspended || !cloudAccountActive() || !CLOUD.user || cloudDeletionPending() || CLOUD.unsub) return;
+  const session = CLOUD.session;
   CLOUD.unsub = userDoc().onSnapshot(snap => {
-    if (CLOUD.choice || !snap.exists || (snap.metadata && snap.metadata.hasPendingWrites)) return;
+    if (CLOUD.suspended || !cloudAccountActive() || cloudDeletionPending() || session !== CLOUD.session || S.cloudChoicePending || CLOUD.choice || !snap.exists || (snap.metadata && snap.metadata.hasPendingWrites)) return;
     const d = snap.data(), ver = verOf(d);
     // 已經看過的版本、這台自己剛寫上去的、或這台還有沒上傳的變動（上傳時會處理衝突）：都不換
     if (ver === CLOUD.base || (d.wid && d.wid === CLOUD.writing) || CLOUD.pending) return;
@@ -133,6 +227,7 @@ const WEBKIT = /iP(hone|ad|od)/.test(navigator.userAgent) || (/Safari/.test(navi
 // 看得到登入按鈕時就先把登入程式載好：Safari 只讓「按下去的那一瞬間」開彈出視窗，按了才開始載就來不及，要按第二次
 function cloudWarm() { if (FIREBASE_CONFIG && !IN_APP && !CLOUD.loading && !CLOUD.error && !CLOUD.user) cloudInit(); }
 async function cloudLogin() {
+  if (CLOUD.suspended) { toast('正在處理帳號，請稍候'); return; }
   if (IN_APP) { toast('App 內建瀏覽器無法用 Google 登入，請用 Chrome 或 Safari 開啟'); return; }
   if (!CLOUD.ready) {   // 還沒載好（網路慢、剛打開）
     if (WEBKIT) {   // iPhone、Mac Safari：載好之後要使用者再按一次，彈出視窗才不會被擋
@@ -151,26 +246,43 @@ async function cloudLogin() {
   }
 }
 async function cloudLogout() {
+  const context = dataContext();
   if (CLOUD.pending) await cloudPush();
+  if (!sameDataContext(context)) return;
   await firebase.auth().signOut(); toast('已登出，紀錄還留在這台裝置');
 }
 // 還原登入前這台裝置的紀錄（會取代雲端上的那一份）
 async function cloudRestorePre() {
-  const p = preLogin(); if (!p) return;
+  const p = preLogin(), context = dataContext(); if (!p || !CLOUD.user) return;
   if (!(await ask(`改用這台裝置登入前的紀錄？\n\n登入前：${summary(p.s)}\n目前（雲端）：${summary(S)}\n\n雲端的紀錄會被取代。`, '改用登入前的'))) return;
-  S = migrate(Object.assign(blank(), p.s)); S.cloudUid = CLOUD.user.uid;
-  localStorage.removeItem(PRE_KEY);
-  save(); render(); toast('已改用登入前的紀錄');
+  if (restoreBackup(prepareBackup(p.s), context)) { localStorage.removeItem(PRE_KEY); render(); toast('已改用登入前的紀錄'); }
 }
-function cloudDropPre() { localStorage.removeItem(PRE_KEY); renderCloud(); }
+function cloudDropPre() { if (!sameDataContext(dataContext())) return; localStorage.removeItem(PRE_KEY); renderCloud(); }
 async function cloudDelete() {
-  if (!(await ask('刪除雲端資料和帳號？\n雲端上的紀錄會永久刪除，這台裝置上的紀錄會保留。', '刪除'))) return;
+  const context = dataContext(), user = CLOUD.user;
+  if (!user || CLOUD.suspended || !(await ask('刪除雲端資料和帳號？\n雲端上的紀錄會永久刪除，這台裝置上的紀錄會保留。', '刪除')) || !sameDataContext(context)) return;
+  CLOUD.suspended = true;
+  ++CLOUD.session; clearTimeout(CLOUD.timer); CLOUD.pending = false;
+  if (CLOUD.unsub) { CLOUD.unsub(); CLOUD.unsub = null; }
+  const deletion = dataContext(), ref = userDoc(); let removed = false;
   try {
-    await userDoc().delete();
-    try { await CLOUD.user.delete(); }
-    catch (e) { if (e.code === 'auth/requires-recent-login') { await CLOUD.user.reauthenticateWithPopup(new firebase.auth.GoogleAuthProvider()); await CLOUD.user.delete(); } else throw e; }
+    // 等待已送出的寫入結束，再刪除；舊回應不得排入新的重試。
+    await Promise.allSettled([...CLOUD.writes]);
+    if (!sameDataContext(deletion)) return;
+    await user.reauthenticateWithPopup(new firebase.auth.GoogleAuthProvider());
+    if (!sameDataContext(deletion)) return;
+    localStorage.setItem(deletionKey(user.uid), 'pending'); CLOUD.deletedUid = user.uid;
+    await ref.delete(); removed = true;
+    if (!sameDataContext(deletion)) return;
+    await user.delete();
+    if (sameDataContext(deletion)) await firebase.auth().signOut();
     toast('雲端資料和帳號已刪除');
-  } catch (e) { toast('刪除失敗，請重新登入後再試'); }
+  } catch (_) {
+    if (sameDataContext(deletion)) {
+      CLOUD.error = removed ? '雲端紀錄已刪除，但帳號尚未刪除，請重試刪除帳號' : cloudDeletionPending() ? '刪除尚未完成，請再次刪除帳號；同步已暫停' : '未完成刪除，請重新登入後再試';
+      renderCloud();
+    }
+  } finally { CLOUD.suspended = false; if (!removed && sameDataContext(deletion)) cloudListen(); }
 }
 
 // Google 的登入按鈕規範：一定要放原色、不變形的「G」標誌，白底
@@ -193,6 +305,7 @@ function cloudSection() {
   return `<div id="cloudBox">${body}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div><button data-act="cloudretry">重試同步</button>` : ''}</div>`;
 }
 function cloudStatusText() {
+  if (CLOUD.user && !cloudAccountActive()) return '帳號已在另一個分頁變更，請重新整理';
   if (!STORAGE_OK) return '此裝置無法儲存，請立即下載備份';
   if (CLOUD.error) return '已儲存在此裝置，尚未同步到雲端';
   if (CLOUD.choice) return '請選擇要接續的紀錄';
@@ -206,7 +319,7 @@ function renderCloud() { const el = document.getElementById('cloudBox'); if (el)
 setInterval(() => { if (CLOUD.user && S.timer && document.visibilityState === 'visible') cloudPull(false); }, 30e3);
 // 切到別的 App 前先把還沒上傳的存上去；切回來時看看別的裝置有沒有更新
 document.addEventListener('visibilitychange', () => {
-  if (!CLOUD.user || CLOUD.choice) return;
+  if (CLOUD.suspended || !cloudAccountActive() || !CLOUD.user || cloudDeletionPending() || CLOUD.choice) return;
   if (document.visibilityState === 'hidden' && CLOUD.pending) cloudPush();
   if (document.visibilityState === 'visible') cloudPull(false);
 });

@@ -19,7 +19,7 @@ async function exportBackup() {
 function sheetDay() { return addDays(dayKey(), UI.sheet.day); }
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
-  const v = b.dataset.v;
+  const v = b.dataset.v, context = dataContext();
   switch (b.dataset.act) {
     case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.tankView = ''; UI.logView = ''; UI.swap = null; UI.tab = v; if (v === 'today') { UI.pday = 0; UI.showRows = 0; } render(); window.scrollTo(0, 0); break;
     case 'pday': UI.pday = +v; UI.swap = null; UI.showRows = 0; render(); break;
@@ -238,9 +238,9 @@ document.addEventListener('click', async e => {
     case 'seagoto': UI.opened = false; UI.tab = 'tank'; UI.tankEdit = false; UI.tankView = ''; render(); nextChest(); break;
     case 'backuplater': S.backupNudgeDismissed = true; save(); render(); break;
     case 'backupinvite': UI.tab = 'about'; render(); document.getElementById('cloudBox')?.scrollIntoView(); break;
-    case 'cloudbackuprestore': { const backup = cloudChoiceBackup(); if (backup && await ask('改用選擇前的雲端紀錄？目前紀錄會先另存備份。', '還原雲端紀錄')) { restoreBackup(prepareBackup(backup.s)); render(); } break; }
+    case 'cloudbackuprestore': { const backup = cloudChoiceBackup(); if (backup && await ask('改用選擇前的雲端紀錄？目前紀錄會先另存備份。', '還原雲端紀錄')) { restoreBackup(prepareBackup(backup.s), context); render(); } break; }
     case 'cloudchoose': chooseCloud(v); break;
-    case 'syncbackuprestore': { const backup = syncBackup(); if (backup && await ask('改用同步前的本機紀錄？目前的紀錄會先另存備份。', '還原本機紀錄')) { restoreBackup(prepareBackup(backup.s)); render(); } break; }
+    case 'syncbackuprestore': { const backup = syncBackup(); if (backup && await ask('改用同步前的本機紀錄？目前的紀錄會先另存備份。', '還原本機紀錄')) { restoreBackup(prepareBackup(backup.s), context); render(); } break; }
     case 'cloudretry': if (!CLOUD.ready) { CLOUD.error = ''; cloudInit(); } else if (CLOUD.pending) cloudPush(); else cloudPull(false); break;
     case 'autodismiss': S.autoSeen = dayKey(); UI.autoNotice = null; save(); render(); break;
     case 'feedkeyboard': {
@@ -250,7 +250,7 @@ document.addEventListener('click', async e => {
     case 'backupundo': {
       let stored; try { stored = JSON.parse(localStorage.getItem(KEY + '.before-import')); } catch (_) {}
       if (!stored || !(await ask('復原上次還原前的紀錄？目前紀錄也會另存一份。', '復原'))) break;
-      try { restoreBackup(prepareBackup(stored)); toast('已復原上次還原'); } catch (_) { UI.backupError = '無法復原，原紀錄已保留。請先下載目前的備份。'; render(); }
+      try { if (restoreBackup(prepareBackup(stored), context)) toast('已復原上次還原'); } catch (_) { UI.backupError = '無法復原，原紀錄已保留。請先下載目前的備份。'; render(); }
       break;
     }
     case 'copydiagnostics': copyDiagnostics(); break;
@@ -340,14 +340,16 @@ document.addEventListener('input', e => {
   save();
 });
 document.getElementById('importFile').addEventListener('change', async e => {
+  const context = dataContext();
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
     if (f.size > 10 * 1024 * 1024) throw new Error('備份檔過大');
     const j = JSON.parse(await f.text());
+    if (!sameDataContext(context)) { toast('帳號已變更，請重新選擇檔案'); return; }
     const candidate = prepareBackup(j);
     if (await ask(`備份檔有 ${j.logs.length} 筆紀錄，目前有 ${S.logs.length} 筆。\n還原會取代目前紀錄，取代前會先保留一份本機副本。\n確定還原？`, '還原')) {
 
-      restoreBackup(candidate); toast('已還原');
+      if (restoreBackup(candidate, context)) toast('已還原');
     }
   } catch (err) { UI.backupError = err.message === '備份檔過大' ? '檔案超過 10 MiB，請選擇較小的備份。' : err.name === 'QuotaExceededError' ? '此裝置的儲存空間不足，原紀錄已保留。請先下載備份。' : '這不是有效的備份檔，或資料無法還原；目前紀錄已保留。'; render(); toast(UI.backupError); }
 });
