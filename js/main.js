@@ -118,7 +118,7 @@ document.addEventListener('click', async e => {
       if (sel[v] && onbCustomCount() > CONFIG.maxCustom) { sel[v] = false; toast(`自訂型的習慣最多 ${CONFIG.maxCustom} 個`); }
       renderOnb(); break;
     }
-    case 'onbdone': if (finishOnb()) toast('設定好了，先寫下今天最重要的事吧'); break;
+    case 'onbdone': finishOnb(); break;
     case 'shopedit': S.shop = shopItems().map(x => ({ ...x })); UI.shopEdit = true; render(); break;
     case 'shopadd': S.shop = S.shop || []; S.shop.push({ id: 'c' + Date.now(), icon: '🎁', name: '', price: 100 }); save(); render(); break;
     case 'shopdel': if (S.shop) S.shop.splice(+v, 1); save(); render(); break;
@@ -229,7 +229,8 @@ document.addEventListener('click', async e => {
       save(); catchUp(); render(); SFX.buy(); toast('🛡 買了一張連勝保護卡'); break;   // 昨天剛漏掉的話，馬上補上
     }
     case 'meetfish':
-      if (!filled(getPlan(dayKey())).length) { toast('先寫下今天的一件事'); break; }
+      if (!introTasksReady()) { toast('先寫下今天的一件事'); break; }
+      UI.tab = 'today'; UI.pday = 0;
       S.introPending = false; S.introFeedPending = true;
       if (!derive().claimed.has('welcome')) reward(() => grant('welcome', null, { key: 'welcome' }));
       else { save(); render(); }
@@ -320,6 +321,14 @@ document.addEventListener('input', e => {
     const g = k => { const i = document.getElementById('ex_' + k); return i ? +i.value : 0; };
     const p = document.getElementById('exPace');
     if (p) p.textContent = paceText({ type: document.getElementById('exType').value, dist: g('dist'), m: g('m'), min: g('min') });
+    return;
+  }
+  if (el.dataset.introIndex !== undefined) {
+    const index = Number(el.dataset.introIndex);
+    if (!S.introPending || !Number.isInteger(index) || index < 0 || index > 2) return;
+    getPlan(dayKey())[index].text = el.value.slice(0, 200); save();
+    const button = document.querySelector('#onb [data-act=meetfish]'); if (button) button.disabled = !introTasksReady();
+    const box = document.getElementById('onbbox'); if (box) box.dataset.h = introTasks();
     return;
   }
   if (el.dataset.onb) { UI.onbName = el.value; renderOnbButton(); return; }

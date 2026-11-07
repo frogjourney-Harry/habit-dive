@@ -16,7 +16,7 @@ function render() {
   const pendN = dailyTasks(D).filter(t => t.pend.length).length;
   document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? `<i class="badge">${pendN}</i>` : ''}</button>`).join('');
   document.getElementById('main').innerHTML = ({ today, quest: quests, tank, shop, log, about })[UI.tab](D);
-  document.body.classList.toggle('intro-first', !!S.introPending); document.body.classList.toggle('sea-on', seaOn()); document.documentElement.classList.toggle('sea-on', seaOn());
+  document.body.classList.toggle('sea-on', seaOn()); document.documentElement.classList.toggle('sea-on', seaOn());
   if (UI.tab === 'tank') tankStart();
   for (const i of document.querySelectorAll('#main textarea, #main input:not([type]), #main input[type=text], #sheet input:not([type]), #sheet input[type=text]')) { i.setAttribute('autocomplete', 'off'); i.setAttribute('autocapitalize', 'off'); i.setAttribute('spellcheck', 'false'); }
   // 不是按鈕的可點元素（圖鑑格子、寶箱名稱、任務名稱…）：讓鍵盤和螢幕閱讀器也用得到
@@ -166,7 +166,7 @@ function today(D) {
   // 昨天沒做完的：在今天點一下帶過來（一件一件，或全部帶入），已經在今天清單裡的不再列出；今天寫滿了就不顯示
   const left = UI.pday === 0 ? carryLeft(P) : [];
   const carryBar = left.length && P.some(x => !x.text.trim()) ? `<div class="favs carry"><small class="dim">昨天沒做完</small>${left.map((t, i) => `<span class="fav"><button class="ghost" data-act="carry" data-v="${i}" title="帶到今天">＋ ${esc(t)}</button></span>`).join('')}${left.length > 1 ? '<button class="ghost carryall" data-act="carryall">全部帶入</button>' : ''}</div>` : '';
-  const last = P.reduce((a, it, i) => it.text.trim() ? i : a, -1), shown = Math.min(P.length, Math.max(S.introPending ? 1 : CONFIG.rewardRows, last + 1, UI.showRows || 0));
+  const last = P.reduce((a, it, i) => it.text.trim() ? i : a, -1), shown = Math.min(P.length, Math.max(CONFIG.rewardRows, last + 1, UI.showRows || 0));
   UI.shownRows = shown;
   const rows = P.slice(0, shown).map((it, i) => {
     const starred = it.text.trim() && favs.includes(it.text.trim());
@@ -188,17 +188,17 @@ function today(D) {
         <button data-act="start">開始專注</button></div></div>
       <div class="segs" id="pomoPlan">${segLine(null, sessionPlan(pm))}</div>
 </section>`;
-  const habits = S.introPending ? '' : UI.habEdit ? habitEditor() : `<section class="px" id="habits">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
+  const habits = UI.habEdit ? habitEditor() : `<section class="px" id="habits">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
       <div class="habits">${chips || '<button class="wide" data-act="habedit">新增第一個習慣</button>'}</div>
       ${risky.join('')}</section>`;
   return `${UI.pday === 0 ? autoNoticeCard() + tutorialResumeCard() + (S.introPending ? '' : nextStep(D, P)) + backupNudge() : ''}${habits}
-    <section class="px" id="six">${S.introPending ? tutorialProgress(2) : ''}${sh(S.introPending ? '今天的一件事' : '最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
-      <div class="mini" style="margin:-2px 0 4px">${UI.pday < 0 ? '昨天 ' : UI.pday > 0 ? '明天 ' : '今天 '}${d.slice(5).replace('-', '/')}${hint && !S.introPending ? '・' + hint : ''}</div>
+    <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
+      <div class="mini" style="margin:-2px 0 4px">${UI.pday < 0 ? '昨天 ' : UI.pday > 0 ? '明天 ' : '今天 '}${d.slice(5).replace('-', '/')}${hint ? '・' + hint : ''}</div>
       ${UI.pday >= 0 && !S.tipSix ? `<div class="tip row"><span class="sp">小技巧：按住編號拖曳可以排順序，點 ☆ 存成常用。</span><button class="ghost" data-act="tipsix">知道了</button></div>` : ''}
-      ${UI.pday === 0 && !S.introPending ? `<div class="mini">已完成 ${Math.min(filled(P).filter(it => it.done).length, CONFIG.rewardRows)}/${CONFIG.rewardRows} 件・任意完成 ${CONFIG.rewardRows} 件有加碼</div>` : ''}
-      ${S.introPending ? '<p class="tutorial-prompt">在下方寫一件今天想完成的事，例如「閱讀五頁書」。輸入會自動儲存，再按下一步領取小丑魚。</p>' : ''}${UI.pday >= 0 ? carryBar + favBar : ''}${rows}${S.introPending ? introCard() : ''}${UI.planUndo && UI.planUndo.d === d ? '<button class="ghost" data-act="planundo">復原剛才刪除的事項</button>' : ''}
+      ${UI.pday === 0 ? `<div class="mini">已完成 ${Math.min(filled(P).filter(it => it.done).length, CONFIG.rewardRows)}/${CONFIG.rewardRows} 件・任意完成 ${CONFIG.rewardRows} 件有加碼</div>` : ''}
+      ${UI.pday >= 0 ? carryBar + favBar : ''}${rows}${UI.planUndo && UI.planUndo.d === d ? '<button class="ghost" data-act="planundo">復原剛才刪除的事項</button>' : ''}
       ${shown < P.length && UI.pday >= 0 ? `<button class="ghost addrow" data-act="addrow">＋ 再加一件</button>` : ''}
-      ${UI.pday < 0 || claimed || S.introPending ? '' : '<div class="row" style="margin-top:8px"><button class="pri" data-act="plansave">寫好了</button></div>'}</section>
+      ${UI.pday < 0 || claimed ? '' : '<div class="row" style="margin-top:8px"><button class="pri" data-act="plansave">寫好了</button></div>'}</section>
     ${timer}`;
 }
 
@@ -227,12 +227,14 @@ const onbLabel = () => '下一步：建立第一件事';
 function renderOnbButton() { const b = document.querySelector('#onbbox [data-act=onbdone]'); if (b) b.textContent = onbLabel(); }   // 打字時只換按鈕上的字，不重畫（輸入框會失去焦點）
 function renderOnb() {
   let el = document.getElementById('onb');
-  if (!needOnb()) { if (el) el.classList.add('hidden'); if (GAME_READY) startGame(); return; }   // 引導做完（或雲端換成做過引導的紀錄）：開始遊戲
+  const firstTask = S.onb && S.introPending && !window.__noOnb;
+  if (!needOnb() && !firstTask) { if (el) el.classList.add('hidden'); if (GAME_READY) startGame(); return; }   // 引導做完（或雲端換成做過引導的紀錄）：開始遊戲
   if (!el) { el = document.createElement('div'); el.id = 'onb'; el.className = 'ov'; el.innerHTML = '<div class="px modal" id="onbbox"></div>'; document.body.appendChild(el); }
   el.classList.remove('hidden');
   const step = UI.onbStep || 1, sel = UI.onbSel || {};
   let html;
-  if (step === 1) {
+  if (firstTask) html = introTasks();
+  else if (step === 1) {
     if (UI.onbReturning) cloudWarm();
     html = `<h2>歡迎來到習慣深潛</h2><p>每天完成一點事，收集海洋生物。</p>
       ${UI.onbReturning ? `<div class="mini">登入後接續你的雲端紀錄。</div>${IN_APP ? '<div class="warn">App 內建瀏覽器無法登入，請用 Chrome 或 Safari 開啟。</div>' : `<button class="gbtn" data-act="login">${GOOGLE_G}${CLOUD.armed ? '再按一次，選擇 Google 帳戶' : '用 Google 帳戶登入'}</button>`}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div>` : ''}<button class="ghost wide" data-act="onbback">返回</button>` : `<ol class="welcome-route"><li>選擇想養成的習慣</li><li>寫下第一件重要的事</li><li>認識小丑魚，試著餵食</li></ol><button class="pri wide" data-act="onbstart">開始新手導覽</button><div class="mini">不需註冊，紀錄先存在此瀏覽器。</div><div class="row intro-links">${FIREBASE_CONFIG ? '<button class="ghost" data-act="onbreturn">已有紀錄？登入接續</button>' : ''}</div>`}`;

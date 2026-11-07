@@ -256,7 +256,7 @@ function openChest() {
   if (it.feed) {
     document.getElementById('modal').innerHTML = `<div class="feedpile pop">${'<i></i>'.repeat(it.feed)}</div>
       <h2>飼料 ${it.feed} 顆</h2><div class="dim" style="font-size:15px">這次開出的是飼料，拿去大海餵魚吧。</div>
-      <button class="pri" data-act="seagoto">去大海看看</button><button class="ghost" data-act="close">${it.direct ? '先寫清單' : Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
+      <button class="pri" data-act="seagoto">去大海看看</button>${it.direct ? '' : `<button class="ghost" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`}`;
     SFX.open(0); return;
   }
   const R = RARITY[cr.r];
@@ -267,7 +267,7 @@ function openChest() {
     <div class="dim" style="font-size:15px">${cr.fact}</div>
     ${it.xp || it.c > 0 ? `<div class="gain">${it.xp ? `<span style="color:var(--xp)">+${it.xp} XP</span>　` : ''}${it.c > 0 ? `<span class="coin">+${it.c}${COIN}</span>` : ''}</div>` : ''}
 
-    <button class="pri" data-act="seagoto">去大海看看</button><button class="ghost" data-act="close">${it.direct ? '先寫清單' : Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
+    <button class="pri" data-act="seagoto">去大海看看</button>${it.direct ? '' : `<button class="ghost" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`}`;
   SFX.open(cr.r);
 }
 

@@ -185,8 +185,10 @@ function mkInst(frame, storeId, opts) {
       for (let i = 0; i < 30; i++) {
         if (!I.$('#askov').classList.contains('hidden')) { await I.click(o.ask === false ? '#askno' : '#askyes'); continue; }
         if (!I.$('#ov').classList.contains('hidden')) {
-          const b = I.$('#modal [data-act=openchest]') || I.$('#modal [data-act=close]') || I.$('#modal [data-act=releasepick]');
-          if (!b) break; await I.click(b); continue;
+          const b = I.$('#modal [data-act=openchest]') || I.$('#modal [data-act=close]') || I.$('#modal [data-act=releasepick]') || I.$('#modal [data-act=seagoto]');
+          if (!b) break; const sea = b.dataset.act === 'seagoto'; await I.click(b);
+          // 一般測試略過新手禮物後回今日；導覽測試直接操作主按鈕。
+          if (sea) await I.tab('today'); continue;
         }
         if (!I.$('#sheetov').classList.contains('hidden')) { await I.click('#sheet [data-act=sheetclose]'); continue; }
         break;
@@ -203,6 +205,10 @@ function mkInst(frame, storeId, opts) {
     resize(w, h) { frame.style.width = w + 'px'; if (h) frame.style.height = h + 'px'; },
     // ---- 常用動作（都是真的點擊）----
     async plan(texts, day = 0) {
+      if (day === 0 && I.vis(I.$('#onb [data-intro-index]'))) {
+        for (let i = 0; i < texts.length; i++) await I.type(`#onb [data-intro-index="${i}"]`, texts[i]);
+        return;
+      }
       if (I.UI.pday !== day) await I.click(`#six [data-act=pday][data-v="${day}"]`);
       for (let i = 0; i < texts.length; i++) {
         let inp = I.$(`#six .ptext[data-i="${i}"]`);

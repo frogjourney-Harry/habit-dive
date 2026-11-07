@@ -537,8 +537,6 @@ textarea.ptext:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3
 textarea.ptext::placeholder{color:var(--ink-subtle)}
 @media(max-width:300px){.seahud.seabar{flex-wrap:wrap}.seabar>.sp{display:none}.seabar button{padding:6px 5px;font-size:12px}}.ex-type{display:flex;align-items:center;gap:8px;flex:1 1 100%;font-size:14px}
 .ex-type select{min-height:44px;flex:1}
-.intro-first #six .seg-switch,.intro-first #six .no,.intro-first #six .star,.intro-first #six .pdel,.intro-first #six .tip,.intro-first #six .addrow{display:none}
-.intro-first #six .first-step button{width:100%;margin:8px 0 0}
 /* 清楚區隔新手導覽與日常頁面，沿用海洋藍與既有卡片。 */
 .welcome-route{text-align:left;margin:12px 0;padding-left:24px;color:var(--ink-muted);font-size:14px}
 .welcome-route li{margin:6px 0}
@@ -551,10 +549,13 @@ textarea.ptext::placeholder{color:var(--ink-subtle)}
 .tutorial-progress .current span{background:var(--primary);color:var(--on-primary)}
 .tutorial-progress .complete span{background:var(--success);color:var(--on-success)}
 .tutorial-prompt{font-size:14px;line-height:1.6;background:var(--fill);padding:12px;border-radius:var(--r-lg);margin:8px 0 12px}
-.intro-first #six{box-shadow:var(--shadow-card),inset 0 3px var(--primary)}
 .sea-guide{position:fixed;top:94px;left:16px;right:16px;max-width:688px;margin:0 auto;background:var(--surface);color:var(--ink);border-radius:var(--r-xl);box-shadow:var(--shadow-card);padding:16px;z-index:4;max-height:55vh;overflow:auto}
 .sea-guide .tutorial-progress{margin-bottom:12px}
 .sea-guide button{margin:8px 0 0}
 .sea-guide~.seacoach{display:none}
 @media(min-width:601px){.sea-guide{top:150px}}.onbopt::after{content:'點選';font-size:12px;line-height:1.4;color:var(--ink-muted);margin-top:4px}
 .onbopt.sel::after{content:'✓ 已選擇';color:var(--primary);font-weight:600}
+
+.onb-tasks{display:grid;gap:12px;margin:16px 0;text-align:left}
+.onb-tasks label{display:grid;gap:4px;min-width:0}
+.onb-tasks textarea{width:100%;min-width:0}

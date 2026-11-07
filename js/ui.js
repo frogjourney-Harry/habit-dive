@@ -1,7 +1,10 @@
 // 共用的體驗回饋、備份與彈窗操作。
-function introCard() {
-  if (!S.introPending) return '';
-  return `<div class="first-step"><p class="mini">輸入會自動儲存，這件事會留在你的日常清單。寫好後按下一步，領取小丑魚。</p><button class="pri" data-act="meetfish" ${filled(getPlan(dayKey())).length ? '' : 'disabled'}>下一步：領取小丑魚</button></div>`;
+const introTasksReady = () => getPlan(dayKey()).slice(0, 3).some(it => it.text.trim());
+function introTasks() {
+  return `${tutorialProgress(2)}<h2>今天最重要的事</h2>
+    <p class="mini">三格中填寫一格，就能領取小丑魚。</p>
+    <div class="onb-tasks">${getPlan(dayKey()).slice(0, 3).map((it, i) => `<label><span class="mini">第 ${i + 1} 件事</span><textarea class="ptext" rows="2" maxlength="200" data-intro-index="${i}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${i === 0 ? '例如：閱讀五頁書' : '也可以稍後再填'}">${esc(it.text)}</textarea></label>`).join('')}</div>
+    <button class="pri wide" data-act="meetfish" ${introTasksReady() ? '' : 'disabled'}>領取小丑魚</button>`;
 }
 function backupNudge() {
   if (!FIREBASE_CONFIG || CLOUD.user || S.backupNudgeDismissed || S.introPending || !S.logs.some(l => ['check','habit','pomo'].includes(l.k) && !l.pend)) return '';
