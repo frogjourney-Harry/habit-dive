@@ -168,9 +168,10 @@ function today(D) {
   const carryBar = left.length && P.some(x => !x.text.trim()) ? `<div class="favs carry"><small class="dim">昨天沒做完</small>${left.map((t, i) => `<span class="fav"><button class="ghost" data-act="carry" data-v="${i}" title="帶到今天">＋ ${esc(t)}</button></span>`).join('')}${left.length > 1 ? '<button class="ghost carryall" data-act="carryall">全部帶入</button>' : ''}</div>` : '';
   const last = P.reduce((a, it, i) => it.text.trim() ? i : a, -1), shown = Math.min(P.length, Math.max(CONFIG.rewardRows, last + 1, UI.showRows || 0));
   UI.shownRows = shown;
+  const introTarget = S.introNextTask && UI.pday === 0 ? P.findIndex(it => it.text.trim() && !it.done) : -1;
   const rows = P.slice(0, shown).map((it, i) => {
     const starred = it.text.trim() && favs.includes(it.text.trim());
-    return `<div class="prow ${it.done ? 'done' : ''}">
+    return `<div class="prow ${it.done ? 'done' : ''} ${i === introTarget ? 'intro-target' : ''}">
       <input type="checkbox" data-act="pdone" data-v="${i}" aria-label="完成第 ${i + 1} 件" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
       <button class="ghost no ${UI.swap === i ? 'sel' : ''}" data-act="swap" data-v="${i}" title="按住拖曳排序，或點兩個編號交換">${i + 1}</button>
       <textarea class="ptext" rows="1" title="${esc(it.text)}" data-pf="text" data-i="${i}" aria-label="第 ${i + 1} 件事" maxlength="200" placeholder="${i === 0 ? '今天最重要的事' : ''}">${esc(it.text)}</textarea>
@@ -196,7 +197,7 @@ function today(D) {
       <div class="mini" style="margin:-2px 0 4px">${UI.pday < 0 ? '昨天 ' : UI.pday > 0 ? '明天 ' : '今天 '}${d.slice(5).replace('-', '/')}${hint ? '・' + hint : ''}</div>
       ${UI.pday >= 0 && !S.tipSix ? `<div class="tip row"><span class="sp">小技巧：按住編號拖曳可以排順序，點 ☆ 存成常用。</span><button class="ghost" data-act="tipsix">知道了</button></div>` : ''}
       ${UI.pday === 0 ? `<div class="mini">已完成 ${Math.min(filled(P).filter(it => it.done).length, CONFIG.rewardRows)}/${CONFIG.rewardRows} 件・任意完成 ${CONFIG.rewardRows} 件有加碼</div>` : ''}
-      ${UI.pday >= 0 ? carryBar + favBar : ''}${rows}${UI.planUndo && UI.planUndo.d === d ? '<button class="ghost" data-act="planundo">復原剛才刪除的事項</button>' : ''}
+      ${introTarget >= 0 ? '<p class="mini intro-task-hint">完成這件事後，回來打勾領獎勵。</p>' : ''}${UI.pday >= 0 ? carryBar + favBar : ''}${rows}${UI.planUndo && UI.planUndo.d === d ? '<button class="ghost" data-act="planundo">復原剛才刪除的事項</button>' : ''}
       ${shown < P.length && UI.pday >= 0 ? `<button class="ghost addrow" data-act="addrow">＋ 再加一件</button>` : ''}
       ${UI.pday < 0 || claimed ? '' : '<div class="row" style="margin-top:8px"><button class="pri" data-act="plansave">寫好了</button></div>'}</section>
     ${timer}`;
@@ -243,7 +244,6 @@ function renderOnb() {
       ${CLOUD.user ? `<div class="mini" style="margin:0 0 6px">已綁定 ${esc(CLOUD.user.email || '')}</div>` : ''}
       <div class="onbgrid">${ONB_HABITS.map(h => `<button class="onbopt ${sel[h.id] ? 'sel' : ''}" data-act="onbpick" data-v="${h.id}" aria-pressed="${!!sel[h.id]}"><b>${esc(h.n)}</b><small>${esc(h.desc)}</small></button>`).join('')}</div>
       <div class="row onbcustom"><input class="sp" data-onb="name" maxlength="20" placeholder="自訂，例如：喝水" aria-label="自訂習慣名稱" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(UI.onbName || '')}"></div>
-      <div class="mini" style="margin:0 0 12px">自訂的習慣預設每天，可以在「編輯」改成每週或每兩週、每週幾天。</div>
       <button class="pri wide" data-act="onbdone">${onbLabel()}</button>`;
   }
   const box = document.getElementById('onbbox');
@@ -569,7 +569,7 @@ function tankStart() {
     if (py >= floorY - 4) return;
     if (!useFeed()) { toast(`飼料用完了，明天會再送 ${FEED.free} 顆，也可以用金幣買`); return; }
     TANK.food.push({ x: px, y: py, vy: .25 }); ac(); SFX.tap();
-    markTutorialFed();
+    if (S.introFeedPending) { UI.introFoodPending = true; const guide = document.querySelector('.sea-guide'); if (guide) guide.innerHTML = tutorialSeaContents(); }
     const el = document.getElementById('feedInfo'); if (el) el.innerHTML = tankFeedHTML();
     if (!needFeedTip()) { const tip = document.querySelector('.seacoach'); if (tip) tip.remove(); }
   };
@@ -607,6 +607,7 @@ function tankStart() {
           TANK.food.splice(TANK.food.indexOf(food), 1); SFX.eat();
           const before = stageOf(fedOf(f.key));
           S.fed = S.fed || {}; S.fed[f.key] = fedOf(f.key) + 1;
+          markTutorialFed(f.key);
           const after = stageOf(fedOf(f.key));
           if (after > before) {
             S.seen = S.seen || {}; S.seen[f.c.id] = Math.max(S.seen[f.c.id] || 1, after);

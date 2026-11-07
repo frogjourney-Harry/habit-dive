@@ -316,9 +316,16 @@ test('第一次打開：三步新手導覽清楚呈現且可重開接續', async
   ok(J.$('.sea-guide').textContent.includes('第 3 步，共 3 步'), '第三步清楚教餵魚');
   const used=J.S.feedDay?.used||0; await J.click('.sea-guide [data-act=feedkeyboard]');
   eq(J.S.feedDay.used,used+1,'按下教學按鈕真的撒出一顆飼料');
-  ok(J.$('.sea-guide').textContent.includes('新手導覽完成'),'有明確完成回饋');
+  for (let i=0;i<80 && !J.S.introCompleteNotice;i++) await new Promise(r=>setTimeout(r,20));
+  ok(Object.values(J.S.fed||{}).some(n=>n>0),'小丑魚實際吃到飼料才完成餵食');
+  ok(J.$('.sea-guide').textContent.includes('小丑魚吃到飼料了'),'先顯示吃到飼料的回饋');
+  ok(!J.$('[data-act=introbackup]'),'成功回饋期間不打斷成就感');
+  for (let i=0;i<100 && !J.$('[data-act=introfinish]');i++) await new Promise(r=>setTimeout(r,20));
+  ok(J.$('.sea-guide').textContent.includes('新手導覽完成'),'回饋後才出現完成與備份操作');
   await J.click('[data-act=introfinish]');
-  eq(J.UI.tab,'today','完成後回今日'); ok(!J.S.introPending && !J.S.introFeedPending && !J.S.introCompleteNotice,'結束導覽狀態');
+  eq(J.UI.tab,'today','完成後回今日');
+  ok(J.$('#six .intro-target') && J.has('完成這件事後，回來打勾領獎勵'),'接回剛寫的事項');
+  ok(!J.S.plans[D0][0].done,'不代替使用者完成真實事項'); ok(!J.S.introPending && !J.S.introFeedPending && !J.S.introCompleteNotice,'結束導覽狀態');
   eq(J.S.logs.filter(l=>l.k==='welcome').length,1,'新手禮物不重發');
   I.destroy(); J.check('三步導覽'); J.destroy();
 });
@@ -388,10 +395,9 @@ test('導覽備份邀請：Google 按鈕沿用安全的首次儲存流程', asyn
  resetCloud(); const I=await boot({state:mkState({onb:true,introCompleteNotice:true})});await I.dismiss();await I.plan(['導覽後的清單']);
  I.ev("UI.tab='tank';render()");await flush(14);window.__cloudDb.nextUser={uid:'tutorial-user'};
  await I.click('[data-act=introbackup]');await flush(14);
- eq(I.UI.tab,'about','登入與同步狀態在資料與同步頁呈現');
+ eq(I.UI.tab,'today','儲存完成回到今日');
  eq(I.S.cloudUid,'tutorial-user','按鈕啟動 Google 登入');
- ok(I.ev('CLOUD.choice?.kind === "new"'),'新帳號仍需確認儲存試玩');
- await I.click('[data-act=cloudchoose][data-v=local]');await flush(14);
+ ok(!I.ev('CLOUD.choice'),'已同意儲存的新帳號不再重複詢問');
  eq(JSON.parse(window.__cloudDb.docs['tutorial-user'].data).plans[D0][0].text,'導覽後的清單','原進度正確存入帳號');
  ok(!I.S.introCompleteNotice,'不再顯示導覽邀請');I.destroy();
 });
@@ -404,4 +410,41 @@ test('導覽備份邀請：已登入與 App 內建瀏覽器可直接完成', asy
  const J=await boot({state:mkState({onb:true,introCompleteNotice:true}),ua:'Mozilla/5.0 Line/13.0'});await J.dismiss();J.ev("UI.tab='tank';render()");
  ok(!J.$('[data-act=introbackup]'),'不提供內建瀏覽器無法使用的登入操作');
  await J.click('[data-act=introfinish]');eq(J.UI.tab,'today','內建瀏覽器也不阻擋遊戲');J.destroy();
+});
+
+test('導覽餵食：撒下飼料不等於吃到，成果之後才邀請備份', async () => {
+ resetCloud();const I=await boot({state:mkState({onb:true,introFeedPending:true})});await I.dismiss();await I.tab('tank');
+ const cv=I.$('#tank'),r=cv.getBoundingClientRect(),f=I.ev('TANK.fish.find(f=>f.c.id==="clown")');
+ const ratio=f.x<I.ev('TANK.W')/2?.95:.05;
+ cv.dispatchEvent(new I.win.MouseEvent('click',{clientX:r.left+r.width*ratio,clientY:r.top+r.height*.5}));
+ await new Promise(resolve=>setTimeout(resolve,20));
+ ok(I.S.introFeedPending && !I.S.introCompleteNotice,'遠處撒飼料後仍等待魚吃到');
+ ok(!I.$('[data-act=introbackup]'),'尚未吃到不出現登入邀請');
+ await I.click('.sea-guide [data-act=feedkeyboard]');
+ for(let i=0;i<80&&!I.S.introCompleteNotice;i++)await new Promise(resolve=>setTimeout(resolve,20));
+ ok(I.S.introCompleteNotice && I.S.fed.w0>0,'實際吃到才完成');
+ ok(I.$('.sea-guide').textContent.includes('小丑魚吃到飼料了'),'顯示成果');
+ for(let i=0;i<100&&!I.$('[data-act=introbackup]');i++)await new Promise(resolve=>setTimeout(resolve,20));
+ ok(I.$('[data-act=introbackup]'),'成果之後顯示可跳過的備份邀請');I.destroy();
+});
+
+test('導覽儲存：已有雲端存檔時仍直接載入，不覆蓋為試玩', async () => {
+ resetCloud();const I=await boot({state:mkState({onb:true,introCompleteNotice:true})});await I.dismiss();await I.plan(['這次試玩']);
+ const remote=JSON.parse(JSON.stringify(I.S));remote.plans[D0][0].text='帳號原本的進度';remote.introCompleteNotice=false;
+ window.__cloudDb.docs.existing={data:JSON.stringify(remote),mtime:1,wid:'original'};
+ I.ev("UI.tab='tank';render()");await flush(14);window.__cloudDb.nextUser={uid:'existing'};
+ await I.click('[data-act=introbackup]');await flush(14);
+ eq(I.S.plans[D0][0].text,'帳號原本的進度','既有雲端優先');
+ eq(JSON.parse(window.__cloudDb.docs.existing.data).plans[D0][0].text,'帳號原本的進度','沒有用試玩覆蓋');
+ ok(I.win.localStorage.getItem('habitdive.v1.prelogin').includes('這次試玩'),'試玩另存備份');I.destroy();
+});
+
+test('導覽儲存：取消 Google 後普通登入仍需確認儲存試玩', async () => {
+ resetCloud();const I=await boot({state:mkState({onb:true,introCompleteNotice:true})});await I.dismiss();await I.plan(['仍是試玩']);I.ev("UI.tab='tank';render()");await flush(14);
+ I.ev("window.__signIn=firebase.auth().signInWithPopup;firebase.auth().signInWithPopup=async()=>{const error=new Error('closed');error.code='auth/popup-closed-by-user';throw error}");
+ await I.click('[data-act=introbackup]');await flush(10);
+ ok(!I.ev('CLOUD.trialSaveRequested'),'取消後不保留自動儲存的授權');
+ I.ev('firebase.auth().signInWithPopup=__signIn');window.__cloudDb.nextUser={uid:'after-cancel'};
+ await I.click('.gbtn');await flush(14);
+ ok(I.ev('CLOUD.choice?.kind === "new"'),'稍後普通登入仍提供確認');I.destroy();
 });

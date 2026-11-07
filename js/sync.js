@@ -64,6 +64,8 @@ function cloudInit() {
     firebase.initializeApp(FIREBASE_CONFIG);
     CLOUD.ready = true;
     firebase.auth().onAuthStateChanged(async u => {
+      const request = CLOUD.trialSaveRequested, previousSession = CLOUD.session;
+      CLOUD.trialSaveRequested = null; CLOUD.saveTrialFor = null;
       const session = ++CLOUD.session;
       clearTimeout(CLOUD.timer);
       if (CLOUD.unsub) { CLOUD.unsub(); CLOUD.unsub = null; }
@@ -82,6 +84,7 @@ function cloudInit() {
       }
       CLOUD.user = u;
       if (u) {
+        if (request?.session === previousSession && (!request.owner || request.owner === u.uid)) CLOUD.saveTrialFor = u.uid;
         const first = S.cloudUid !== u.uid || !!S.cloudChoicePending;
         S.cloudUid = u.uid;
         if (first && hasProgress(S)) S.cloudChoicePending = true;
@@ -130,6 +133,13 @@ async function cloudPull(first) {
     const snap = await userDoc().get();
     if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return;
     if (!snap.exists) {
+      if (CLOUD.saveTrialFor === CLOUD.user.uid) {
+        CLOUD.saveTrialFor = null; delete S.cloudChoicePending;
+        S.introNextTask = getPlan(dayKey()).some(it => it.text.trim() && !it.done); save(false);
+        await cloudPush();
+        if (session === CLOUD.session && cloudAccountActive()) { UI.tab = 'today'; render(); scrollToIntroTask(); }
+        return;
+      }
       if (first && hasProgress(S)) {
         localStorage.setItem(PRE_KEY, JSON.stringify({ t: Date.now(), s: S }));
         S.cloudChoicePending = true; save(false);
@@ -138,6 +148,7 @@ async function cloudPull(first) {
       }
       delete S.cloudChoicePending; save(false); await cloudPush(); return;
     }
+    CLOUD.saveTrialFor = null;
     const cloud = JSON.parse(snap.data().data), cm = cloud.mtime || 0, lm = S.mtime || 0;
     const previousBase = CLOUD.base;
     CLOUD.base = verOf(snap.data());   // 目前知道的雲端版本；上傳時用來判斷雲端有沒有被別台改過
@@ -235,26 +246,30 @@ function cloudListen() {
 const WEBKIT = /iP(hone|ad|od)/.test(navigator.userAgent) || (/Safari/.test(navigator.userAgent) && !/Chrome|Chromium|Android|Edg|OPR/.test(navigator.userAgent));
 // 看得到登入按鈕時就先把登入程式載好：Safari 只讓「按下去的那一瞬間」開彈出視窗，按了才開始載就來不及，要按第二次
 function cloudWarm() { if (FIREBASE_CONFIG && !IN_APP && !CLOUD.loading && !CLOUD.error && !CLOUD.user) cloudInit(); }
-async function cloudLogin() {
+async function cloudLogin(saveTrial = false) {
+  if (saveTrial) { const context = dataContext(); CLOUD.pendingIntroLogin = { owner: context.owner || context.localOwner }; }
   if (CLOUD.suspended) { toast('正在處理帳號，請稍候'); return; }
   if (IN_APP) { toast('App 內建瀏覽器無法用 Google 登入，請用 Chrome 或 Safari 開啟'); return; }
   if (!CLOUD.ready) {   // 還沒載好（網路慢、剛打開）
     if (WEBKIT) {   // iPhone、Mac Safari：載好之後要使用者再按一次，彈出視窗才不會被擋
       CLOUD.busy = true; renderCloud();
       const okLoad = await cloudInit(); CLOUD.busy = false; CLOUD.armed = !!okLoad; renderCloud();
-      if (!okLoad) toast('無法連線到登入服務，請稍後再試'); return;
+      if (!okLoad) { CLOUD.pendingIntroLogin = null; toast('無法連線到登入服務，請稍後再試'); } return;
     }
-    if (!(await cloudInit())) { toast('無法連線到登入服務，請稍後再試'); return; }
+    if (!(await cloudInit())) { CLOUD.pendingIntroLogin = null; toast('無法連線到登入服務，請稍後再試'); return; }
   }
   CLOUD.armed = false;
+  if (CLOUD.pendingIntroLogin) CLOUD.trialSaveRequested = { ...CLOUD.pendingIntroLogin, session: CLOUD.session };
+  CLOUD.pendingIntroLogin = null;
   const p = new firebase.auth.GoogleAuthProvider();
   try { await firebase.auth().signInWithPopup(p); }
   catch (e) {
     if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') await firebase.auth().signInWithRedirect(p);
-    else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') toast('登入失敗。如果在無痕模式，請改用一般分頁再試一次');
+    else { CLOUD.trialSaveRequested = null; CLOUD.pendingIntroLogin = null; if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') toast('登入失敗。如果在無痕模式，請改用一般分頁再試一次'); }
   }
 }
 async function cloudLogout() {
+  CLOUD.pendingIntroLogin = null; CLOUD.trialSaveRequested = null; CLOUD.saveTrialFor = null;
   const context = dataContext();
   if (CLOUD.pending) await cloudPush();
   if (!sameDataContext(context)) return;

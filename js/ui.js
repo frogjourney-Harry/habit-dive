@@ -3,7 +3,7 @@ const introTasksReady = () => getPlan(dayKey()).slice(0, 3).some(it => it.text.t
 function introTasks() {
   return `${tutorialProgress(2)}<h2>今天最重要的事</h2>
     <p class="mini">三格中填寫一格，就能領取小丑魚。</p>
-    <div class="onb-tasks">${getPlan(dayKey()).slice(0, 3).map((it, i) => `<label><span class="mini">第 ${i + 1} 件事</span><textarea class="ptext" rows="2" maxlength="200" data-intro-index="${i}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${i === 0 ? '例如：閱讀五頁書' : '也可以稍後再填'}">${esc(it.text)}</textarea></label>`).join('')}</div>
+    <div class="onb-tasks">${getPlan(dayKey()).slice(0, 3).map((it, i) => `<label><span class="mini">第 ${i + 1} 件事</span><textarea class="ptext" rows="1" maxlength="200" data-intro-index="${i}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${i === 0 ? '例如：閱讀五頁書' : '也可以稍後再填'}">${esc(it.text)}</textarea></label>`).join('')}</div>
     <button class="pri wide" data-act="meetfish" ${introTasksReady() ? '' : 'disabled'}>領取小丑魚</button>`;
 }
 function backupNudge() {
@@ -123,21 +123,33 @@ function tutorialResumeCard() {
   if (!S.introFeedPending && !S.introCompleteNotice) return '';
   return `<section class="px tutorial-resume">${tutorialProgress(3)}<b>${S.introCompleteNotice?'你已完成第一次餵食':'還差最後一步：試著餵魚'}</b><p class="mini">到大海完成這段導覽，再開始安排今天。</p><button data-act="seagoto">${S.introCompleteNotice?'查看導覽完成畫面':'繼續新手導覽'}</button></section>`;
 }
+function scrollToIntroTask() { document.querySelector('#six .intro-target')?.scrollIntoView({ block: 'center' }); }
 function tutorialSeaContents() {
+  if (UI.introCelebration) return '<b>小丑魚吃到飼料了！</b><p class="mini">牠正在慢慢長大，這就是你的第一步。</p>';
   if (S.introCompleteNotice) {
     if (FIREBASE_CONFIG && !CLOUD.user && !IN_APP) {
       cloudWarm();
       return `<b>新手導覽完成！</b><p>要把進度存到 Google 帳號嗎？</p><p class="mini">登入後可以換裝置接著玩；已有雲端紀錄的帳號會自動接續原進度。</p><button class="pri" data-act="introbackup">用 Google 儲存進度</button><button class="ghost" data-act="introfinish">先玩看看</button>`;
     }
-    return '<b>新手導覽完成！</b><p class="mini">你已撒下第一顆飼料，魚吃到飼料就會慢慢長大。</p><button class="pri" data-act="introfinish">完成導覽，回到今日</button>';
+    return '<b>新手導覽完成！</b><p class="mini">小丑魚已吃到第一顆飼料，會慢慢長大。</p><button class="pri" data-act="introfinish">完成導覽，回到今日</button>';
   }
-  return `${tutorialProgress(3)}<b>最後一步：餵食小丑魚</b><p class="mini">點一下水裡撒飼料，也可以按下方按鈕。每天有 10 顆免費飼料。</p><p class="mini">不用每天餵，牠們不會餓死，成長進度也不會倒退。餵食只是讓牠們長大。</p><button class="pri" data-act="feedkeyboard">試著撒一顆飼料</button>`;
+  return `${tutorialProgress(3)}<b>最後一步：餵食小丑魚</b><p class="mini">${UI.introFoodPending ? '飼料已撒下，等小丑魚游過來吃一口。' : '點一下水裡撒飼料，也可以按下方按鈕。每天有 10 顆免費飼料。'}</p><p class="mini">不用每天餵，牠們不會餓死，成長進度也不會倒退。餵食只是讓牠們長大。</p><button class="pri" data-act="feedkeyboard">試著撒一顆飼料</button>`;
 }
 function tutorialSeaCard() {
   return S.introFeedPending || S.introCompleteNotice ? `<section class="sea-guide" aria-live="polite">${tutorialSeaContents()}</section>` : '';
 }
-function markTutorialFed() {
-  if (!S.introFeedPending) return;
-  S.introFeedPending = false; S.introCompleteNotice = true; save();
+function markTutorialFed(petId) {
+  const pet = S.logs.find(l => l.k === 'welcome' && l.drop === 'clown');
+  if (!S.introFeedPending || petId !== pet?.id) return;
+  S.introFeedPending = false; S.introCompleteNotice = true;
+  UI.introFoodPending = false;
+  const celebration = UI.introCelebration = {}, context = dataContext();
   const guide = document.querySelector('.sea-guide'); if (guide) guide.innerHTML = tutorialSeaContents();
+  // 吃到飼料的實際結果由水族箱迴圈保存；先留一段時間看見成果。
+  setTimeout(() => {
+    if (UI.introCelebration !== celebration) return;
+    delete UI.introCelebration;
+    if (!sameDataContext(context) || !S.introCompleteNotice) return;
+    const current = document.querySelector('.sea-guide'); if (current) current.innerHTML = tutorialSeaContents();
+  }, 1200);
 }

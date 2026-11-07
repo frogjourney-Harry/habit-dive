@@ -139,6 +139,7 @@ document.addEventListener('click', async e => {
       if (UI.pday > 0) break;
       if (!it.text.trim()) { toast('先寫下這件事'); render(); break; }
       it.done = !it.done;
+      if (it.done && UI.pday === 0) S.introNextTask = false;
       if (it.done) { ac(); SFX.tap(); }
       reward(() => {}, UI.pday === 0);
       break;
@@ -238,8 +239,8 @@ document.addEventListener('click', async e => {
     case 'introbackup':
       if (!S.introCompleteNotice || !FIREBASE_CONFIG || CLOUD.user || IN_APP) break;
       S.introCompleteNotice = false; S.backupNudgeDismissed = true; save();
-      UI.tab = 'about'; render(); cloudLogin(); break;
-    case 'introfinish': S.backupNudgeDismissed = true; S.introCompleteNotice = false; save(); UI.tab = 'today'; render(); toast('新手導覽完成，現在可以開始安排今天了'); break;
+      UI.tab = 'about'; render(); cloudLogin(true); break;
+    case 'introfinish': S.backupNudgeDismissed = true; S.introCompleteNotice = false; S.introNextTask = getPlan(dayKey()).some(it => it.text.trim() && !it.done); save(); UI.tab = 'today'; render(); scrollToIntroTask(); break;
     case 'seagoto': UI.opened = false; UI.tab = 'tank'; UI.tankEdit = false; UI.tankView = ''; render(); nextChest(); break;
     case 'backuplater': S.backupNudgeDismissed = true; save(); render(); break;
     case 'backupinvite': UI.tab = 'about'; render(); document.getElementById('cloudBox')?.scrollIntoView(); break;
@@ -250,7 +251,9 @@ document.addEventListener('click', async e => {
     case 'autodismiss': S.autoSeen = dayKey(); UI.autoNotice = null; save(); render(); break;
     case 'feedkeyboard': {
       const cv = document.getElementById('tank'); if (!cv) break;
-      const r = cv.getBoundingClientRect(); cv.dispatchEvent(new MouseEvent('click', { clientX: r.left + r.width / 2, clientY: r.top + r.height * .4 })); break;
+      const r = cv.getBoundingClientRect(), fish = S.introFeedPending && TANK.fish?.find(f => f.c.id === 'clown');
+      const x = fish ? (fish.x + fish.w / 2) / TANK.W : .5, y = fish ? (fish.y + fish.h / 2) / TANK.H : .4;
+      cv.dispatchEvent(new MouseEvent('click', { clientX: r.left + r.width * x, clientY: r.top + r.height * y })); break;
     }
     case 'backupundo': {
       let stored; try { stored = JSON.parse(localStorage.getItem(KEY + '.before-import')); } catch (_) {}

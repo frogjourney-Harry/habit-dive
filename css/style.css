@@ -559,3 +559,6 @@ textarea.ptext::placeholder{color:var(--ink-subtle)}
 .onb-tasks{display:grid;gap:12px;margin:16px 0;text-align:left}
 .onb-tasks label{display:grid;gap:4px;min-width:0}
 .onb-tasks textarea{width:100%;min-width:0}
+
+.prow.intro-target .ptext{border-color:var(--primary)}
+.prow.intro-target .no{color:var(--primary);font-weight:600}
