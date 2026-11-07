@@ -140,7 +140,10 @@ function mkInst(frame, storeId, opts) {
     vis(el) {
       if (!el || !el.isConnected) return false;
       const r = el.getBoundingClientRect(); if (!r.width && !r.height) return false;
-      for (let e = el; e && e.nodeType === 1; e = e.parentElement) { const cs = win.getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden') return false; }
+      for (let e = el; e && e.nodeType === 1; e = e.parentElement) {
+        const cs = win.getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+        if (e.tagName === 'DETAILS' && !e.open && el !== e && !e.querySelector(':scope > summary')?.contains(el)) return false;
+      }
       return true;
     },
     el(t) {

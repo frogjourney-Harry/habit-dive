@@ -156,7 +156,7 @@ function layoutAudit(I, label) {
   // 內容被固定的分頁列蓋住：捲到最底，最後一個可點元素要在分頁列上方
   const nav = doc.getElementById('nav'); if (win.getComputedStyle(nav).position === 'fixed') {
     win.scrollTo(0, doc.documentElement.scrollHeight); const nt = nav.getBoundingClientRect().top;
-    const last = [...doc.querySelectorAll('main button, main a, main input, main select')].filter(e => I.vis(e)).pop();
+    const last = [...doc.querySelectorAll('main button, main a, main input, main select, main summary')].filter(e => I.vis(e)).pop();
     if (last && last.getBoundingClientRect().bottom > nt + 1) bad.push(`最底下的「${(last.innerText || last.dataset.act || '').slice(0, 10)}」被分頁列蓋住`);
     win.scrollTo(0, 0);
   }
@@ -175,7 +175,7 @@ test('無障礙：每個按鈕和輸入框都有名字（螢幕閱讀器念得�
   const I = await boot({ state: mkState({ logs: [W0, coinLog(500), ...drops(['clown'])] }), width: 375, height: 800 }); await I.dismiss();
   const unnamed = new Map();
   const nameOf = e => (e.getAttribute('aria-label') || e.title || (e.innerText || '').trim() || (e.tagName === 'INPUT' && e.type !== 'checkbox' && e.placeholder) || (e.labels && e.labels.length && e.labels[0].innerText.trim()) || (e.closest('label') && e.closest('label').innerText.trim()) || '').trim();
-  const scan = where => { for (const e of I.$$('button, input:not([type=file]), select, textarea, [role=button], a[href]')) { if (!I.vis(e)) continue; if (!nameOf(e)) unnamed.set(`${where}:${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}${e.dataset.act ? '[' + e.dataset.act + ']' : ''}${e.dataset.pf ? '[pf=' + e.dataset.pf + ']' : ''}`, 1); } };
+  const scan = where => { for (const e of I.$$('button, input:not([type=file]), select, textarea, summary, [role=button], a[href]')) { if (!I.vis(e)) continue; if (!nameOf(e)) unnamed.set(`${where}:${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}${e.dataset.act ? '[' + e.dataset.act + ']' : ''}${e.dataset.pf ? '[pf=' + e.dataset.pf + ']' : ''}`, 1); } };
   for (const t of TABS) { await I.tab(t); scan(t); }
   await I.tab('today'); await I.click('#habits .hab'); scan('sheet'); await I.dismiss(); await I.click(['#habits .hab', '運動']); scan('運動'); await I.dismiss();
   await I.click('#habits [data-act=habedit]'); scan('編輯習慣'); await I.click('[data-act=habdone]'); await I.click('[data-act=pomocustom]'); scan('番茄鐘'); await I.tab('shop'); await I.click('[data-act=shopedit]'); scan('編輯獎勵');
