@@ -770,7 +770,7 @@ function log(D) {
     <div class="streakbox"><div><small>目前連續</small><b>${curRun}</b><small>天</small></div>
       <div><small>最長連續</small><b>${best}</b><small>天</small></div><div><small>總共打卡</small><b>${allDays.length}</b><small>天</small></div></div></section>
   ${rewardHistory()}<section class="px">${sh('最近習慣紀錄', 'RECENT HABIT')}
-    ${rec.length ? rec.slice(0, 12).map(r => `<div class="entry"><span class="dim" style="flex:none">${r.d.slice(5).replace('-', '/')}</span><span class="sp">${esc(entryText(r))}</span></div>`).join('')
+    ${rec.length ? compactHistory(rec.slice(0, 12).map(r => `<div class="entry"><span class="dim" style="flex:none">${r.d.slice(5).replace('-', '/')}</span><span class="sp">${esc(entryText(r))}</span></div>`), 5)
       : '<div class="dim">點「今日」的習慣卡片打卡，就會記在這裡。</div>'}</section>
   <section class="px">${sh('累積', 'TOTALS')}${(tot => tot ? `<div class="stat">${tot}</div>` : '<div class="dim">完成任務後，累積的數字會出現在這裡。</div>')([
     ...H.map(h => daysOf(h.id) && `<div><small>${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`),

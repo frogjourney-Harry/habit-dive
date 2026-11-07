@@ -18,10 +18,16 @@ function autoNoticeCard() {
   const n = UI.autoNotice; if (!n) return '';
   return `<section class="px" role="status"><b>先前未領的獎勵已自動入帳</b><div>+${n.c} 金幣・+${n.xp} XP</div><button class="ghost" data-act="tab" data-v="log">查看來源</button><button class="ghost" data-act="autodismiss">知道了</button></section>`;
 }
+// 保留最近十二筆的查閱範圍，首頁只露出少量紀錄。
+function compactHistory(rows, count) {
+  return rows.slice(0, count).join('') + (rows.length > count
+    ? `<details class="more-detail"><summary>查看較早的 ${rows.length - count} 筆</summary>${rows.slice(count).join('')}</details>` : '');
+}
 function rewardHistory() {
   const names = { check:'完成事項',habit:'習慣打卡',plan:'寫好清單',top3:'完成三件加碼',period:'習慣達標',weekly:'運動達標',anyhab:'完成習慣',pomo:'專注完成',login:'每日登入',welcome:'新手禮物',sum:'每日合計' };
   const logs = S.logs.filter(l => l.c > 0 && names[l.k]).slice(-12).reverse();
-  return `<section class="px">${sh('獎勵紀錄', '')}<div class="mini">最近十二筆；午夜未領取的獎勵會自動入帳。</div>${logs.map(l=>`<div class="entry"><span class="sp">${esc(l.d)}・${names[l.k]}<small class="reward-state">${isPendingReward(l)?'待領取':l.auto?'已自動入帳':'已入帳'}</small></span><span class="coin">+${l.c}</span></div>`).join('') || '<div class="mini">完成第一件事後，這裡會留下獎勵紀錄。</div>'}</section>`;
+  const rows = logs.map(l=>`<div class="entry"><span class="sp">${esc(l.d)}・${names[l.k]}<small class="reward-state">${isPendingReward(l)?'待領取':l.auto?'已自動入帳':'已入帳'}</small></span><span class="coin">+${l.c}</span></div>`);
+  return `<section class="px">${sh('獎勵紀錄', '')}${compactHistory(rows, 3) || '<div class="mini">完成第一件事後，這裡會留下獎勵紀錄。</div>'}</section>`;
 }
 function restoreBackup(candidate) {
   const previous = S;
