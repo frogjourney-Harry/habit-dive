@@ -795,6 +795,9 @@ function about() {
     ${cloudSection()}
     <details class="more-detail manual-backup" id="backupSection" ${UI.backupError ? 'open' : ''}><summary>手動備份與還原</summary><div class="more-content">
       <p class="mini">需要另存一份紀錄或從檔案復原時再使用，平常不必手動操作。</p>
+      ${preLogin() ? `<p class="mini">登入前的本機紀錄（${summary(preLogin().s)}）已另存備份，還原會取代目前帳號的雲端進度。</p><div class="row"><button data-act="prerestore">還原登入前的紀錄</button><button class="ghost" data-act="predrop">刪除此備份</button></div>` : ''}
+      ${cloudChoiceBackup() ? '<button class="ghost" data-act="cloudbackuprestore">還原選擇前的雲端紀錄</button>' : ''}
+      ${syncBackup() ? '<button class="ghost" data-act="syncbackuprestore">還原同步前的本機紀錄</button>' : ''}
       <div class="row"><button data-act="export">下載備份</button><button data-act="import">從檔案還原</button></div>
       ${hasBackupUndo() ? '<button class="ghost" data-act="backupundo">復原上次還原</button>' : ''}
       ${UI.backupError ? `<div class="warn" role="alert">${esc(UI.backupError)}</div>` : ''}

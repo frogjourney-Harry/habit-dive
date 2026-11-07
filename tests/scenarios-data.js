@@ -1,5 +1,5 @@
 // 資料面：存檔、舊版資料遷移、備份匯入匯出、兩個分頁同時開、雲端同步、大量資料
-const loginAs = async (I, uid = 'u1') => { window.__cloudDb.nextUser = { uid }; await I.tab('about'); await I.click('.gbtn'); await flush(12); if (I.$('[data-act=cloudchoose][data-v=cloud]')) { await I.click('[data-act=cloudchoose][data-v=cloud]'); await flush(12); } };
+const loginAs = async (I, uid = 'u1') => { window.__cloudDb.nextUser = { uid }; await I.tab('about'); await I.click('.gbtn'); await flush(12); if (I.$('[data-act=cloudchoose][data-v=local]')) { await I.click('[data-act=cloudchoose][data-v=local]'); await flush(12); } };
 const hide = (I, hidden) => { Object.defineProperty(I.doc, 'visibilityState', { get: () => hidden ? 'hidden' : 'visible', configurable: true }); I.doc.dispatchEvent(new I.win.Event('visibilitychange')); return flush(12); };
 const resetCloud = () => { Object.assign(window.__cloudDb, { docs: {}, fail: false, log: [], listeners: {}, popupBlocked: false, redirected: false, deletedAccounts: [], nextUser: null }); };
 
@@ -128,7 +128,8 @@ test('雲端：已經有紀錄的裝置第一次登入，不能蓋掉雲端也�
   const B = await boot({ state: mkState({ logs: [W0, coinLog(5000)] }) }); await B.dismiss();
   await B.plan(['本機的', 'b', 'c']); await B.saveList(); await loginAs(B);
   ok(B.S.plans[D0][0].text === '雲端的', '兩邊都有紀錄：用雲端的'); ok(!B.$('#askov') || B.$('#askov').classList.contains('hidden'), '不能問使用者要用哪一份');
-  ok(B.has('登入前的紀錄') || B.has('另外'), '要告訴使用者原本的紀錄另存了一份');
+  await B.click('#backupSection > summary');
+  ok(B.has('已另存備份'), '手動備份中可找到登入前的紀錄');
   ok(window.__stores[B.storeId].has('habitdive.v1.prelogin'), '登入前的紀錄另存起來');
   await B.click('[data-act=prerestore]'); await B.click('#askyes'); await flush(8);
   ok(B.coins() >= 5000, '可以改回登入前的紀錄：' + B.coins()); B.check('還原登入前');
@@ -313,19 +314,26 @@ test('資安：備份顯示失敗不覆寫原資料', async () => {
   eq(JSON.stringify(I.stored()), stored, '顯示失敗不覆寫存檔');
   I.ev('render = window.__oldRender'); I.check('匯入回復'); I.destroy();
 });
-test('登入選擇：先試玩再登入，兩份紀錄皆保留，可選擇保留試玩', async () => {
+test('登入預設：雲端已有紀錄時直接載入，試玩只存為手動備份', async () => {
  resetCloud(); const A=await boot({state:mkState()}); await A.dismiss(); await A.plan(['雲端清單','二','三']); await A.saveList(); await loginAs(A);
  const B=await boot({state:mkState({logs:[W0,coinLog(500)]})}); await B.dismiss(); await B.plan(['本機試玩','乙','丙']);
  window.__cloudDb.nextUser={uid:'u1'}; await B.tab('about'); await B.click('.gbtn'); await flush(14);
- ok(B.$('[data-act=cloudchoose][data-v=local]'),'有保留試玩選項');
- ok(B.ev('!!CLOUD.choice'),'選擇前暫停同步');
- eq(B.S.plans[D0][0].text,'本機試玩','選擇前不覆寫本機');
- ok(window.__stores[B.storeId].has('habitdive.v1.prelogin') && window.__stores[B.storeId].has('habitdive.v1.cloud-before-choice'),'兩份都有備份');
- A.destroy(); const C = await B.reload({cloudUser:{uid:'u1'}}); await flush(14);
- ok(C.$('[data-act=cloudchoose][data-v=local]'), '重開後仍需選擇，不直接覆蓋');
- await C.click('[data-act=cloudchoose][data-v=local]'); await flush(14);
- eq(C.S.plans[D0][0].text,'本機試玩','明確選擇後保留試玩');
- eq(JSON.parse(window.__cloudDb.docs.u1.data).plans[D0][0].text,'本機試玩','同步選擇的紀錄'); C.check('保留試玩'); C.destroy();
+ ok(!B.ev('CLOUD.choice'),'不提供本機與雲端的並排選擇');
+ eq(B.S.plans[D0][0].text,'雲端清單','自動採用雲端');
+ ok(window.__stores[B.storeId].get('habitdive.v1.prelogin').includes('本機試玩'),'試玩已備份');
+ ok(!B.vis(B.$('[data-act=prerestore]')),'還原不顯示於主要同步操作');
+ await B.click('#backupSection > summary');ok(B.vis(B.$('[data-act=prerestore]')),'需展開手動備份才能還原');
+ A.destroy(); const C=await B.reload({cloudUser:{uid:'u1'}});await flush(14);
+ eq(C.S.plans[D0][0].text,'雲端清單','重開仍接續雲端');C.destroy();
+});
+
+test('新帳號：沒有雲端紀錄時才詢問是否儲存試玩', async () => {
+ resetCloud(); const I=await boot({state:mkState()});await I.dismiss();await I.plan(['保留試玩']);
+ window.__cloudDb.nextUser={uid:'new-account'};await I.tab('about');await I.click('.gbtn');await flush(14);
+ ok(I.ev('CLOUD.choice?.kind === "new"'),'新帳號才詢問儲存試玩');
+ ok(!window.__cloudDb.docs['new-account'],'選擇前不寫入雲端');
+ await I.click('[data-act=cloudchoose][data-v=local]');await flush(14);
+ eq(JSON.parse(window.__cloudDb.docs['new-account'].data).plans[D0][0].text,'保留試玩','確認後儲存試玩');I.destroy();
 });
 test('帳號隔離：A 登出後登入 B，不可保留或還原 A 的資料', async () => {
   resetCloud();
@@ -447,13 +455,13 @@ test('同步邊界：同一毫秒的不同版本也要接收新資料', async ()
   eq(I.S.plans[D0][0].text,'相同時間的新版本','不同版本不可因 mtime 相同而跳過'); I.destroy();
 });
 
-test('同步邊界：採用壞資料失敗後仍可重新選擇', async () => {
-  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
-  I.ev("CLOUD.choice={local:JSON.parse(JSON.stringify(S)),cloud:{...JSON.parse(JSON.stringify(S)),names:[]}};UI.tab='about';render()");
-  await I.click('[data-act=cloudchoose][data-v=cloud]'); await flush(8);
-  ok(I.ev('!!CLOUD.choice'),'驗證失敗不移除選擇入口');
-  await I.click('[data-act=cloudchoose][data-v=local]'); await flush(14);
-  ok(!I.ev('CLOUD.choice') && !I.ev('CLOUD.error'),'可以改選有效的本機紀錄'); I.destroy();
+test('同步邊界：試玩驗證失敗仍可重新選擇', async () => {
+ resetCloud(); const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+ I.ev("CLOUD.choice={kind:'new',local:{...JSON.parse(JSON.stringify(S)),names:[]}};UI.tab='about';render()");
+ await I.click('[data-act=cloudchoose][data-v=local]');await flush(8);
+ ok(I.ev('!!CLOUD.choice'),'驗證失敗保留入口');
+ I.ev('CLOUD.choice.local.names={}');await I.click('[data-act=cloudchoose][data-v=local]');await flush(14);
+ ok(!I.ev('CLOUD.choice') && !I.ev('CLOUD.error'),'有效資料可以重新儲存');I.destroy();
 });
 
 test('刪除邊界：重新驗證失敗不得先刪雲端資料', async () => {
@@ -492,7 +500,7 @@ test('刪除邊界：只刪掉資料但帳號刪除失敗時不自動補上傳',
   ok(!J.ev('CLOUD.user'),'可重試並完成刪除');J.destroy();
 });
 
-test('登入重試：首次讀取失敗不能略過試玩與雲端的選擇', async () => {
+test('登入重試：讀取失敗後仍以既有雲端紀錄為準', async () => {
   resetCloud();const I=await boot({state:mkState()});await I.dismiss();await I.plan(['未登入的試玩']);
   const remote=JSON.parse(JSON.stringify(I.S)); remote.logs=[W0,coinLog(4321)]; remote.plans={}; remote.mtime=1;
   window.__cloudDb.docs.u1={data:JSON.stringify(remote),mtime:1,wid:'existing'};
@@ -502,7 +510,26 @@ test('登入重試：首次讀取失敗不能略過試玩與雲端的選擇', as
   await I.ev('cloudPush()');
   eq(JSON.parse(window.__cloudDb.docs.u1.data).logs.length,remote.logs.length,'重試前不能直接上傳覆蓋雲端');
   await I.ev('cloudPull(false)');await flush(8);
-  ok(I.ev('!!CLOUD.choice'),'恢復連線後仍要明確選擇');
-  eq(I.S.plans[D0][0].text,'未登入的試玩','選擇前保留試玩清單');
+  ok(!I.ev('CLOUD.choice'),'恢復連線後不提供覆蓋雲端的選擇');
+  ok(!JSON.stringify(I.S.plans).includes('未登入的試玩'),'採用既有雲端清單');
+  ok(I.win.localStorage.getItem('habitdive.v1.prelogin').includes('未登入的試玩'),'試玩仍保留在手動備份');
   I.destroy();
+});
+
+test('新帳號：從頭開始仍保留試玩副本', async () => {
+ resetCloud();const I=await boot({state:mkState()});await I.dismiss();await I.plan(['原本的試玩']);
+ window.__cloudDb.nextUser={uid:'fresh'};await I.tab('about');await I.click('.gbtn');await flush(14);
+ await I.click('[data-act=cloudchoose][data-v=fresh]');await flush(14);
+ ok(!JSON.stringify(I.S.plans).includes('原本的試玩'),'新存檔不含試玩清單');
+ ok(I.win.localStorage.getItem('habitdive.v1.prelogin').includes('原本的試玩'),'試玩仍另存備份');I.destroy();
+});
+
+test('新帳號：確認前另一台建立存檔時仍優先雲端', async () => {
+ resetCloud();const I=await boot({state:mkState()});await I.dismiss();await I.plan(['本機試玩']);
+ window.__cloudDb.nextUser={uid:'race'};await I.tab('about');await I.click('.gbtn');await flush(14);
+ const remote=JSON.parse(JSON.stringify(I.S));delete remote.cloudChoicePending;remote.plans[D0][0].text='另一台的進度';
+ window.__cloudDb.docs.race={data:JSON.stringify(remote),mtime:remote.mtime,wid:'new-remote'};
+ await I.click('[data-act=cloudchoose][data-v=local]');await flush(14);
+ eq(I.S.plans[D0][0].text,'另一台的進度','確認期間新增的雲端紀錄不被覆蓋');
+ eq(JSON.parse(window.__cloudDb.docs.race.data).plans[D0][0].text,'另一台的進度','雲端維持原進度');I.destroy();
 });

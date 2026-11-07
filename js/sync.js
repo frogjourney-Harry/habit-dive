@@ -120,7 +120,7 @@ function adopt(cloud, keepTimer = false) {
 // 這台裝置登入前的紀錄：登入時一律改用雲端的，原本的另存在這裡，需要時可以還原
 const PRE_KEY = KEY + '.prelogin';
 function preLogin() { if (!sameDataContext(dataContext())) return null; try { return JSON.parse(localStorage.getItem(PRE_KEY)); } catch (e) { return null; } }
-// 拉雲端：first＝首次連接此帳號；只有未綁定的試玩資料可選擇帶入。
+// 登入以雲端紀錄為準；只有帳號沒有雲端存檔時才詢問是否儲存試玩。
 async function cloudPull(first) {
   if (CLOUD.suspended || !cloudAccountActive() || !CLOUD.user || cloudDeletionPending() || CLOUD.choice) return;
   first = first || !!S.cloudChoicePending;
@@ -129,20 +129,24 @@ async function cloudPull(first) {
   try {
     const snap = await userDoc().get();
     if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return;
-    if (!snap.exists) { delete S.cloudChoicePending; save(false); await cloudPush(); return; }
+    if (!snap.exists) {
+      if (first && hasProgress(S)) {
+        localStorage.setItem(PRE_KEY, JSON.stringify({ t: Date.now(), s: S }));
+        S.cloudChoicePending = true; save(false);
+        CLOUD.choice = { kind: 'new', local: JSON.parse(JSON.stringify(S)) };
+        UI.tab = 'about'; render(); return;
+      }
+      delete S.cloudChoicePending; save(false); await cloudPush(); return;
+    }
     const cloud = JSON.parse(snap.data().data), cm = cloud.mtime || 0, lm = S.mtime || 0;
     const previousBase = CLOUD.base;
     CLOUD.base = verOf(snap.data());   // 目前知道的雲端版本；上傳時用來判斷雲端有沒有被別台改過
-    if (cm === lm && !first) { if (previousBase !== CLOUD.base) adopt(cloud); CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); return; }
-    if (!hasProgress(S)) { adopt(cloud, first); if (first) toast('已從雲端載入你的紀錄'); }
-    else if (!hasProgress(cloud)) { delete S.cloudChoicePending; save(false); await cloudPush(); if (CLOUD.error) return; }
-    else if (first) {
-      // 先保留兩份，再讓使用者選擇；選擇前不啟動任何上傳或採用快照。
-      localStorage.setItem(PRE_KEY, JSON.stringify({ t: Date.now(), s: S }));
-      localStorage.setItem(KEY + '.cloud-before-choice', JSON.stringify({ t: Date.now(), s: cloud }));
-      S.cloudChoicePending = true; save(false); CLOUD.choice = { cloud, local: JSON.parse(JSON.stringify(S)) };
-      UI.tab = 'about'; render(); return;
+    if (first) {
+      if (hasProgress(S)) localStorage.setItem(PRE_KEY, JSON.stringify({ t: Date.now(), s: S }));
+      adopt(cloud); toast('已載入你的雲端紀錄');
     }
+    else if (cm === lm) { if (previousBase !== CLOUD.base) adopt(cloud); CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); return; }
+    else if (!hasProgress(S)) adopt(cloud);
     else if (cm > lm) adopt(cloud);
     else { await cloudPush(); if (CLOUD.error) return; }
     if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return;
@@ -150,19 +154,16 @@ async function cloudPull(first) {
   } catch (e) { if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return; CLOUD.error = '同步失敗，稍後會再試'; renderCloud(); }
 }
 async function chooseCloud(source) {
-  const choice = CLOUD.choice, context = dataContext(); if (!choice || !CLOUD.user) return;
+  const choice = CLOUD.choice, context = dataContext();
+  if (!choice || choice.kind !== 'new' || !CLOUD.user || !['local', 'fresh'].includes(source)) return;
   try {
-    // 先驗證資料，再移除選擇入口；失敗時仍可重新選擇。
-    const candidate = prepareBackup(source === 'local' ? choice.local : choice.cloud);
+    const candidate = source === 'local' ? prepareBackup(choice.local) : migrate({ ...blank(), introPending: true });
     delete candidate.cloudChoicePending;
-    if (source === 'cloud') adopt(candidate, true);
     CLOUD.choice = null; clearTimeout(CLOUD.timer); CLOUD.pending = false;
-    if (source === 'local') {
-      S = candidate; S.cloudUid = context.uid; S.accountOwner = context.uid; save(false); await cloudPush();
-    } else { delete S.cloudChoicePending; save(false); }
+    S = candidate; S.cloudUid = context.uid; S.accountOwner = context.uid; save(false); await cloudPush();
     if (!sameDataContext(context)) return;
     render(); catchUp();
-  } catch (_) { if (sameDataContext(context)) { CLOUD.error = '無法採用這份紀錄，請重新選擇或下載備份'; render(); } }
+  } catch (_) { if (sameDataContext(context)) { CLOUD.error = '無法儲存這份紀錄，請重新選擇或下載備份'; render(); } }
 }
 function cloudChoiceBackup() { if (!sameDataContext(dataContext())) return null; try { return JSON.parse(localStorage.getItem(KEY + '.cloud-before-choice')); } catch (_) { return null; } }
 function syncBackup() { if (!sameDataContext(dataContext())) return null; try { return JSON.parse(localStorage.getItem(KEY + '.sync-backup')); } catch (_) { return null; } }
@@ -190,7 +191,7 @@ async function pushCloudNow() {
     const newer = await firebase.firestore().runTransaction(async tx => {
       const snap = await tx.get(ref);
       if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return null;
-      if (snap.exists && base != null && verOf(snap.data()) !== base) return snap.data();
+      if (snap.exists && (base == null || verOf(snap.data()) !== base)) return snap.data();
       tx.set(ref, { data, mtime, wid, v: version, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       return null;
     });
@@ -293,11 +294,9 @@ function cloudSection() {
   if (!FIREBASE_CONFIG) return '<div id="cloudBox"><p class="mini">紀錄會自動儲存在此瀏覽器，清除瀏覽資料可能遺失紀錄。</p></div>';
   let body;
   cloudWarm();
-  if (CLOUD.choice) body = `<p>這台裝置與雲端各有一份紀錄，請選擇要接續哪一份。兩份都已另存備份。</p><p class="mini">雲端：${summary(CLOUD.choice.cloud)}<br>此裝置：${summary(CLOUD.choice.local)}</p><button data-act="cloudchoose" data-v="cloud">接續雲端紀錄</button><button data-act="cloudchoose" data-v="local">保留這次試玩</button>`; else if (CLOUD.user) body = `<div class="mini">已登入 ${esc(CLOUD.user.email || '')}</div>
+  if (CLOUD.choice) body = `<p>這個帳號還沒有雲端紀錄，要儲存這次試玩進度嗎？</p><p class="mini">${summary(CLOUD.choice.local)}</p><button class="pri" data-act="cloudchoose" data-v="local">儲存試玩進度</button><button data-act="cloudchoose" data-v="fresh">從頭開始</button>`; else if (CLOUD.user) body = `<div class="mini">已登入 ${esc(CLOUD.user.email || '')}</div>
       <div class="mini" id="cloudStatus">${cloudStatusText()}</div>
-      ${preLogin() ? `<div class="mini" style="margin-top:8px">這台裝置登入前的紀錄（${summary(preLogin().s)}）另外存著。</div>
-      <div class="row"><button data-act="prerestore">改用登入前的紀錄</button><button class="ghost" data-act="predrop">不需要，刪掉</button></div>` : ''}
-      ${cloudChoiceBackup() ? '<button class="ghost" data-act="cloudbackuprestore">還原選擇前的雲端紀錄</button>' : ''}${syncBackup() ? '<div class="mini">同步前的本機紀錄已保留。</div><button class="ghost" data-act="syncbackuprestore">還原同步前的本機紀錄</button>' : ''}<div class="row" style="margin-top:6px"><button data-act="logout">登出</button><button class="ghost" data-act="clouddel">刪除雲端資料</button></div>`;
+      <div class="row" style="margin-top:6px"><button data-act="logout">登出</button><button class="ghost" data-act="clouddel">刪除雲端資料</button></div>`;
   else if (S.cloudUid && !CLOUD.ready) body = '<div class="mini">連線中…</div>';
   else if (IN_APP) body = '<div class="mini">在 App 內建瀏覽器裡無法用 Google 登入。請用 Chrome 或 Safari 開啟網站後登入，紀錄就能在各裝置同步。</div>';
   else body = `<div class="mini">登入後，換手機、換瀏覽器都能接續紀錄。不登入也能照常使用。</div>

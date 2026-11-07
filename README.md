@@ -116,6 +116,8 @@ python -m http.server 8000
 
 雲端同步使用 Firebase Authentication（Google 登入）與 Cloud Firestore。只有在使用者選擇登入時才會載入 Firebase 相關程式。
 
+登入時若帳號已有雲端紀錄，會直接載入；本機試玩另存於「手動備份與還原」。帳號沒有雲端紀錄時，才詢問是否儲存試玩進度。
+
 每位使用者的資料存放於 `users/{uid}` 單一文件中，`firestore.rules` 限制使用者只能讀寫自己的文件。
 
 若要部署到自己的 Firebase 專案：
