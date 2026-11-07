@@ -291,6 +291,7 @@ async function feedTutorialClown(I, count) {
     await I.click(button);
     for (let i=0;i<80 && (I.S.fed?.[pet.id] || 0)<=before;i++) await new Promise(resolve=>setTimeout(resolve,20));
     ok((I.S.fed?.[pet.id] || 0)>before,'飼料實際被小丑魚吃到');
+    if (I.S.introFeedPending) eq(I.$('#introFeedProgress').textContent,`已吃到 ${I.S.fed[pet.id]}／10 顆`,'進度隨實際吃到更新');
   }
 }
 
@@ -426,11 +427,13 @@ test('導覽備份邀請：已登入與 App 內建瀏覽器可直接完成', asy
 
 test('導覽餵食：提示保留到十顆長大，重開後接續且不提前要求登入', async () => {
  resetCloud();const I=await boot({state:mkState({onb:true,introFeedPending:true})});await I.dismiss();await I.tab('tank');
+ eq(I.$('#introFeedProgress').textContent,'已吃到 0／10 顆','初始顯示零顆');
  await feedTutorialClown(I,9);
  ok(I.S.introFeedPending && !I.S.introCompleteNotice,'九顆仍在養成階段');
  ok(I.vis(I.$('.seacoach')) && !I.$('.sea-guide'),'撒超過三顆後仍保留氣泡，沒有大型卡片');
  const J=await I.reload();await J.dismiss();await J.tab('tank');
  eq(J.S.fed.w0,9,'重開保留已吃的九顆');
+ eq(J.$('#introFeedProgress').textContent,'已吃到 9／10 顆','重開後顯示保存的進度');
  ok(J.vis(J.$('.seacoach')) && !J.$('[data-act=introbackup]'),'重開後提示仍在，不提前要求登入');
  await feedTutorialClown(J,1);
  ok(J.S.introCompleteNotice && J.S.fed.w0===10,'第十顆實際吃到才完成');

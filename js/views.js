@@ -427,6 +427,17 @@ const needFeedTip = () => {
   }
   return (S.tossed || 0) < FEED_TIP_UNTIL;
 };
+function introFeedProgressText() {
+  const pet = S.logs.find(l => l.k === 'welcome' && l.drop === 'clown');
+  return `已吃到 ${Math.min(GROW[1], pet ? fedOf(pet.id) : 0)}／${GROW[1]} 顆`;
+}
+function feedTipHTML() {
+  return S.introFeedPending ? `點水裡撒飼料，讓小丑魚長大<br><b id="introFeedProgress">${introFeedProgressText()}</b>` : FEED_TIP;
+}
+function updateFeedTipProgress() {
+  const progress = document.getElementById('introFeedProgress'), text = introFeedProgressText();
+  if (progress && progress.textContent !== text) progress.textContent = text;
+}
 function useFeed() {
   if (freeLeft() > 0) { if (!S.feedDay || S.feedDay.d !== dayKey()) S.feedDay = { d: dayKey(), used: 0 }; S.feedDay.used++; }
   else if ((S.feed || 0) > 0) S.feed--;
@@ -495,7 +506,7 @@ function tank(D) {
     <div class="seahud seabar"><div id="feedInfo">${tankFeedHTML()}</div><span class="sp"></span>
       <button class="sr-only" data-act="feedkeyboard">撒一顆飼料</button><button class="feedbuy" data-act="buyfeed" title="用 ${FEED.price} 金幣買 ${FEED.pack} 顆飼料" aria-label="${FEED.pack} 顆飼料，${FEED.price} 金幣">+${FEED.pack}<span class="price">${FEED.price}${COIN}</span></button>
       <button data-act="tankview" data-v="dex" title="已解鎖 ${Object.keys(D.col).length} 種生物">圖鑑<i class="cnt">${Object.keys(D.col).length}</i></button><button data-act="tankedit">設定</button></div>
-    ${tutorialSeaCard()}${!n ? '<div class="seaempty"><p>這片海還沒有展示生物</p><button data-act="tab" data-v="shop">前往商店</button><button data-act="tankedit">管理生物</button></div>' : ''}${needFeedTip() ? `<div class="seacoach" aria-live="polite"><i class="ring"></i><span>${FEED_TIP}</span></div>` : ''}</div>`;
+    ${tutorialSeaCard()}${!n ? '<div class="seaempty"><p>這片海還沒有展示生物</p><button data-act="tab" data-v="shop">前往商店</button><button data-act="tankedit">管理生物</button></div>' : ''}${needFeedTip() ? `<div class="seacoach" aria-live="polite"><i class="ring"></i><span>${feedTipHTML()}</span></div>` : ''}</div>`;
 }
 // 大海畫面時：頁尾藏起來、整頁不捲動，海填滿整個視窗
 const seaOn = () => UI.tab === 'tank' && !UI.tankEdit && UI.tankView !== 'dex';
@@ -612,6 +623,7 @@ function tankStart() {
           TANK.food.splice(TANK.food.indexOf(food), 1); SFX.eat();
           const before = stageOf(fedOf(f.key));
           S.fed = S.fed || {}; S.fed[f.key] = fedOf(f.key) + 1;
+          updateFeedTipProgress();
           markTutorialFed(f.key);
           const after = stageOf(fedOf(f.key));
           if (after > before) {
