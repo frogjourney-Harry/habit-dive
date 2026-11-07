@@ -1,6 +1,7 @@
 // 設定：番茄鐘、獎勵數值、內建習慣、稀有度、等級稱號。想調數值改這裡。
 /* ========= 可自行調整的設定 ========= */
 const CONFIG = {
+  feedbackUrl: 'https://forms.gle/RwXYcmxtstLFPbf76',            // 填入公開的 HTTPS 回報表單連結後，更多頁會顯示回報入口
   pomodoroMin: 25,            // 一段專注的長度；使用者選的是「整段工作階段」的總長度（5–120 分）
   pomoRewardMin: 25,          // 專注滿這麼多分鐘才有獎勵
   breakMin: 5, longBreakMin: 15, longBreakEvery: 4,   // 工作階段中：每段專注後短休息，每 4 段長休息

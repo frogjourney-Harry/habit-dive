@@ -23,8 +23,9 @@ function cloudInit() {
       // 這台裝置第一次連到這個帳號（或換了帳號）才需要問要留哪一份；之前登入過的就照「誰比較新」自動同步
       if (CLOUD.unsub) { CLOUD.unsub(); CLOUD.unsub = null; }
       CLOUD.base = null;
-      if (u) { const first = S.cloudUid !== u.uid; S.cloudUid = u.uid; save(false); await cloudPull(first); cloudListen(); }
+      if (u) { const first = S.cloudUid !== u.uid || !!S.cloudChoicePending; S.cloudUid = u.uid; save(false); await cloudPull(first); cloudListen(); }
       else if (S.cloudUid) { delete S.cloudUid; save(false); }
+      if (u && !S.onb) { UI.onbReturning = false; UI.onbStep = 1; }
       render();
     });
     return true;
@@ -41,7 +42,9 @@ function deriveOf(s) { const keep = S; S = s; try { return derive(); } finally {
 
 function adopt(cloud, keepTimer = false) {
   const timer = S.timer, old = S;
-  S = migrate(Object.assign(blank(), cloud)); carryEditDrafts(old);
+  const candidate = prepareBackup(cloud);
+  if (hasProgress(old) && JSON.stringify(old) !== JSON.stringify(candidate)) localStorage.setItem(KEY + '.sync-backup', JSON.stringify({ t: Date.now(), s: old }));
+  S = candidate; carryEditDrafts(old);
   if (keepTimer && !S.timer && timer) S.timer = timer;
   S.cloudUid = CLOUD.user.uid;
   save(false); render();
@@ -51,26 +54,39 @@ const PRE_KEY = KEY + '.prelogin';
 function preLogin() { try { return JSON.parse(localStorage.getItem(PRE_KEY)); } catch (e) { return null; } }
 // 拉雲端：first＝這台裝置剛登入。兩邊都有紀錄時直接用雲端的（不讓人誤選而蓋掉雲端），這台的另存一份
 async function cloudPull(first) {
-  if (!CLOUD.user) return;
+  if (!CLOUD.user || CLOUD.choice) return;
   try {
     const snap = await userDoc().get();
     if (!snap.exists) { await cloudPush(); return; }
     const cloud = JSON.parse(snap.data().data), cm = cloud.mtime || 0, lm = S.mtime || 0;
     CLOUD.base = verOf(snap.data());   // 目前知道的雲端版本；上傳時用來判斷雲端有沒有被別台改過
-    if (cm === lm) { CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); return; }
+    if (cm === lm && !first) { CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); return; }
     if (!hasProgress(S)) { adopt(cloud, first); if (first) toast('已從雲端載入你的紀錄'); }
-    else if (!hasProgress(cloud)) await cloudPush();
+    else if (!hasProgress(cloud)) { await cloudPush(); if (CLOUD.error) return; }
     else if (first) {
-      try { localStorage.setItem(PRE_KEY, JSON.stringify({ t: Date.now(), s: S })); } catch (e) {}
-      adopt(cloud, true); toast('已載入雲端的紀錄，這台裝置原本的紀錄另外存了一份');
+      // 先保留兩份，再讓使用者選擇；選擇前不啟動任何上傳或採用快照。
+      localStorage.setItem(PRE_KEY, JSON.stringify({ t: Date.now(), s: S }));
+      localStorage.setItem(KEY + '.cloud-before-choice', JSON.stringify({ t: Date.now(), s: cloud }));
+      S.cloudChoicePending = true; save(false); CLOUD.choice = { cloud, local: JSON.parse(JSON.stringify(S)) };
+      UI.tab = 'about'; render(); return;
     }
     else if (cm > lm) adopt(cloud);
-    else await cloudPush();
+    else { await cloudPush(); if (CLOUD.error) return; }
     CLOUD.last = Date.now(); CLOUD.error = ''; renderCloud(); catchUp();
   } catch (e) { CLOUD.error = '同步失敗，稍後會再試'; renderCloud(); }
 }
+async function chooseCloud(source) {
+  const choice = CLOUD.choice; if (!choice) return;
+  CLOUD.choice = null; clearTimeout(CLOUD.timer); CLOUD.pending = false;
+  if (source === 'local') {
+    S = prepareBackup(choice.local); delete S.cloudChoicePending; S.cloudUid = CLOUD.user.uid; save(false); await cloudPush();
+  } else adopt(choice.cloud, true);
+  CLOUD.last = Date.now(); render(); catchUp();
+}
+function cloudChoiceBackup() { try { return JSON.parse(localStorage.getItem(KEY + '.cloud-before-choice')); } catch (_) { return null; } }
+function syncBackup() { try { return JSON.parse(localStorage.getItem(KEY + '.sync-backup')); } catch (_) { return null; } }
 async function cloudPush() {
-  if (!CLOUD.user) return;
+  if (!CLOUD.user || CLOUD.choice) return;
   clearTimeout(CLOUD.timer); CLOUD.pending = false;
   const data = JSON.stringify(S);
   // 文件上限是 1 MiB（以位元組算）；中文一個字 3 位元組，所以不能用字元數
@@ -95,7 +111,7 @@ async function cloudPush() {
 // save() 之後呼叫：幾秒內的變動合併成一次上傳，省寫入次數。
 // 連續操作時不能一直往後延（以前每存一次就重新等 3 秒，一直在用就一直沒上傳）：從第一個還沒上傳的變動算起，最多等 8 秒
 function cloudSchedule() {
-  if (!CLOUD.user) return;
+  if (!CLOUD.user || CLOUD.choice) return;
   const now = Date.now();
   if (!CLOUD.pending) { CLOUD.pending = true; CLOUD.since = now; }
   clearTimeout(CLOUD.timer);
@@ -105,7 +121,7 @@ function cloudSchedule() {
 function cloudListen() {
   if (!CLOUD.user || CLOUD.unsub) return;
   CLOUD.unsub = userDoc().onSnapshot(snap => {
-    if (!snap.exists || (snap.metadata && snap.metadata.hasPendingWrites)) return;
+    if (CLOUD.choice || !snap.exists || (snap.metadata && snap.metadata.hasPendingWrites)) return;
     const d = snap.data(), ver = verOf(d);
     // 已經看過的版本、這台自己剛寫上去的、或這台還有沒上傳的變動（上傳時會處理衝突）：都不換
     if (ver === CLOUD.base || (d.wid && d.wid === CLOUD.writing) || CLOUD.pending) return;
@@ -165,19 +181,22 @@ function cloudSection() {
   if (!FIREBASE_CONFIG) return '';
   let body;
   cloudWarm();
-  if (CLOUD.user) body = `<div class="mini">已登入 ${esc(CLOUD.user.email || '')}</div>
+  if (CLOUD.choice) body = `<p>這台裝置與雲端各有一份紀錄，請選擇要接續哪一份。兩份都已另存備份。</p><p class="mini">雲端：${summary(CLOUD.choice.cloud)}<br>此裝置：${summary(CLOUD.choice.local)}</p><button data-act="cloudchoose" data-v="cloud">接續雲端紀錄</button><button data-act="cloudchoose" data-v="local">保留這次試玩</button>`; else if (CLOUD.user) body = `<div class="mini">已登入 ${esc(CLOUD.user.email || '')}</div>
       <div class="mini" id="cloudStatus">${cloudStatusText()}</div>
       ${preLogin() ? `<div class="mini" style="margin-top:8px">這台裝置登入前的紀錄（${summary(preLogin().s)}）另外存著。</div>
       <div class="row"><button data-act="prerestore">改用登入前的紀錄</button><button class="ghost" data-act="predrop">不需要，刪掉</button></div>` : ''}
-      <div class="row" style="margin-top:6px"><button data-act="logout">登出</button><button class="ghost" data-act="clouddel">刪除雲端資料</button></div>`;
+      ${cloudChoiceBackup() ? '<button class="ghost" data-act="cloudbackuprestore">還原選擇前的雲端紀錄</button>' : ''}${syncBackup() ? '<div class="mini">同步前的本機紀錄已保留。</div><button class="ghost" data-act="syncbackuprestore">還原同步前的本機紀錄</button>' : ''}<div class="row" style="margin-top:6px"><button data-act="logout">登出</button><button class="ghost" data-act="clouddel">刪除雲端資料</button></div>`;
   else if (S.cloudUid && !CLOUD.ready) body = '<div class="mini">連線中…</div>';
   else if (IN_APP) body = '<div class="mini">在 App 內建瀏覽器裡無法用 Google 登入。請用 Chrome 或 Safari 開啟網站後登入，紀錄就能在各裝置同步。</div>';
   else body = `<div class="mini">登入後，換手機、換瀏覽器都能接續紀錄。不登入也能照常使用。</div>
       <button class="gbtn" data-act="login" ${CLOUD.busy ? 'disabled' : ''}>${GOOGLE_G}${CLOUD.busy ? '準備中…' : CLOUD.armed ? '再按一次，選擇 Google 帳戶' : '用 Google 帳戶登入'}</button>`;
-  return `<section class="px" id="cloudBox">${sh('雲端同步', 'CLOUD')}${body}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div>` : ''}</section>`;
+  return `<section class="px" id="cloudBox">${sh('雲端同步', 'CLOUD')}${body}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div><button data-act="cloudretry">重試同步</button>` : ''}</section>`;
 }
 function cloudStatusText() {
-  if (CLOUD.pending) return '同步中…';
+  if (!STORAGE_OK) return '此裝置無法儲存，請立即下載備份';
+  if (CLOUD.error) return '已儲存在此裝置，尚未同步到雲端';
+  if (CLOUD.choice) return '請選擇要接續的紀錄';
+  if (CLOUD.pending) return '已儲存在此裝置，等待同步…';
   return CLOUD.last ? `已同步・${new Date(CLOUD.last).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}` : '同步中…';
 }
 // 只重畫雲端區塊（狀態、錯誤訊息），不動整個頁面
@@ -187,7 +206,7 @@ function renderCloud() { const el = document.getElementById('cloudBox'); if (el)
 setInterval(() => { if (CLOUD.user && S.timer && document.visibilityState === 'visible') cloudPull(false); }, 30e3);
 // 切到別的 App 前先把還沒上傳的存上去；切回來時看看別的裝置有沒有更新
 document.addEventListener('visibilitychange', () => {
-  if (!CLOUD.user) return;
+  if (!CLOUD.user || CLOUD.choice) return;
   if (document.visibilityState === 'hidden' && CLOUD.pending) cloudPush();
   if (document.visibilityState === 'visible') cloudPull(false);
 });

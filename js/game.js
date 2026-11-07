@@ -90,7 +90,34 @@ function claim(logs) {
 }
 // 今天的獎勵（三件事、每個習慣的打卡、週期達標）跟著條件走：條件不再成立時把獎勵收進 S.held，
 // 條件恢復時原封不動還回來（不重抽，避免用取消再打卡刷稀有生物）
+// 未領的名額跟著當前完成項目；已領紀錄保留，取消或刪除不能重複拿。
+function reconcileChecks(allowGrant) {
+  const d = dayKey(), P = getPlan(d), R = CONFIG.rewardRows;
+  const logs = S.logs.filter(l => l.k === 'check' && l.d === d);
+  const paid = logs.filter(l => !isPendingReward(l)), paidIds = new Set(paid.map(l => l.id));
+  const pending = logs.filter(l => isPendingReward(l));
+  const linked = new Set(P.map(x => x.lid).filter(Boolean));
+  for (const it of P) if (it.rw && !it.lid) {
+    const l = logs.find(x => !linked.has(x.id));
+    if (l) { it.lid = l.id; linked.add(l.id); }
+  }
+  for (const it of P) {
+    const l = pending.find(x => x.id === it.lid);
+    if (l) it.held = l;
+    it.rw = paidIds.has(it.lid);
+  }
+  S.logs = S.logs.filter(l => !(l.k === 'check' && l.d === d && isPendingReward(l)));
+  const eligible = P.filter(x => x.text.trim() && x.done && !paidIds.has(x.lid));
+  eligible.sort((a, b) => Number(pending.some(l => l.id === b.lid)) - Number(pending.some(l => l.id === a.lid)));
+  for (const it of eligible.slice(0, Math.max(0, R - paid.length))) {
+    let log = it.held;
+    if (log && !paidIds.has(log.id)) { S.logs.push(log); delete it.held; }
+    else if (allowGrant) log = grant('check', catOf(it.cat).n, { title: `✔ ${it.text}`, xp: CONFIG.xp.check });
+    if (log) { it.rw = true; it.lid = log.id; }
+  }
+}
 function reconcile(allowGrant) {
+  reconcileChecks(allowGrant);
   const d = dayKey(), P = S.plans[d] || [], R = CONFIG.rewardRows;
   S.held = S.held || {};
   // 任意三件有內容的事情完成就算，不受排序影響
@@ -120,13 +147,13 @@ function reconcile(allowGrant) {
 }
 // 打開網頁（或雲端同步完）時補檢查：條件早就成立、但還沒發的獎勵（例如新任務上線前就打過卡）
 function catchUp() {
-  const n = S.logs.length, d = dayKey();
+  const beforeState = JSON.stringify(S), n = S.logs.length, d = dayKey(), auto = settlePastRewards();
   // 昨天已填好的今天清單，即使忘記按「寫好了」，也補上獎勵；同一份清單只發一次。
   if (filled(S.plans[d] || []).length >= CONFIG.rewardRows && !derive().claimed.has('plan:' + d))
     grant('plan', null, { key: 'plan:' + d, title: '今天的清單寫好了！' });
   reconcile(true);
   const lv = autoLeave();   // 昨天（上一期）漏掉的：自動用掉假或保護卡
-  if (S.logs.length !== n || lv) { save(); render(); if (S.logs.length !== n) showGain(); }
+  if (JSON.stringify(S) !== beforeState || lv || auto) { save(); render(); if (S.logs.length !== n) showGain(); }
 }
 // 做完 fn 之後檢查獎勵與升級，再存檔、顯示獎勵。補登昨天時 allowGrant=false：只還原、不發新獎勵
 function reward(fn, allowGrant = true) {
@@ -229,7 +256,7 @@ function openChest() {
   if (it.feed) {
     document.getElementById('modal').innerHTML = `<div class="feedpile pop">${'<i></i>'.repeat(it.feed)}</div>
       <h2>飼料 ${it.feed} 顆</h2><div class="dim" style="font-size:15px">這次開出的是飼料，拿去大海餵魚吧。</div>
-      <button class="pri" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
+      <button class="pri" data-act="seagoto">去大海看看</button><button class="ghost" data-act="close">${it.direct ? '先寫清單' : Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
     SFX.open(0); return;
   }
   const R = RARITY[cr.r];
@@ -240,7 +267,7 @@ function openChest() {
     <div class="dim" style="font-size:15px">${cr.fact}</div>
     ${it.xp || it.c > 0 ? `<div class="gain">${it.xp ? `<span style="color:var(--xp)">+${it.xp} XP</span>　` : ''}${it.c > 0 ? `<span class="coin">+${it.c}${COIN}</span>` : ''}</div>` : ''}
 
-    <button class="pri" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
+    <button class="pri" data-act="seagoto">去大海看看</button><button class="ghost" data-act="close">${it.direct ? '先寫清單' : Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
   SFX.open(cr.r);
 }
 

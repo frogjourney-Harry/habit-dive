@@ -478,3 +478,49 @@ button.onbopt small{font-size:12px;line-height:1.3}
 /* 畫面上的文字不能選取、複製（手機長按也不會跳出選取／拷貝選單）；輸入框照常可以選、可以貼 */
 body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+
+/* 上線前體驗修正：沿用既有色彩與元件，讓操作範圍與狀態更明確。 */
+.ex-field{display:flex;flex:1 1 120px;min-width:0;flex-direction:column;gap:4px}
+.ex-field.full{flex-basis:100%}
+.ex-field span{font-size:14px;color:var(--ink)}
+.ex-field small{margin-left:6px;font-size:12px;color:var(--ink-muted)}
+.ex-field input{width:100%;min-height:44px}
+.reward-state{display:block;font-size:12px;color:var(--ink-muted)}
+.intro-links{justify-content:center}
+.seaempty{position:fixed;top:35%;left:16px;right:16px;text-align:center;z-index:3;color:var(--on-hero)}
+.seaempty p{color:var(--on-hero)}
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.sr-only:focus{position:fixed!important;left:16px;bottom:150px;width:auto;height:auto;margin:0;padding:12px;clip-path:none;z-index:6}
+body{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+.prow .no,.tank{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#backupSection textarea,textarea[aria-label="診斷資訊"]{width:100%;min-height:100px;font:inherit;color:var(--ink);border:1px solid var(--hairline);border-radius:var(--r-md)}
+@media(max-width:600px){
+  .prow .no{width:34px;min-height:44px}
+  .star{min-width:34px;min-height:44px}
+  .pdel{width:32px;min-height:44px}
+  .prow{gap:5px}
+  .prow input[type=checkbox]{width:32px;height:32px}
+  .fpills{font-size:11px}
+  .feedbuy{font-size:12px}
+  .form .ex-field{flex-basis:calc(50% - 4px)}
+  .form .ex-field.full{flex-basis:100%}
+}
+@media(prefers-reduced-motion:reduce){.shake,.pop,.glow4,.fbox .fsprite,.rk.cur .rkn{animation:none}.fly{display:none}}@media(max-width:600px){
+ .seahud.seabar{flex-wrap:nowrap;column-gap:4px}
+ .seabar #feedInfo .feedic{display:none}
+ .seabar button{padding:6px 7px;font-size:13px}
+ .seabar .fpill{font-size:11px;padding:2px 5px}
+ .seabar .cnt{margin-left:3px}
+}
+@media(max-width:300px){
+ .prow{flex-wrap:wrap;gap:3px}
+ .prow .ptext{flex-basis:calc(100% - 27px);order:1}
+ .prow input[type=checkbox]{width:24px;height:24px;order:0}
+ .prow .no,.prow .star,.prow .pdel{order:2}
+}textarea.ptext{font:inherit;font-size:16px;color:var(--ink);background:var(--field);border:1px solid var(--hairline);border-radius:var(--r-md);padding:9px 10px;min-height:44px;resize:none;line-height:1.5;overflow-y:auto;word-break:break-word}
+textarea.ptext:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(11,107,203,.22)}
+textarea.ptext::placeholder{color:var(--ink-subtle)}
+@media(max-width:300px){.seahud.seabar{flex-wrap:wrap}.seabar>.sp{display:none}.seabar button{padding:6px 5px;font-size:12px}}.ex-type{display:flex;align-items:center;gap:8px;flex:1 1 100%;font-size:14px}
+.ex-type select{min-height:44px;flex:1}
+.intro-first #six .seg-switch,.intro-first #six .no,.intro-first #six .star,.intro-first #six .pdel,.intro-first #six .tip,.intro-first #six .addrow{display:none}
+.intro-first #six .first-step button{width:100%;margin:8px 0 0}

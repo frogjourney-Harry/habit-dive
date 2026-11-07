@@ -48,7 +48,7 @@ test('Edge / 少見環境：預設分享 API、系統時區與語系不影響日
 
 test('原始碼掃描：舊引擎不支援的語法和 API', async () => {
   const base = new URL('../', location.href).href;
-  const files = ['js/config.js', 'js/creatures.js', 'js/core.js', 'js/game.js', 'js/views.js', 'js/sync.js', 'js/main.js', 'js/firebase-config.js'];
+  const files = ['js/config.js', 'js/creatures.js', 'js/core.js', 'js/game.js', 'js/views.js', 'js/sync.js', 'js/ui.js', 'js/main.js', 'js/firebase-config.js'];
   const src = {}; for (const f of files) src[f] = await (await fetch(base + f + '?_=' + Date.now())).text();
   const bad = [
     [/\?\?=|\|\|=|&&=/g, '邏輯賦值運算子（Safari 14 以前不支援，整個 script 會語法錯誤）'],
@@ -76,7 +76,7 @@ test('原始碼掃描：資源路徑大小寫、外部連線', async () => {
   for (const u of refs) { const r = await fetch(base + u.split('?')[0], { cache: 'no-store' }); ok(r.ok, '資源存在：' + u); }
   const ext = [...html.matchAll(/(?:src|href)="(https?:[^"]+)"/g)].map(m => m[1]); const bad = ext.filter(u => !/vocus\.cc/.test(u));
   eq(bad, [], '除了 vocus 連結，不能有外部資源（離線也要能用）');
-  const files = ['js/sync.js', 'js/main.js', 'js/views.js', 'js/core.js', 'js/game.js'];
+  const files = ['js/sync.js', 'js/ui.js', 'js/main.js', 'js/views.js', 'js/core.js', 'js/game.js'];
   for (const f of files) { const s = await (await fetch(base + f + '?_=' + Date.now())).text(); const hosts = [...s.matchAll(/https?:\/\/([\w.-]+)/g)].map(m => m[1]).filter(h => !/vocus\.cc|gstatic\.com|firebase/.test(h)); eq([...new Set(hosts)], [], f + ' 沒有未知的外部網址'); }
 });
 
@@ -239,7 +239,7 @@ test('待領取的獎勵一定領得到：刪掉習慣後它的獎勵仍在任�
 test('舊資料的六件事：沒有獎勵欄位的打勾不能每次開啟都變成「有獎勵」', async () => {
   const plan = Array.from({ length: 6 }, (_, i) => ({ text: i < 5 ? '事' + i : '', cat: 'other', done: i >= 3 && i < 5 }));   // 沒有 rw 欄位，第 4、5 件有打勾
   const I = await boot({ state: mkState({ plans: { [D0]: plan } }) }); await I.dismiss();
-  eq(I.S.plans[D0].filter(x => x.rw).length, 0, '第 4、5 件打勾沒有獎勵，不能算進獎勵名額');
+  eq(I.S.plans[D0].filter(x => x.rw).length, 2, '任意三件的新規則：已完成的第四、五件補上獎勵');
   await I.plan(['事0', '事1', '事2']); for (let i = 0; i < 3; i++) await I.tick(i);
   eq(I.S.logs.filter(l => l.k === 'check').length, 3, '前三件還是都拿得到獎勵');
   const J = await I.reload(); await J.dismiss(); eq(J.S.plans[D0].filter(x => x.rw).length, 3, '重開後獎勵名額仍是 3'); J.check('重開'); J.destroy(); I.destroy();
@@ -283,36 +283,31 @@ const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebK
 const onbOpen = I => { const e = I.$('#onb'); return !!e && !e.classList.contains('hidden'); };
 const activeIds = I => I.ev('activeHabits().map(h => h.id)');
 
-test('第一次打開：先問綁定 Google（可跳過，要說資料可能不見）→ 選習慣 → 才發新手禮物', async () => {
-  resetCloud();
-  const I = await boot({ onb: true });
-  ok(onbOpen(I), '新存檔一打開就是引導'); ok(I.$('#onb').textContent.includes('可能會消失'), '步驟 1 要說清楚不綁定紀錄可能會不見');
-  ok(I.$('#onb [data-act=login]') && I.$('#onb [data-act=onbskip]'), '有登入按鈕，也能先跳過');
-  ok(!I.S.logs.some(l => l.k === 'welcome') && I.$('#ov').classList.contains('hidden'), '引導做完之前不發新手禮物、不跳寶箱');
-  ok(!I.$('#onb').textContent.includes('Vocus'), '引導的第一頁沒有 Vocus');
-  await I.click('#onb [data-act=onbskip]'); ok(I.$('#onb').textContent.includes('你想養成什麼習慣'), '跳過後選習慣');
-  eq(I.$$('#onb [data-act=onbpick]').map(b => b.dataset.v), ['exercise', 'write', 'read', 'meditate'], '選項：運動、寫作、閱讀、冥想（Vocus 不是獨立選項）'); ok(I.$('#onb [data-onb=name]') && !I.$('#onb [data-onb=freq]'), '還有自訂（頻率之後在編輯改）'); ok(!I.$('#onb').textContent.includes('Vocus'), '引導裡沒有 Vocus（寫作就是寫作）');
-  ok(I.$('#onb [data-act=onbdone]').textContent.includes('先不選'), '一個都沒選時按鈕寫「先不選」');
-  await I.click('#onb [data-act=onbpick][data-v=exercise]'); await I.click('#onb [data-act=onbpick][data-v=write]');
-  ok(I.$('#onb [data-act=onbpick][data-v=write]').classList.contains('sel'), '選到的有標示'); ok(I.$('#onb [data-act=onbdone]').textContent === '開始', '有選時按鈕寫「開始」');
-  ok(!I.S.onb, '還沒按開始，不算做完');
-  await I.click('#onb [data-act=onbdone]');
-  ok(!onbOpen(I), '開始後引導關掉'); eq(I.S.onb, true, '記下做過了'); eq(activeIds(I), ['exercise', 'write'], '習慣就是選的那兩個');
-  ok(!I.S.habits.some(h => h.id === 'vocus'), '沒選 Vocus：習慣裡沒有 Vocus'); eq(I.S.habits.find(h => h.id === 'write').unit, '篇', '寫作的單位是篇');
-  ok(I.has('寫作') && !I.has('Vocus'), '今日頁有寫作、完全沒有 Vocus 字樣'); ok(I.has('本週 0/1 篇'), '寫作寫「本週 0/1 篇」：' + I.$('#habits').innerText.replace(/\s+/g, ' '));
-  ok(!I.$('#ov').classList.contains('hidden'), '引導完成後才出現新手禮物'); await I.dismiss(); ok(I.S.logs.some(l => l.k === 'welcome'), '新手禮物發了');
-  I.check('引導'); const J = await I.reload({ onb: true }); await J.dismiss(); ok(!onbOpen(J), '重開不會再問'); eq(activeIds(J), ['exercise', 'write'], '習慣還在'); J.check('引導後重開'); J.destroy(); I.destroy();
+test('第一次打開：不要求登入，先寫一件事再認識小丑魚', async () => {
+  resetCloud(); const I = await boot({onb:true});
+  ok(onbOpen(I), '有歡迎畫面'); ok(I.has('每天完成一點事，收集海洋生物。'), '採用指定文案');
+  ok(!I.$('#onb [data-act=login]'), '預設不要求 Google 登入');
+  ok(!I.ev('CLOUD.loading'), '還沒選登入時不載入 SDK');
+  await I.click('#onb [data-act=onbstart]');
+  ok(!onbOpen(I) && I.S.onb, '按開始直接進今日');
+  ok(I.$('[data-act=meetfish]').disabled, '未寫第一件事前不能領小丑魚');
+  await I.plan(['今天先閱讀一頁']); await I.click('[data-act=meetfish]');
+  ok(I.S.logs.some(l=>l.k==='welcome' && l.drop==='clown'), '寫一件事即可取得小丑魚');
+  ok(I.$('#modal [data-act=seagoto]'), '有去大海入口');
+  await I.click('#modal [data-act=seagoto]'); eq(I.UI.tab,'tank','直接看自己的海');
+  const J=await I.reload({onb:true}); await J.dismiss(); ok(!onbOpen(J),'重開不再引導');
+  eq(J.S.logs.filter(l=>l.k==='welcome').length,1,'新手禮物不重發');
+  I.check('新手體驗'); J.check('新手重開'); J.destroy(); I.destroy();
 });
-
 test('引導：寫作是一般習慣；舊的 Vocus 習慣；不選也能開始；自訂習慣和上限；用過的存檔不引導', async () => {
   resetCloud();
-  const A = await boot({ onb: true }); await A.click('#onb [data-act=onbskip]'); await A.click('#onb [data-act=onbpick][data-v=write]'); ok(!A.$('#onb [data-act=onbvocus]') && !A.$('#onb').textContent.includes('Vocus'), '選了寫作也沒有 Vocus 選項'); await A.click('#onb [data-act=onbdone]'); await A.dismiss();
+  const A = await boot({ onb: true }); await A.click('#onb [data-act=onbskip]'); await A.click('#onb [data-act=onbpick][data-v=write]'); ok(!A.$('#onb [data-act=onbvocus]') && !A.$('#onb').textContent.includes('Vocus'), '選了寫作也沒有 Vocus 選項'); await A.click('#onb [data-act=onbdone]'); await A.plan(['我的第一件事']); await A.click('[data-act=meetfish]'); await A.dismiss();
   eq(activeIds(A), ['write'], '寫作就是一般習慣'); ok(!A.S.habits.some(h => h.kind === 'vocus'), '新使用者沒有 Vocus 專屬習慣'); ok(!A.$('#main').innerText.includes('Vocus') && !A.has('發文節奏'), '畫面上沒有 Vocus、沒有發文設定');
   await A.click('[data-act=habtap][data-v=write]'); await A.click('#sheet [data-act=chk]'); const wk = A.S.logs.filter(l => l.k === 'habit' || l.k === 'pubchest'); ok(!A.S.logs.some(l => l.k === 'pubchest') && A.S.logs.some(l => l.key === 'hab:write:' + D0), '寫作打卡只是一般習慣獎勵，沒有發文額外獎勵'); A.check('寫作'); A.destroy();
   const OLDV = [{ id: 'vocus', e: '✍️', n: 'Vocus', kind: 'vocus', weeks: 1, target: 1 }, { id: 'exercise', e: '🏃', n: '運動', kind: 'exercise', weeks: 1, target: 3 }];
   const L = await boot({ onb: true, state: mkState({ v: 7, vocusSet: false, habits: OLDV, checks: { [D0]: { exercise: [{ t: 1 }] } } }) }); await L.dismiss();   // 舊版預設帶 Vocus 習慣、沒設定過節奏的人
   ok(!L.S.habits.some(h => h.id === 'vocus') && !L.$('#main').innerText.includes('Vocus') && !L.has('發文節奏'), '沒用過的舊 Vocus 習慣直接移除，不再問節奏'); L.check('移除 Vocus'); L.destroy();
-  const B = await boot({ onb: true }); await B.click('#onb [data-act=onbskip]'); await B.click('#onb [data-act=onbdone]'); await B.dismiss();
+  const B = await boot({ onb: true }); await B.click('#onb [data-act=onbskip]'); await B.click('#onb [data-act=onbdone]'); await B.plan(['我的第一件事']); await B.click('[data-act=meetfish]'); await B.dismiss();
   eq(activeIds(B), [], '什麼都沒選也能開始'); ok(!B.has('Vocus'), '沒有 Vocus'); ok(B.S.habits.some(h => h.id === 'exercise' && h.off), '運動留著，可以到編輯畫面加回');
   await B.click('[data-act=habedit]'); ok(B.has('加回 運動') && !B.has('加回 Vocus'), '編輯畫面只能加回運動'); B.check('空習慣'); B.destroy();
   const C = await boot({ onb: true }); await C.click('#onb [data-act=onbskip]');
@@ -322,27 +317,26 @@ test('引導：寫作是一般習慣；舊的 Vocus 習慣；不選也能開始�
   await C.type('#onb [data-onb=name]', ''); await C.click('#onb [data-act=onbdone]');
   eq(activeIds(C), ['write', 'read', 'meditate'], '拿掉自訂就能開始'); eq(C.S.habits.find(h => h.id === 'read').target, 3, '閱讀每週 3 天'); eq(C.S.habits.find(h => h.id === 'meditate').weeks, 0, '冥想每天'); C.destroy();
   const D = await boot({ onb: true }); await D.click('#onb [data-act=onbskip]'); await D.click('#onb [data-act=onbpick][data-v=read]'); await D.type('#onb [data-onb=name]', '<img src=x onerror=window.__xss=1>喝');
-  await D.click('#onb [data-act=onbdone]'); await D.dismiss(); const my = D.S.habits.find(h => h.kind === 'custom' && h.id !== 'read');
+  await D.click('#onb [data-act=onbdone]'); await D.plan(['我的第一件事']); await D.click('[data-act=meetfish]'); await D.dismiss(); const my = D.S.habits.find(h => h.kind === 'custom' && h.id !== 'read');
   ok(my && my.n.length === 20 && my.weeks === 0 && my.target === 1, '自訂習慣：名稱最多 20 字、預設每天：' + JSON.stringify(my)); ok(!D.win.__xss && !D.$('#main img[src=x]'), 'XSS：自訂習慣名稱'); D.check('自訂習慣'); D.destroy();
   const used = { checks: { [D0]: { exercise: [{ t: 1 }] } } };   // 舊存檔（沒有 onb 欄位）但用過了
   const E = await boot({ onb: true, state: mkState({ ...used, v: 7, vocusSet: true, habits: OLDV }) }); await E.dismiss(); ok(!onbOpen(E), '用過的舊存檔不會被問'); eq(E.S.onb, true, '補上做過了'); ok(E.has('Vocus') && E.S.habits.find(h => h.id === 'vocus').kind === 'custom', '舊存檔設定過的 Vocus 習慣保留，變成一般習慣'); E.destroy();
   const F = await boot({ onb: true, state: mkState() }); ok(onbOpen(F), '只有新手禮物、沒做過任何事的存檔還是要引導'); F.destroy();
 });
 
-test('引導：綁定 Google 一次點擊（iPhone）；雲端已有紀錄就直接進遊戲', async () => {
-  resetCloud();
-  const A = await boot({ state: mkState({ checks: { [D0]: { exercise: [{ t: 1 }] } } }), ua: IPHONE }); await A.dismiss(); await loginAs(A); ok(window.__cloudDb.docs.u1, '準備好另一台裝置的雲端紀錄');
-  const B = await boot({ onb: true, seed: {}, ua: IPHONE }); await flush(6);
-  ok(onbOpen(B) && B.ev('CLOUD.ready'), 'B：引導一出現就把登入程式載好');
-  window.__cloudDb.nextUser = { uid: 'u1' }; await B.click('#onb [data-act=login]'); await flush(14);
-  ok(B.S.cloudUid === 'u1', 'iPhone 一次點擊就登入'); ok(!onbOpen(B), '雲端已有做過引導的紀錄：直接進遊戲，不再問'); eq(B.S.onb, true, '換成雲端的紀錄'); ok(B.S.checks[D0], '雲端的打卡紀錄到了'); B.check('引導登入'); B.destroy();
-  const C = await boot({ onb: true, seed: {}, ua: IPHONE }); await flush(6);
-  window.__cloudDb.nextUser = { uid: 'u2' }; await C.click('#onb [data-act=login]'); await flush(14);
-  ok(C.S.cloudUid === 'u2' && onbOpen(C), '全新的帳號：登入後接著選習慣'); ok(C.$('#onb').textContent.includes('已綁定') && C.$('#onb').textContent.includes('你想養成什麼習慣'), '顯示已綁定、進到選習慣');
-  await C.click('#onb [data-act=onbdone]'); await C.dismiss(); await hide(C, true); ok(C.S.onb, '做完'); ok(JSON.parse(window.__cloudDb.docs.u2.data).onb === true, '雲端上也記著做過了'); C.destroy(); A.destroy();
-  const M = await boot({ onb: true, ua: 'Mozilla/5.0 TikTok_26.0' }); ok(M.$('#onb').textContent.includes('App 內建') && !M.$('#onb [data-act=login]'), 'App 內建瀏覽器：說明無法登入，沒有登入按鈕'); ok(M.$('#onb [data-act=onbskip]'), '但可以先跳過'); M.destroy();
+test('引導：已有紀錄的登入入口、iPhone 登入與 App 內建瀏覽器', async () => {
+  resetCloud(); const A=await boot({state:mkState({checks:{[D0]:{exercise:[{t:1}]}}}),ua:IPHONE}); await A.dismiss(); await loginAs(A);
+  const B=await boot({onb:true,seed:{},ua:IPHONE});
+  ok(!B.ev('CLOUD.loading'),'進入歡迎頁不載入登入服務');
+  await B.click('#onb [data-act=onbreturn]'); await flush(8);
+  ok(B.ev('CLOUD.ready'),'選擇接續紀錄後才準備登入');
+  window.__cloudDb.nextUser={uid:'u1'}; await B.click('#onb [data-act=login]'); await flush(14);
+  ok(B.S.cloudUid==='u1' && !onbOpen(B),'有雲端紀錄便接續遊戲'); ok(B.S.checks[D0],'拿到原紀錄'); B.check('接續');
+  const M=await boot({onb:true,ua:'Mozilla/5.0 TikTok_26.0'}); await M.click('#onb [data-act=onbreturn]');
+  ok(M.has('App 內建') && !M.$('#onb [data-act=login]'),'App 內建瀏覽器說明替代方案');
+  await M.click('#onb [data-act=onbback]'); await M.click('#onb [data-act=onbstart]'); ok(!onbOpen(M),'仍可先開始玩');
+  M.destroy(); B.destroy(); A.destroy();
 });
-
 test('專注畫面的結束：一分鐘內直接結束，之後才確認；按鈕夠大', async () => {
   const I = await boot({ state: mkState() }); await I.dismiss();
   await I.click('[data-act=start]'); await I.advance(20e3);

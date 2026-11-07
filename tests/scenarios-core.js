@@ -560,3 +560,53 @@ test('獎勵狀態一致：昨天自動入帳的獎勵不能再領，重複傳�
   eq(I.coins(), c + 15, '相同紀錄傳入兩次只入帳一次');
   I.check('統一獎勵狀態'); I.destroy();
 });
+test('上線體驗：換件和刪除後，清單、任務與待領獎勵一致', async () => {
+ const I=await startToday(); await I.plan(['A','B','C','D','E','F']);
+ for(const i of [0,1,2]) await I.tick(i);
+ await I.tick(0); await I.tick(3);
+ eq(I.ev("getPlan(dayKey()).filter(x=>x.done).length"),3,'換件後完成三件');
+ eq(rewardLogs(I).length,3,'換件後仍有三份獎勵');
+ eq(I.ev("dailyTasks(derive()).find(t=>t.id==='rows').n"),3,'任務進度一致');
+ await I.click('[data-act=prowdel][data-v="3"]');
+ eq(rewardLogs(I).length,2,'刪除未領項目後只剩兩份');
+ ok(!I.S.logs.some(l=>l.key==='top3:'+D0),'未領加碼收回');
+ await I.click('[data-act=planundo]'); eq(rewardLogs(I).length,3,'復原恢復三份');
+ await I.claimAll(); const c=I.coins(); await I.tab('today');
+ for(const i of [1,2,3]) await I.tick(i);
+ for(const i of [0,4,5]) await I.tick(i);
+ eq(I.coins(),c,'已領後換件不多領'); eq(rewardLogs(I).length,3,'總份數維持上限');
+ I.check('換件刪除復原'); I.destroy();
+});
+
+test('上線體驗：今日返回今天，運動錯誤留在欄位，彈窗管理焦點', async () => {
+ const I=await startToday(); await I.click('[data-act=pday][data-v="-1"]'); await I.tab('shop'); await I.tab('today');
+ eq(I.UI.pday,0,'主導覽今日回到今天');
+ await I.habit('運動'); await flush(6);
+ eq(I.$('#sheetov').getAttribute('role'),'dialog','面板有 dialog 語意');
+ ok(I.$('#sheetov').contains(I.doc.activeElement),'焦點進入面板');
+ ok(I.$('#ex_dist').labels.length,'距離有固定標題');
+ await I.type('#ex_dist','-1'); await I.click('[data-act=exadd]');
+ eq((I.S.checks[D0]||{}).exercise,undefined,'非法數字不悄悄新增紀錄');
+ ok(I.$('#exError').textContent.includes('大於 0'),'保留錯誤說明');
+ const stops=I.ev("dialogStops(document.getElementById('sheetov'))");
+ stops[stops.length-1].focus(); I.doc.activeElement.dispatchEvent(new I.win.KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true}));
+ ok(I.$('#sheetov').contains(I.doc.activeElement),'Tab 焦點留在面板');
+ await I.click('[data-act=sheetclose]'); I.check('表單焦點'); I.destroy();
+});
+
+test('上線體驗：同步失敗不顯示已同步，隱私在創作者內容前', async () => {
+ const I=await startToday(); I.ev("CLOUD.user={uid:'test',email:'test@example.com'};CLOUD.last=Date.now();CLOUD.error='同步失敗，稍後會再試';UI.tab='about';render()");
+ ok(I.$('#cloudStatus').textContent.includes('尚未同步'),'顯示本機已存而未同步');
+ ok(!I.$('#main').textContent.includes('已同步'),'沒有矛盾的已同步承諾');
+ ok(I.$('[data-act=cloudretry]'),'可重試');
+ const titles=I.$$('.sh b').map(x=>x.textContent); ok(titles.indexOf('隱私')<titles.indexOf('我的沙龍'),'服務資訊在文章前');
+ I.destroy();
+});
+test('上線體驗：長清單可換行與診斷資訊不包含私人紀錄', async () => {
+ const I=await startToday({width:320}); const text='這是一段需要完整閱讀的每日任務內容'.repeat(6);
+ await I.plan([text]); const el=I.$('#six .ptext'); eq(el.tagName,'TEXTAREA','長內容可多行'); ok(el.offsetHeight>44,'輸入後會展開');
+ eq(el.value,text,'文字完整保留'); const info=I.ev('diagnosticsText()');
+ ok(!info.includes(text) && !info.includes('@test'),'診斷不含清單與Email');
+ ok(info.includes('瀏覽器') && info.includes('畫面'),'只提供排查環境資訊');
+ I.check('長文字'); I.destroy();
+});

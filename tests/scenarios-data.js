@@ -1,5 +1,5 @@
 // 資料面：存檔、舊版資料遷移、備份匯入匯出、兩個分頁同時開、雲端同步、大量資料
-const loginAs = async (I, uid = 'u1') => { window.__cloudDb.nextUser = { uid }; await I.tab('about'); await I.click('.gbtn'); await flush(12); };
+const loginAs = async (I, uid = 'u1') => { window.__cloudDb.nextUser = { uid }; await I.tab('about'); await I.click('.gbtn'); await flush(12); if (I.$('[data-act=cloudchoose][data-v=cloud]')) { await I.click('[data-act=cloudchoose][data-v=cloud]'); await flush(12); } };
 const hide = (I, hidden) => { Object.defineProperty(I.doc, 'visibilityState', { get: () => hidden ? 'hidden' : 'visible', configurable: true }); I.doc.dispatchEvent(new I.win.Event('visibilitychange')); return flush(12); };
 const resetCloud = () => { Object.assign(window.__cloudDb, { docs: {}, fail: false, log: [], listeners: {}, popupBlocked: false, redirected: false, deletedAccounts: [], nextUser: null }); };
 
@@ -312,4 +312,18 @@ test('資安：備份顯示失敗不覆寫原資料', async () => {
   eq(JSON.stringify(I.S), original, '顯示失敗還原原始狀態');
   eq(JSON.stringify(I.stored()), stored, '顯示失敗不覆寫存檔');
   I.ev('render = window.__oldRender'); I.check('匯入回復'); I.destroy();
+});
+test('登入選擇：先試玩再登入，兩份紀錄皆保留，可選擇保留試玩', async () => {
+ resetCloud(); const A=await boot({state:mkState()}); await A.dismiss(); await A.plan(['雲端清單','二','三']); await A.saveList(); await loginAs(A);
+ const B=await boot({state:mkState({logs:[W0,coinLog(500)]})}); await B.dismiss(); await B.plan(['本機試玩','乙','丙']);
+ window.__cloudDb.nextUser={uid:'u1'}; await B.tab('about'); await B.click('.gbtn'); await flush(14);
+ ok(B.$('[data-act=cloudchoose][data-v=local]'),'有保留試玩選項');
+ ok(B.ev('!!CLOUD.choice'),'選擇前暫停同步');
+ eq(B.S.plans[D0][0].text,'本機試玩','選擇前不覆寫本機');
+ ok(window.__stores[B.storeId].has('habitdive.v1.prelogin') && window.__stores[B.storeId].has('habitdive.v1.cloud-before-choice'),'兩份都有備份');
+ A.destroy(); const C = await B.reload({cloudUser:{uid:'u1'}}); await flush(14);
+ ok(C.$('[data-act=cloudchoose][data-v=local]'), '重開後仍需選擇，不直接覆蓋');
+ await C.click('[data-act=cloudchoose][data-v=local]'); await flush(14);
+ eq(C.S.plans[D0][0].text,'本機試玩','明確選擇後保留試玩');
+ eq(JSON.parse(window.__cloudDb.docs.u1.data).plans[D0][0].text,'本機試玩','同步選擇的紀錄'); C.check('保留試玩'); C.destroy();
 });

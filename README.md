@@ -49,7 +49,7 @@
 
 ## 快速開始
 
-直接開啟[線上版本](https://frogjourney-harry.github.io/habit-dive/)即可使用，不需要註冊。第一次開啟時，可以選擇是否綁定 Google 帳號，再勾選想養成的習慣。
+直接開啟[線上版本](https://frogjourney-harry.github.io/habit-dive/)即可使用，不需要註冊。第一次開啟按「開始」即可試玩，先寫下一件事並認識小丑魚。不需先登入；已有紀錄可選「登入接續」，有進度後也可到「更多」備份。
 
 ## 本機開發
 
@@ -82,6 +82,7 @@ python -m http.server 8000
 │   ├── views.js           各頁面的畫面
 │   ├── firebase-config.js Firebase 網頁設定
 │   ├── sync.js            選用的 Google 登入與雲端同步
+│   ├── ui.js              新手回饋、獎勵帳本、備份復原與彈窗焦點
 │   └── main.js            事件處理與啟動流程
 ├── img/                   網站圖示
 ├── tests/                 瀏覽器端自動測試
@@ -168,3 +169,5 @@ sh bump.sh
 ## 授權
 
 本專案目前尚未指定開源授權，著作權由作者保留。
+
+回報表單可在 CONFIG.feedbackUrl 填入公開的 HTTPS 連結；未設定時不顯示無效連結。診斷資訊只包含版本、瀏覽器、畫面與連線狀態。

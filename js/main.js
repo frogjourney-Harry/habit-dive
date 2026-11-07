@@ -21,11 +21,22 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const v = b.dataset.v;
   switch (b.dataset.act) {
-    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.tankView = ''; UI.logView = ''; UI.swap = null; UI.tab = v; render(); window.scrollTo(0, 0); break;
+    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.tankView = ''; UI.logView = ''; UI.swap = null; UI.tab = v; if (v === 'today') { UI.pday = 0; UI.showRows = 0; } render(); window.scrollTo(0, 0); break;
     case 'pday': UI.pday = +v; UI.swap = null; UI.showRows = 0; render(); break;
-    case 'prowdel': {   // 刪掉後面的往上補，最後補一個空格
-      const P = getPlan(viewDay()); P.splice(+v, 1); P.push({ text: '', cat: 'other', done: false, rw: false });
-      UI.showRows = Math.max(0, UI.shownRows - 1); save(); render(); break;
+    case 'prowdel': {
+      const d = viewDay(), P = getPlan(d), index = +v, item = P[index];
+      if (UI.pday < 0 || !item) break;
+      UI.planUndo = { d, index, item: JSON.parse(JSON.stringify(item)) };
+      P.splice(index, 1); P.push({ text: '', cat: 'other', done: false, rw: false });
+      UI.showRows = Math.max(3, UI.shownRows - 1);
+      reward(() => {}, UI.pday === 0); toast('已刪除，可在清單下方復原'); break;
+    }
+    case 'planundo': {
+      const u = UI.planUndo; if (!u || u.d !== viewDay()) break;
+      const P = getPlan(u.d);
+      if (P[5].text.trim()) { toast('請先空出一格，再復原刪除'); break; }
+      P.pop(); P.splice(u.index, 0, u.item); UI.planUndo = null;
+      reward(() => {}, UI.pday === 0); break;
     }
     case 'addrow': UI.showRows = UI.shownRows + 1; render(); document.querySelector(`[data-pf="text"][data-i="${UI.showRows - 1}"]`)?.focus(); break;
     // 六件事換順序：先點一個編號，再點另一個編號，兩件交換
@@ -78,7 +89,7 @@ document.addEventListener('click', async e => {
         else e[k] = v.slice(0, 60);
       }
       const note = document.getElementById('ex_note').value.trim().slice(0, 200); if (note) e.note = note;
-      if (skipped) toast('有欄位的數字不合理，已略過');
+      if (skipped) { document.getElementById('exError').textContent = '請輸入大於 0 且不超過 100000 的數字，或清空該欄位。'; return; }
       UI.sheet.exType = type;
       addCheck(sheetDay(), 'exercise', e); ac(); SFX.tap();
       reward(() => {}, UI.sheet.day === 0); break;
@@ -97,6 +108,9 @@ document.addEventListener('click', async e => {
     case 'habrestore': { const h = S.habits.find(x => x.id === v); if (!h) break; h.off = false; save(); render(); break; }
     case 'gcatadd': S.gcats.push({ id: 'g' + rid(), e: '🔖', n: '' }); save(); render(); break;
     case 'gcatdel': S.gcats[+v].off = true; save(); render(); break;
+    case 'onbstart': UI.onbSel = {}; UI.onbName = ''; finishOnb(); break;
+    case 'onbreturn': UI.onbReturning = true; renderOnb(); break;
+    case 'onbback': UI.onbReturning = false; renderOnb(); break;
     case 'onbskip': UI.onbStep = 2; renderOnb(); break;
     case 'onbpick': {
       const sel = UI.onbSel || (UI.onbSel = {});
@@ -121,34 +135,12 @@ document.addEventListener('click', async e => {
     case 'chestpool':UI.chestOpen = UI.chestOpen === v ? '' : v; render(); break;
     case 'fact': UI.sheet = { creature: v }; renderSheet(); break;
     case 'pdone': {
-      const d = viewDay(), it = getPlan(d)[v], c = catOf(it.cat);
+      const it = getPlan(viewDay())[v];
       if (UI.pday > 0) break;
       if (!it.text.trim()) { toast('先寫下這件事'); render(); break; }
       it.done = !it.done;
-      if (it.done) ac();
-      // 只有「今天」打勾才有獎勵；一天最多 rewardRows 件（換順序也不能多拿）。勾錯取消時獎勵先收進 it.held，再勾回來原封不動還回去
-      reward(() => {
-        if (UI.pday !== 0) { if (it.done) SFX.tap(); return; }
-        if (!it.done) {
-          let i = S.logs.findIndex(l => it.lid && l.id === it.lid && isPendingReward(l));   // 已經領走的不收回
-          if (i < 0 && it.rw && !S.logs.some(l => it.lid && l.id === it.lid)) {
-            const linked = new Set(Object.values(S.plans).flat().map(x => x.lid).filter(Boolean));
-            for (let j = S.logs.length - 1; j >= 0; j--) {
-              const l = S.logs[j];
-              if (l.k === 'check' && l.d === d && l.tag === c.n && !linked.has(l.id)) { i = j; break; }
-            }
-          }
-          if (i >= 0) { it.lid = S.logs[i].id; it.held = S.logs.splice(i, 1)[0]; toast('已取消，這一項的獎勵先收回（再勾回來會還你）'); }
-          return;
-        }
-        if (it.held) { S.logs.push(it.held); delete it.held; SFX.tap(); toast('已恢復這一項的獎勵'); return; }
-        // 名額照「今天已經發出去的打勾獎勵」算（含先收起來的），不是看哪幾列有標記：不然把有獎勵的那件換到後面再刪掉，就能多拿
-        // （存檔裡有「標記有獎勵、但找不到那筆紀錄」的項目時，也要算進名額）
-        const given = Math.max(S.logs.filter(l => l.k === 'check' && l.d === d).length + getPlan(d).filter(x => x.held).length, getPlan(d).filter(x => x.rw).length);
-        if (it.rw || given >= CONFIG.rewardRows) { SFX.tap(); return; }
-        it.rw = true;
-        it.lid = grant('check', c.n, { title: `✔ ${it.text}`, xp: CONFIG.xp.check }).id;
-      }, UI.pday === 0);
+      if (it.done) { ac(); SFX.tap(); }
+      reward(() => {}, UI.pday === 0);
       break;
     }
     case 'plansave': {
@@ -236,6 +228,31 @@ document.addEventListener('click', async e => {
       S.logs.push({ id: rid(), t: Date.now(), d: dayKey(), k: 'redeem', name: '連勝保護卡', freeze: 1, c: -F.price });
       save(); catchUp(); render(); SFX.buy(); toast('🛡 買了一張連勝保護卡'); break;   // 昨天剛漏掉的話，馬上補上
     }
+    case 'meetfish':
+      if (!filled(getPlan(dayKey())).length) { toast('先寫下今天的一件事'); break; }
+      S.introPending = false;
+      if (!derive().claimed.has('welcome')) reward(() => grant('welcome', null, { key: 'welcome' }));
+      else { save(); render(); }
+      break;
+    case 'seagoto': UI.opened = false; UI.tab = 'tank'; UI.tankEdit = false; UI.tankView = ''; render(); nextChest(); break;
+    case 'backuplater': S.backupNudgeDismissed = true; save(); render(); break;
+    case 'backupinvite': UI.tab = 'about'; render(); document.getElementById('cloudBox')?.scrollIntoView(); break;
+    case 'cloudbackuprestore': { const backup = cloudChoiceBackup(); if (backup && await ask('改用選擇前的雲端紀錄？目前紀錄會先另存備份。', '還原雲端紀錄')) { restoreBackup(prepareBackup(backup.s)); render(); } break; }
+    case 'cloudchoose': chooseCloud(v); break;
+    case 'syncbackuprestore': { const backup = syncBackup(); if (backup && await ask('改用同步前的本機紀錄？目前的紀錄會先另存備份。', '還原本機紀錄')) { restoreBackup(prepareBackup(backup.s)); render(); } break; }
+    case 'cloudretry': if (!CLOUD.ready) { CLOUD.error = ''; cloudInit(); } else if (CLOUD.pending) cloudPush(); else cloudPull(false); break;
+    case 'autodismiss': S.autoSeen = dayKey(); UI.autoNotice = null; save(); render(); break;
+    case 'feedkeyboard': {
+      const cv = document.getElementById('tank'); if (!cv) break;
+      const r = cv.getBoundingClientRect(); cv.dispatchEvent(new MouseEvent('click', { clientX: r.left + r.width / 2, clientY: r.top + r.height * .4 })); break;
+    }
+    case 'backupundo': {
+      let stored; try { stored = JSON.parse(localStorage.getItem(KEY + '.before-import')); } catch (_) {}
+      if (!stored || !(await ask('復原上次還原前的紀錄？目前紀錄也會另存一份。', '復原'))) break;
+      try { restoreBackup(prepareBackup(stored)); toast('已復原上次還原'); } catch (_) { UI.backupError = '無法復原，原紀錄已保留。請先下載目前的備份。'; render(); }
+      break;
+    }
+    case 'copydiagnostics': copyDiagnostics(); break;
     case 'import': document.getElementById('importFile').click(); break;
   }
 });
@@ -317,7 +334,7 @@ document.addEventListener('input', e => {
   }
   if (i === undefined || !el.dataset.pf) return;
   const it = getPlan(viewDay())[i];
-  it[el.dataset.pf] = el.value;
+  it[el.dataset.pf] = el.value; if (el.tagName === 'TEXTAREA') { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 180) + 'px'; } const firstButton = document.querySelector('[data-act=meetfish]'); if (firstButton) firstButton.disabled = !filled(getPlan(dayKey())).length;
   if (el.dataset.pf === 'cat') render();
   save();
 });
@@ -328,19 +345,10 @@ document.getElementById('importFile').addEventListener('change', async e => {
     const j = JSON.parse(await f.text());
     const candidate = prepareBackup(j);
     if (await ask(`備份檔有 ${j.logs.length} 筆紀錄，目前有 ${S.logs.length} 筆。\n確定用備份取代目前資料？`, '還原')) {
-      const previous = S;
-      try {
-        S = candidate;
-        render();   // 能正常顯示才取代存檔，失敗則還原記憶體狀態。
-        S.mtime = Math.max(Date.now(), (previous.mtime || 0) + 1);
-        localStorage.setItem(KEY + '.before-import', JSON.stringify(previous));
-        localStorage.setItem(KEY, JSON.stringify(S));
-        STORAGE_OK = true;
-      } catch (err) { S = previous; render(); throw err; }
-      if (typeof cloudSchedule === 'function') cloudSchedule();
-      toast('已還原');
+
+      restoreBackup(candidate); toast('已還原');
     }
-  } catch (err) { toast('這不是有效的備份檔'); }
+  } catch (err) { UI.backupError = err.message === '備份檔過大' ? '檔案超過 10 MiB，請選擇較小的備份。' : err.name === 'QuotaExceededError' ? '此裝置的儲存空間不足，原紀錄已保留。請先下載備份。' : '這不是有效的備份檔，或資料無法還原；目前紀錄已保留。'; render(); toast(UI.backupError); }
 });
 
 // 另一個分頁存了新的紀錄：這一頁跟上（正在打字就等放開輸入框再重畫，免得打到一半被洗掉）
@@ -361,7 +369,7 @@ document.addEventListener('focusout', () => { if (syncPending) { syncPending = f
 let GAME_STARTED = false, GAME_READY = false;
 function startGame() {
   if (GAME_STARTED) return; GAME_STARTED = true;
-  if (!derive().claimed.has('welcome')) { grant('welcome', null, { key: 'welcome' }); save(); render(); nextChest(); }
+  if (!S.introPending && !derive().claimed.has('welcome')) { grant('welcome', null, { key: 'welcome' }); save(); render(); nextChest(); }
   // 這台裝置之前登入過雲端同步，就自動恢復登入
   if (S.cloudUid) cloudInit(); else catchUp();
 }
