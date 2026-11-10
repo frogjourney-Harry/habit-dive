@@ -599,7 +599,13 @@ test('上線體驗：同步失敗不顯示已同步，隱私在創作者內容�
  ok(I.$('#cloudStatus').textContent.includes('尚未同步'),'顯示本機已存而未同步');
  ok(!I.$('#main').textContent.includes('已同步'),'沒有矛盾的已同步承諾');
  ok(I.$('[data-act=cloudretry]'),'可重試');
- const titles=I.$$('.sh b').map(x=>x.textContent); ok(titles.indexOf('隱私')<titles.indexOf('我的沙龍'),'服務資訊在文章前');
+ const titles=I.$$('.more-detail > summary').map(x=>x.textContent);
+ ok(titles.includes('隱私說明') && titles.indexOf('隱私說明')<titles.indexOf('關於習慣深潛'),'隱私有獨立入口並在創作者內容前');
+ eq(I.$$('.more-detail[open]').length,0,'說明預設收合');
+ await I.click('.more-links .more-detail > summary');
+ ok(I.$('.more-links .more-detail').open && I.has('需要每天餵魚嗎？'),'展開常見問題可讀取餵食說明');
+ await I.click('.more-links .more-detail > summary');
+ ok(!I.$('.more-links .more-detail').open,'可以再次收合');
  I.destroy();
 });
 test('上線體驗：長清單可換行與診斷資訊不包含私人紀錄', async () => {

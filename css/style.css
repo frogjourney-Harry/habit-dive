@@ -308,6 +308,21 @@ body.sea-on .brand,body.sea-on #banner{position:relative;z-index:3}
 .link:last-child{border-bottom:0}
 .link:hover b{color:var(--primary)}
 .link .sp{min-width:0}
+.more-sound{display:flex;width:100%;justify-content:space-between}
+.more-links{padding-bottom:0}
+.more-links>.sh{margin-bottom:0}
+.manual-backup{margin-top:16px;border-top:1px solid var(--hairline)}
+#cloudBox .warn{overflow-wrap:anywhere}
+.more-detail+ .more-detail{border-top:1px solid var(--hairline)}
+.more-detail>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;cursor:pointer;list-style:none}
+.more-detail>summary::-webkit-details-marker{display:none}
+.more-detail>summary::after{content:'›';font-size:22px;color:var(--ink-muted)}
+.more-detail[open]>summary::after{transform:rotate(90deg)}
+.more-detail>summary:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+.more-content{padding-bottom:16px}
+.more-content h3{font-size:15px;margin:16px 0 6px}
+.more-content h3:first-child{margin-top:4px}
+.more-content textarea{width:100%;box-sizing:border-box}
 .salon{background:var(--fill);padding:14px;margin-top:4px;border-radius:var(--r-lg)}
 .toast{pointer-events:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 18px;z-index:20;border-radius:99px;
   box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:90vw;font-size:14px}
@@ -548,8 +563,6 @@ textarea.ptext:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3
 textarea.ptext::placeholder{color:var(--ink-subtle)}
 @media(max-width:300px){.seahud.seabar{flex-wrap:wrap}.seabar>.sp{display:none}.seabar button{padding:6px 5px;font-size:12px}}.ex-type{display:flex;align-items:center;gap:8px;flex:1 1 100%;font-size:14px}
 .ex-type select{min-height:44px;flex:1}
-.intro-first #six .seg-switch,.intro-first #six .no,.intro-first #six .star,.intro-first #six .pdel,.intro-first #six .tip,.intro-first #six .addrow{display:none}
-.intro-first #six .first-step button{width:100%;margin:8px 0 0}
 /* 清楚區隔新手導覽與日常頁面，沿用海洋藍與既有卡片。 */
 .welcome-route{text-align:left;margin:12px 0;padding-left:24px;color:var(--ink-muted);font-size:14px}
 .welcome-route li{margin:6px 0}
@@ -563,7 +576,7 @@ textarea.ptext::placeholder{color:var(--ink-subtle)}
 .tutorial-progress .complete span{background:var(--success);color:var(--on-success)}
 .tutorial-prompt{font-size:14px;line-height:1.6;background:var(--fill);padding:12px;border-radius:var(--r-lg);margin:8px 0 12px}
 .intro-first #six{box-shadow:var(--shadow-card),inset 0 3px var(--primary)}
-.sea-guide{position:fixed;top:94px;left:16px;right:16px;max-width:688px;margin:0 auto;background:rgba(255,255,255,.46);color:#143c55;border:1px solid rgba(255,255,255,.25);border-radius:var(--r-lg);padding:12px;z-index:4;pointer-events:none}
+.sea-guide{position:fixed;top:94px;left:16px;right:16px;max-width:688px;margin:0 auto;background:rgba(255,255,255,.46);color:#000000;border:1px solid rgba(255,255,255,.25);border-radius:var(--r-lg);padding:12px;z-index:4;pointer-events:none}
 .sea-guide .tutorial-progress{margin-bottom:5px}
 .sea-guide .tutorial-progress ol{display:none}
 .sea-guide .tutorial-label,.sea-guide .mini,.sea-guide b{color:#000000}
@@ -571,6 +584,14 @@ textarea.ptext::placeholder{color:var(--ink-subtle)}
 .sea-guide-body{display:flex;align-items:center;gap:12px}
 .sea-guide-body>div{flex:1;min-width:0}
 .sea-guide button{margin:0;flex:none;min-height:40px;pointer-events:auto}
+.sea-guide a{pointer-events:auto}
 .sea-guide~.seacoach{display:none}
 @media(min-width:601px){.sea-guide{top:150px}}.onbopt::after{content:'點選';font-size:12px;line-height:1.4;color:var(--ink-muted);margin-top:4px}
 .onbopt.sel::after{content:'✓ 已選擇';color:var(--primary);font-weight:600}
+
+.onb-tasks{display:grid;gap:12px;margin:16px 0;text-align:left}
+.onb-tasks label{display:grid;gap:4px;min-width:0}
+.onb-tasks textarea{width:100%;min-width:0}
+
+.prow.intro-target .ptext{border-color:var(--primary)}
+.prow.intro-target .no{color:var(--primary);font-weight:600}

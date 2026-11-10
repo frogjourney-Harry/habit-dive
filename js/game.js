@@ -259,11 +259,11 @@ function openChest() {
   if (it.feed) {
     document.getElementById('modal').innerHTML = `<div class="feedpile pop">${'<i></i>'.repeat(it.feed)}</div>
       <h2>飼料 ${it.feed} 顆</h2><div class="dim" style="font-size:15px">這次開出的是飼料，拿去大海餵魚吧。</div>
-      <button class="pri" data-act="seagoto">去大海看看</button><button class="ghost" data-act="close">${it.direct ? '先寫清單' : Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
+      <button class="pri" data-act="seagoto">去大海看看</button>${it.direct ? '' : `<button class="ghost" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`}`;
     SFX.open(0); return;
   }
   const R = RARITY[cr.r];
-  document.getElementById('modal').innerHTML = `${it.direct && S.introFeedPending ? tutorialProgress(3) : ''}${it.direct ? `<h2>${esc(it.title)}</h2><p class="mini">接下來到大海，試著撒下第一顆飼料，就完成新手導覽。</p>` : ''}
+  document.getElementById('modal').innerHTML = `${it.direct && S.introFeedPending ? tutorialProgress(3) : ''}${it.direct ? `<h2>${esc(it.title)}</h2>` : ''}
     <div><span class="rar" style="background:${R.color}">${R.name}</span></div>
     ${stageImg(cr, 1, Math.min(10, Math.floor(160 / stageCanvas(cr, 1).width)), false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
     <h2>${cr.name} <small>幼體</small> ${it.isNew ? '<span class="new">新發現</span>' : ''}</h2>
@@ -271,7 +271,7 @@ function openChest() {
     ${it.seaFull ? '<p class="sea-full-note" role="status">大海已滿，這隻生物已留在收藏。可到管理生物替換，成長進度會保留。</p>' : ''}
     ${it.xp || it.c > 0 ? `<div class="gain">${it.xp ? `<span style="color:var(--xp)">+${it.xp} XP</span>　` : ''}${it.c > 0 ? `<span class="coin">+${it.c}${COIN}</span>` : ''}</div>` : ''}
 
-    <button class="pri" data-act="${it.seaFull ? 'seamanage' : 'seagoto'}">${it.seaFull ? '選擇展示生物' : '去大海看看'}</button><button class="ghost" data-act="close">${it.direct ? '先寫清單' : Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
+    <button class="pri" data-act="${it.seaFull ? 'seamanage' : 'seagoto'}">${it.seaFull ? '選擇展示生物' : '去大海看看'}</button>${it.direct && S.introFeedPending ? '' : `<button class="ghost" data-act="close">${Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`}`;
   SFX.open(cr.r);
 }
 

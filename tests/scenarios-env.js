@@ -41,7 +41,7 @@ test('App 內建瀏覽器（FB / LINE / IG）：提示橫幅、Google 登入說�
 
 test('Edge / 少見環境：預設分享 API、系統時區與語系不影響日期', async () => {
   const I = await boot({ state: mkState(), noShare: true }); await I.dismiss();
-  await I.tab('about'); await I.click('[data-act=export]'); eq(I.win.__downloads.length, 1, '沒有分享 API 時改用下載');
+  await I.tab('about'); await I.click('#backupSection > summary'); await I.click('[data-act=export]'); eq(I.win.__downloads.length, 1, '沒有分享 API 時改用下載');
   const names = I.win.__downloads.map(d => d.name); ok(!/[\\/:*?"<>|]/.test(names[0]), '檔名沒有不合法字元：' + names[0]);
   I.destroy();
 });
@@ -161,7 +161,7 @@ function layoutAudit(I, label) {
   // 內容被固定的分頁列蓋住：捲到最底，最後一個可點元素要在分頁列上方
   const nav = doc.getElementById('nav'); if (win.getComputedStyle(nav).position === 'fixed') {
     win.scrollTo(0, doc.documentElement.scrollHeight); const nt = nav.getBoundingClientRect().top;
-    const last = [...doc.querySelectorAll('main button, main a, main input, main select')].filter(e => I.vis(e)).pop();
+    const last = [...doc.querySelectorAll('main button, main a, main input, main select, main summary')].filter(e => I.vis(e)).pop();
     if (last && last.getBoundingClientRect().bottom > nt + 1) bad.push(`最底下的「${(last.innerText || last.dataset.act || '').slice(0, 10)}」被分頁列蓋住`);
     win.scrollTo(0, 0);
   }
@@ -180,7 +180,7 @@ test('無障礙：每個按鈕和輸入框都有名字（螢幕閱讀器念得�
   const I = await boot({ state: mkState({ logs: [W0, coinLog(500), ...drops(['clown'])] }), width: 375, height: 800 }); await I.dismiss();
   const unnamed = new Map();
   const nameOf = e => (e.getAttribute('aria-label') || e.title || (e.innerText || '').trim() || (e.tagName === 'INPUT' && e.type !== 'checkbox' && e.placeholder) || (e.labels && e.labels.length && e.labels[0].innerText.trim()) || (e.closest('label') && e.closest('label').innerText.trim()) || '').trim();
-  const scan = where => { for (const e of I.$$('button, input:not([type=file]), select, textarea, [role=button], a[href]')) { if (!I.vis(e)) continue; if (!nameOf(e)) unnamed.set(`${where}:${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}${e.dataset.act ? '[' + e.dataset.act + ']' : ''}${e.dataset.pf ? '[pf=' + e.dataset.pf + ']' : ''}`, 1); } };
+  const scan = where => { for (const e of I.$$('button, input:not([type=file]), select, textarea, summary, [role=button], a[href]')) { if (!I.vis(e)) continue; if (!nameOf(e)) unnamed.set(`${where}:${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}${e.dataset.act ? '[' + e.dataset.act + ']' : ''}${e.dataset.pf ? '[pf=' + e.dataset.pf + ']' : ''}`, 1); } };
   for (const t of TABS) { await I.tab(t); scan(t); }
   await I.tab('today'); await I.click('#habits .hab'); scan('sheet'); await I.dismiss(); await I.click(['#habits .hab', '運動']); scan('運動'); await I.dismiss();
   await I.click('#habits [data-act=habedit]'); scan('編輯習慣'); await I.click('[data-act=habdone]'); await I.click('[data-act=pomocustom]'); scan('番茄鐘'); await I.tab('shop'); await I.click('[data-act=shopedit]'); scan('編輯獎勵');
@@ -288,6 +288,18 @@ const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebK
 const onbOpen = I => { const e = I.$('#onb'); return !!e && !e.classList.contains('hidden'); };
 const activeIds = I => I.ev('activeHabits().map(h => h.id)');
 
+async function feedTutorialClown(I, count) {
+  const pet = I.S.logs.find(l => l.k === 'welcome' && l.drop === 'clown');
+  for (let n=0; n<count; n++) {
+    const before = I.S.fed?.[pet.id] || 0;
+    const button = I.$('.seabar [data-act=feedkeyboard]'); button.focus();
+    await I.click(button);
+    for (let i=0;i<80 && (I.S.fed?.[pet.id] || 0)<=before;i++) await new Promise(resolve=>setTimeout(resolve,20));
+    ok((I.S.fed?.[pet.id] || 0)>before,'飼料實際被小丑魚吃到');
+    if (I.S.introFeedPending) eq(I.$('#introFeedProgress').textContent,`已吃到 ${I.S.fed[pet.id]}／10 顆`,'進度隨實際吃到更新');
+  }
+}
+
 test('第一次打開：三步新手導覽清楚呈現且可重開接續', async () => {
   resetCloud(); const I = await boot({onb:true});
   ok(onbOpen(I), '有歡迎畫面'); ok(I.has('每天完成一點事，收集海洋生物。'), '採用指定文案');
@@ -297,22 +309,41 @@ test('第一次打開：三步新手導覽清楚呈現且可重開接續', async
   ok(onbOpen(I) && I.$('#onb').textContent.includes('第 1 步，共 3 步'), '主按鈕進入選習慣第一步');
   await I.click('#onb [data-act=onbpick][data-v=read]');
   await I.click('#onb [data-act=onbdone]');
-  ok(!onbOpen(I) && I.S.onb, '下一步進入第一件事');
-  ok(I.$('#six').textContent.includes('第 2 步，共 3 步'), '清單明確標示正在新手導覽第二步');
-  ok(I.$('#six').textContent.includes('例如「閱讀五頁書」'), '有具體輸入範例');
+  ok(onbOpen(I) && I.S.onb, '下一步保持獨立彈窗，進入第一件事');
+  ok(I.$('#onbbox').textContent.includes('第 2 步，共 3 步'), '清單明確標示正在新手導覽第二步');
+  ok(I.$('#onb [data-intro-index="0"]').placeholder.includes('閱讀五頁書'), '有具體輸入範例');
+  eq(I.$$('#onb [data-intro-index]').length,3,'獨立彈窗提供三格');
   ok(I.$('[data-act=meetfish]').disabled, '未寫第一件事前不能繼續');
+  await I.type('#onb [data-intro-index="2"]','   ');
+  ok(I.$('[data-act=meetfish]').disabled,'純空白不能繼續');
+  await I.type('#onb [data-intro-index="2"]','散步十分鐘');
+  ok(!I.$('[data-act=meetfish]').disabled,'只填第三格也能繼續');
+  await I.type('#onb [data-intro-index="2"]','');
   await I.plan(['今天先閱讀一頁']);
   const J = await I.reload({onb:true}); await J.dismiss();
-  ok(J.S.introPending && J.$('#six').textContent.includes('第 2 步，共 3 步'), '重開保持第二步及已輸入內容');
+  ok(J.S.introPending && onbOpen(J) && J.$('#onbbox').textContent.includes('第 2 步，共 3 步'), '重開保持第二步及已輸入內容');
+  eq(J.$('#onb [data-intro-index="0"]').value,'今天先閱讀一頁','重開保留輸入');
   await J.click('[data-act=meetfish]');
+  ok(!onbOpen(J),'領魚時關閉事項彈窗');
+  eq(J.S.plans[D0][0].text,'今天先閱讀一頁','輸入留在今日清單');
   ok(J.S.logs.some(l=>l.k==='welcome' && l.drop==='clown'), '寫一件事即可取得小丑魚');
+  eq(J.$$('#modal button').length,1,'新手領魚只保留一個前進按鈕');
+  ok(!J.$('#modal [data-act=close]'),'不提供跳過大海的選項');
   await J.click('#modal [data-act=seagoto]'); eq(J.UI.tab,'tank','直接進入大海');
-  ok(J.$('.sea-guide').textContent.includes('第 3 步，共 3 步'), '第三步清楚教餵魚');
-  const used=J.S.feedDay?.used||0; await J.click('.sea-guide [data-act=feedkeyboard]');
-  eq(J.S.feedDay.used,used+1,'按下教學按鈕真的撒出一顆飼料');
-  ok(J.$('.sea-guide').textContent.includes('新手導覽完成'),'有明確完成回饋');
+  ok(!J.$('.sea-guide'),'餵魚途中不顯示大型教學卡片');
+  ok(J.vis(J.$('.seacoach')),'只保留點擊提示');
+  const used=J.S.feedDay?.used||0; await feedTutorialClown(J,9);
+  ok(J.vis(J.$('.seacoach')) && !J.$('[data-act=introbackup]'),'未長大前持續顯示提示，不提前邀請備份');
+  await feedTutorialClown(J,1);
+  eq(J.S.feedDay.used,used+10,'用十顆飼料完成首次成長');
+  ok(J.S.introCompleteNotice && J.ev("stageOf(fedOf(S.logs.find(l=>l.k==='welcome').id))")===2,'長成成體才完成導覽');
+  ok(!J.$('.seacoach'),'長大後移除點擊提示');
+  ok(J.$('.sea-guide').textContent.includes('小丑魚長大了'),'先顯示成長回饋');
+  for (let i=0;i<100 && !J.$('[data-act=introfinish]');i++) await new Promise(r=>setTimeout(r,20));
   await J.click('[data-act=introfinish]');
-  eq(J.UI.tab,'today','完成後回今日'); ok(!J.S.introPending && !J.S.introFeedPending && !J.S.introCompleteNotice,'結束導覽狀態');
+  eq(J.UI.tab,'today','完成後回今日');
+  ok(J.$('#six .intro-target') && J.has('完成這件事後，回來打勾領獎勵'),'接回剛寫的事項');
+  ok(!J.S.plans[D0][0].done,'不代替使用者完成真實事項'); ok(!J.S.introPending && !J.S.introFeedPending && !J.S.introCompleteNotice,'結束導覽狀態');
   eq(J.S.logs.filter(l=>l.k==='welcome').length,1,'新手禮物不重發');
   I.destroy(); J.check('三步導覽'); J.destroy();
 });
@@ -355,16 +386,13 @@ test('引導：已有紀錄的登入入口、iPhone 登入與 App 內建瀏覽�
   M.destroy(); B.destroy(); A.destroy();
 });
 test('餵魚教學：提示半透明、文字點擊穿透且餵食按鈕可操作', async () => {
-  const I=await boot({state:mkState({logs:[W0,...drops(['clown'])],introFeedPending:true,tossed:0}),width:390,height:844});await I.dismiss();await I.tab('tank');
-  const guide=I.$('.sea-guide'),style=I.win.getComputedStyle(guide),color=style.backgroundColor.match(/[\d.]+/g);
+  const I=await boot({state:mkState({introFeedPending:true,tossed:0}),width:390,height:844});await I.dismiss();await I.tab('tank');
+  const guide=I.$('.seacoach span'),style=I.win.getComputedStyle(guide),color=style.backgroundColor.match(/[\d.]+/g);
   ok(color.length===4&&Number(color[3])>0&&Number(color[3])<.75,'提示背景半透明，文字不整體淡掉');
   ok(guide.getBoundingClientRect().height<180,'教學提示維持精簡高度');
-  const rect=guide.querySelector('p').getBoundingClientRect();
-  eq(I.doc.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2).id,'tank','提示文字區不攔截水面點擊');
-  const used=I.S.feedDay?.used||0;await I.click('.sea-guide [data-act=feedkeyboard]');
-  eq(I.S.feedDay.used,used+1,'教學按鈕仍能撒飼料');ok(I.has('新手導覽完成'),'完成回饋保留');I.check('半透明教學');I.destroy();
+  const rect=guide.getBoundingClientRect();eq(I.doc.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2).id,'tank','提示文字區不攔截水面點擊');
+  await feedTutorialClown(I,10);ok(I.S.introCompleteNotice,'真正長成成體才完成');I.check('半透明教學');I.destroy();
 });
-
 test('登入隱私：新手接續與更多頁登入前可見摘要及完整說明', async () => {
   resetCloud();
   const A=await boot({onb:true,seed:{}});
@@ -435,4 +463,84 @@ test('版本更新：只在新版、閒置且完成儲存後自動刷新', async
   I.ev('UI.tankEdit=false;S.timer={start:Date.now()};applyUpdate()');eq(I.win.__reloads,0,'番茄鐘期間不重整');
   I.ev('delete S.timer;save(false);UPDATE.activity=Date.now()-61000;applyUpdate();applyUpdate()');eq(I.win.__reloads,1,'儲存完閒置自動更新，防止重整迴圈');
   I.check('版本更新');I.destroy();
+});
+
+
+test('導覽備份邀請：可跳過，重開不重複要求登入', async () => {
+ resetCloud(); const I=await boot({state:mkState({onb:true,introCompleteNotice:true,logs:[W0,{id:'h1',d:D0,k:'habit',c:15,xp:1}]})});await I.dismiss();
+ I.ev("UI.tab='tank';render()");await flush(14);
+ ok(I.$('[data-act=introbackup]'),'完成第一次餵食後提供 Google 儲存入口');
+ eq(I.$('[data-act=introfinish]').textContent,'先玩看看','可以略過綁定');
+ const coins=I.coins();await I.click('[data-act=introfinish]');
+ eq(I.UI.tab,'today','略過後回到今日');eq(I.coins(),coins,'略過不影響進度');
+ ok(!I.S.introCompleteNotice && I.S.backupNudgeDismissed,'記住已略過');
+ const J=await I.reload();await J.dismiss();
+ ok(!J.$('[data-act=introbackup]') && !J.$('[data-act=backupinvite]'),'重開不重複邀請');
+ await J.tab('about');ok(J.$('.gbtn'),'仍可從更多頁登入');J.destroy();
+});
+
+test('導覽備份邀請：Google 按鈕沿用安全的首次儲存流程', async () => {
+ resetCloud(); const I=await boot({state:mkState({onb:true,introCompleteNotice:true})});await I.dismiss();await I.plan(['導覽後的清單']);
+ I.ev("UI.tab='tank';render()");await flush(14);window.__cloudDb.nextUser={uid:'tutorial-user'};
+ await I.click('[data-act=introbackup]');await flush(14);
+ eq(I.UI.tab,'today','儲存完成回到今日');
+ eq(I.S.cloudUid,'tutorial-user','按鈕啟動 Google 登入');
+ ok(!I.ev('CLOUD.choice'),'已同意儲存的新帳號不再重複詢問');
+ eq(JSON.parse(window.__cloudDb.docs['tutorial-user'].data).plans[D0][0].text,'導覽後的清單','原進度正確存入帳號');
+ ok(!I.S.introCompleteNotice,'不再顯示導覽邀請');I.destroy();
+});
+
+test('導覽備份邀請：已登入與 App 內建瀏覽器可直接完成', async () => {
+ resetCloud(); const I=await boot({state:mkState({onb:true,cloudUid:'u1',introCompleteNotice:true}),cloudUser:{uid:'u1'}});await I.dismiss();await flush(14);
+ I.ev("UI.tab='tank';render()");await flush(8);
+ ok(!I.$('[data-act=introbackup]'),'已登入不再次邀請綁定');
+ await I.click('[data-act=introfinish]');eq(I.UI.tab,'today','已登入者直接完成');I.destroy();
+ const J=await boot({state:mkState({onb:true,introCompleteNotice:true}),ua:'Mozilla/5.0 Line/13.0'});await J.dismiss();J.ev("UI.tab='tank';render()");
+ ok(!J.$('[data-act=introbackup]'),'不提供內建瀏覽器無法使用的登入操作');
+ await J.click('[data-act=introfinish]');eq(J.UI.tab,'today','內建瀏覽器也不阻擋遊戲');J.destroy();
+});
+
+test('導覽餵食：提示保留到十顆長大，重開後接續且不提前要求登入', async () => {
+ resetCloud();const I=await boot({state:mkState({onb:true,introFeedPending:true})});await I.dismiss();await I.tab('tank');
+ eq(I.$('#introFeedProgress').textContent,'已吃到 0／10 顆','初始顯示零顆');
+ await feedTutorialClown(I,9);
+ ok(I.S.introFeedPending && !I.S.introCompleteNotice,'九顆仍在養成階段');
+ ok(I.vis(I.$('.seacoach')) && !I.$('.sea-guide'),'撒超過三顆後仍保留氣泡，沒有大型卡片');
+ const J=await I.reload();await J.dismiss();await J.tab('tank');
+ eq(J.S.fed.w0,9,'重開保留已吃的九顆');
+ eq(J.$('#introFeedProgress').textContent,'已吃到 9／10 顆','重開後顯示保存的進度');
+ ok(J.vis(J.$('.seacoach')) && !J.$('[data-act=introbackup]'),'重開後提示仍在，不提前要求登入');
+ await feedTutorialClown(J,1);
+ ok(J.S.introCompleteNotice && J.S.fed.w0===10,'第十顆實際吃到才完成');
+ ok(!J.$('.seacoach'),'長成成體後移除提示');
+ for(let i=0;i<100&&!J.$('[data-act=introbackup]');i++)await new Promise(resolve=>setTimeout(resolve,20));
+ ok(J.$('[data-act=introbackup]'),'長大後才顯示備份邀請');J.destroy();
+});
+
+test('導覽儲存：已有雲端存檔時仍直接載入，不覆蓋為試玩', async () => {
+ resetCloud();const I=await boot({state:mkState({onb:true,introCompleteNotice:true})});await I.dismiss();await I.plan(['這次試玩']);
+ const remote=JSON.parse(JSON.stringify(I.S));remote.plans[D0][0].text='帳號原本的進度';remote.introCompleteNotice=false;
+ window.__cloudDb.docs.existing={data:JSON.stringify(remote),mtime:1,wid:'original'};
+ I.ev("UI.tab='tank';render()");await flush(14);window.__cloudDb.nextUser={uid:'existing'};
+ await I.click('[data-act=introbackup]');await flush(14);
+ eq(I.S.plans[D0][0].text,'帳號原本的進度','既有雲端優先');
+ eq(JSON.parse(window.__cloudDb.docs.existing.data).plans[D0][0].text,'帳號原本的進度','沒有用試玩覆蓋');
+ ok(I.win.localStorage.getItem('habitdive.v1.prelogin').includes('這次試玩'),'試玩另存備份');I.destroy();
+});
+
+test('導覽儲存：取消 Google 後普通登入仍需確認儲存試玩', async () => {
+ resetCloud();const I=await boot({state:mkState({onb:true,introCompleteNotice:true})});await I.dismiss();await I.plan(['仍是試玩']);I.ev("UI.tab='tank';render()");await flush(14);
+ I.ev("window.__signIn=firebase.auth().signInWithPopup;firebase.auth().signInWithPopup=async()=>{const error=new Error('closed');error.code='auth/popup-closed-by-user';throw error}");
+ await I.click('[data-act=introbackup]');await flush(10);
+ ok(!I.ev('CLOUD.trialSaveRequested'),'取消後不保留自動儲存的授權');
+ I.ev('firebase.auth().signInWithPopup=__signIn');window.__cloudDb.nextUser={uid:'after-cancel'};
+ await I.click('.gbtn');await flush(14);
+ ok(I.ev('CLOUD.choice?.kind === "new"'),'稍後普通登入仍提供確認');I.destroy();
+});
+
+test('手機點擊範圍：393×771分頁及餵食按鈕中央與邊緣不被圖層阻擋', async () => {
+  const I=await boot({state:mkState(),width:393,height:771});await I.dismiss();
+  const checkHit=button=>{const r=button.getBoundingClientRect();for(const [x,y] of [[r.left+r.width/2,r.top+r.height/2],[r.left+4,r.top+r.height/2],[r.right-4,r.top+r.height/2],[r.left+r.width/2,r.top+4],[r.left+r.width/2,r.bottom-4]]){const hit=I.doc.elementFromPoint(x,y);ok(hit===button||button.contains(hit),'按鈕中央與四邊命中自身：'+button.textContent.trim())}};
+  for(const tab of ['today','tank','about','shop','log','quest']){await I.tab(tab);for(const button of I.$$('nav button'))checkHit(button);if(tab==='tank'){for(const button of I.$$('.seabar button:not(.sr-only)'))checkHit(button);const canvas=I.$('#tank'),r=canvas.getBoundingClientRect();for(const k of [.25,.5,.75])eq(I.doc.elementFromPoint(r.left+r.width*k,r.top+r.height*.5).id,'tank','水面點擊範圍沒有被透明圖層蓋住')}}
+  I.check('手機命中範圍');I.destroy();
 });

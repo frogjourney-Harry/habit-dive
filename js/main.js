@@ -22,12 +22,12 @@ function finishHabitEntry() {
 }
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
-  const v = b.dataset.v;
+  const v = b.dataset.v, context = dataContext();
   if (UI.renderedState && UI.renderedState !== S && b.closest('#main') && b.dataset.act !== 'tab') {
     render(); toast('資料已更新，請重新操作'); return;
   }
   switch (b.dataset.act) {
-    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); closeTankSelection(); UI.tankView = ''; UI.logView = ''; UI.swap = null; UI.tab = v; if (v === 'today') { UI.pday = 0; UI.showRows = 0; } render(); window.scrollTo(0, 0); break;
+    case 'tab': CLOUD.deleteArmed = null; CLOUD.deleteContext = null; if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); closeTankSelection(); UI.tankView = ''; UI.logView = ''; UI.swap = null; UI.tab = v; if (v === 'today') { UI.pday = 0; UI.showRows = 0; } render(); window.scrollTo(0, 0); break;
     case 'pday': UI.pday = +v; UI.swap = null; UI.showRows = 0; render(); break;
     case 'prowdel': {
       const d = viewDay(), P = getPlan(d), index = +v, item = P[index];
@@ -132,7 +132,7 @@ document.addEventListener('click', async e => {
       if (sel[v] && onbCustomCount() > CONFIG.maxCustom) { sel[v] = false; toast(`自訂型的習慣最多 ${CONFIG.maxCustom} 個`); }
       renderOnb(); break;
     }
-    case 'onbdone': if (finishOnb()) toast('設定好了，先寫下今天最重要的事吧'); break;
+    case 'onbdone': finishOnb(); break;
     case 'shopedit': S.shop = shopItems().map(x => ({ ...x })); UI.shopEdit = true; render(); break;
     case 'shopadd': S.shop = S.shop || []; S.shop.push({ id: 'c' + Date.now(), icon: '🎁', name: '', price: 100 }); save(); render(); break;
     case 'shopdel': if (S.shop) S.shop.splice(+v, 1); save(); render(); break;
@@ -153,6 +153,7 @@ document.addEventListener('click', async e => {
       if (UI.pday > 0) break;
       if (!it.text.trim()) { toast('先寫下這件事'); render(); break; }
       it.done = !it.done;
+      if (it.done && UI.pday === 0) S.introNextTask = false;
       if (it.done) { ac(); SFX.tap(); }
       reward(() => {}, UI.pday === 0);
       break;
@@ -269,28 +270,35 @@ document.addEventListener('click', async e => {
       save(); catchUp(); render(); SFX.buy(); toast('🛡 買了一張連勝保護卡'); break;   // 昨天剛漏掉的話，馬上補上
     }
     case 'meetfish':
-      if (!filled(getPlan(dayKey())).length) { toast('先寫下今天的一件事'); break; }
+      if (!introTasksReady()) { toast('先寫下今天的一件事'); break; }
+      UI.tab = 'today'; UI.pday = 0;
       S.introPending = false; S.introFeedPending = true;
       if (!derive().claimed.has('welcome')) reward(() => grant('welcome', null, { key: 'welcome' }));
       else { save(); render(); }
       break;
-    case 'introfinish': S.introCompleteNotice = false; save(); UI.tab = 'today'; render(); toast('新手導覽完成，現在可以開始安排今天了'); break;
+    case 'introbackup':
+      if (!S.introCompleteNotice || !FIREBASE_CONFIG || CLOUD.user || IN_APP) break;
+      S.introCompleteNotice = false; S.backupNudgeDismissed = true; save();
+      UI.tab = 'about'; render(); cloudLogin(true); break;
+    case 'introfinish': S.backupNudgeDismissed = true; S.introCompleteNotice = false; S.introNextTask = getPlan(dayKey()).some(it => it.text.trim() && !it.done); save(); UI.tab = 'today'; render(); scrollToIntroTask(); break;
     case 'seagoto': UI.opened = false; UI.tab = 'tank'; closeTankSelection(); UI.tankView = ''; render(); nextChest(); break;
     case 'backuplater': S.backupNudgeDismissed = true; save(); render(); break;
     case 'backupinvite': UI.tab = 'about'; render(); document.getElementById('cloudBox')?.scrollIntoView(); break;
-    case 'cloudbackuprestore': { const backup = cloudChoiceBackup(); if (backup && await ask('改用選擇前的雲端紀錄？目前紀錄會先另存備份。', '還原雲端紀錄')) { restoreBackup(prepareBackup(backup.s)); render(); } break; }
+    case 'cloudbackuprestore': { const backup = cloudChoiceBackup(); if (backup && await ask('改用選擇前的雲端紀錄？目前紀錄會先另存備份。', '還原雲端紀錄')) { restoreWithFeedback(backup.s, context, '已還原備份'); } break; }
     case 'cloudchoose': chooseCloud(v); break;
-    case 'syncbackuprestore': { const backup = syncBackup(); if (backup && await ask('改用同步前的本機紀錄？目前的紀錄會先另存備份。', '還原本機紀錄')) { restoreBackup(prepareBackup(backup.s)); render(); } break; }
+    case 'syncbackuprestore': { const backup = syncBackup(); if (backup && await ask('改用同步前的本機紀錄？目前的紀錄會先另存備份。', '還原本機紀錄')) { restoreWithFeedback(backup.s, context, '已還原備份'); } break; }
     case 'cloudretry': if (!CLOUD.ready) { CLOUD.error = ''; cloudInit(); } else if (CLOUD.pending) cloudPush(); else cloudPull(false); break;
     case 'autodismiss': S.autoSeen = dayKey(); UI.autoNotice = null; save(); render(); break;
     case 'feedkeyboard': {
       const cv = document.getElementById('tank'); if (!cv) break;
-      const r = cv.getBoundingClientRect(); cv.dispatchEvent(new MouseEvent('click', { clientX: r.left + r.width / 2, clientY: r.top + r.height * .4 })); break;
+      const r = cv.getBoundingClientRect(), fish = S.introFeedPending && TANK.fish?.find(f => f.c.id === 'clown');
+      const x = fish ? (fish.x + fish.w / 2) / TANK.W : .5, y = fish ? (fish.y + fish.h / 2) / TANK.H : .4;
+      cv.dispatchEvent(new MouseEvent('click', { clientX: r.left + r.width * x, clientY: r.top + r.height * y })); break;
     }
     case 'backupundo': {
       let stored; try { stored = JSON.parse(localStorage.getItem(KEY + '.before-import')); } catch (_) {}
       if (!stored || !(await ask('復原上次還原前的紀錄？目前紀錄也會另存一份。', '復原'))) break;
-      try { restoreBackup(prepareBackup(stored)); toast('已復原上次還原'); } catch (_) { UI.backupError = '無法復原，原紀錄已保留。請先下載目前的備份。'; render(); }
+      restoreWithFeedback(stored, context, '已復原上次還原');
       break;
     }
     case 'copydiagnostics': copyDiagnostics(); break;
@@ -364,6 +372,14 @@ document.addEventListener('input', e => {
     if (p) p.textContent = paceText({ type: document.getElementById('exType').value, dist: g('dist'), m: g('m'), min: g('min') });
     return;
   }
+  if (el.dataset.introIndex !== undefined) {
+    const index = Number(el.dataset.introIndex);
+    if (!S.introPending || !Number.isInteger(index) || index < 0 || index > 2) return;
+    getPlan(dayKey())[index].text = el.value.slice(0, 200); save();
+    const button = document.querySelector('#onb [data-act=meetfish]'); if (button) button.disabled = !introTasksReady();
+    const box = document.getElementById('onbbox'); if (box) box.dataset.h = introTasks();
+    return;
+  }
   if (el.dataset.onb) { UI.onbName = el.value; renderOnbButton(); return; }
   if (el.dataset.nf) { setPetName(el.dataset.nf, el.value); return; }
   if (el.dataset.sf) { const it = S.shop && S.shop[el.dataset.si]; if (it) { it[el.dataset.sf] = el.dataset.sf === 'price' ? +el.value : el.value; save(); } return; }
@@ -382,16 +398,18 @@ document.addEventListener('input', e => {
   save();
 });
 document.getElementById('importFile').addEventListener('change', async e => {
+  const context = dataContext();
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
     if (f.size > 10 * 1024 * 1024) throw new Error('備份檔過大');
     const j = JSON.parse(await f.text());
+    if (!sameDataContext(context)) { toast('帳號已變更，請重新選擇檔案'); return; }
     const candidate = prepareBackup(j);
-    if (await ask(`備份檔有 ${j.logs.length} 筆紀錄，目前有 ${S.logs.length} 筆。\n確定用備份取代目前資料？`, '還原')) {
+    if (await ask(`備份檔有 ${j.logs.length} 筆紀錄，目前有 ${S.logs.length} 筆。\n還原會取代目前紀錄，取代前會先保留一份本機副本。\n確定還原？`, '還原')) {
 
-      restoreBackup(candidate); toast('已還原');
+      if (restoreBackup(candidate, context)) toast('已還原');
     }
-  } catch (err) { UI.backupError = err.message === '備份檔過大' ? '檔案超過 10 MiB，請選擇較小的備份。' : err.name === 'QuotaExceededError' ? '此裝置的儲存空間不足，原紀錄已保留。請先下載備份。' : '這不是有效的備份檔，或資料無法還原；目前紀錄已保留。'; render(); toast(UI.backupError); }
+  } catch (err) { UI.backupError = err.message === '備份檔過大' ? '檔案超過 10 MiB，請選擇較小的備份。' : err.name === 'QuotaExceededError' ? '此裝置的儲存空間不足，原紀錄已保留。請先下載備份。' : '這不是有效的備份檔，或資料無法還原；目前紀錄已保留。'; renderBackupSection(true); toast(UI.backupError); }
 });
 
 // 另一個分頁存了新的紀錄：這一頁跟上（正在打字就等放開輸入框再重畫，免得打到一半被洗掉）
@@ -403,7 +421,10 @@ function refreshFromStorage() {
   if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { syncPending = true; return; }
   render(); renderSheet(); tick();
 }
-window.addEventListener('storage', e => { if (!e.key || e.key === KEY) refreshFromStorage(); });
+window.addEventListener('storage', e => {
+  if (!e.key || e.key === KEY) refreshFromStorage();
+  if (!e.key || ACCOUNT_BACKUPS.some(suffix => e.key === KEY + suffix)) renderBackupSection();
+});
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFromStorage(); });
 document.addEventListener('focusout', () => { if (syncPending) { syncPending = false; setTimeout(() => { render(); if (!UI.sheet || habit(UI.sheet.id)?.kind !== 'exercise') renderSheet(); tick(); }, 0); } });
 

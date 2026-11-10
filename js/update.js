@@ -10,12 +10,12 @@ const UPDATE = {
 };
 function showUpdate() {
   let box = document.getElementById('updateNotice');
-  if (!box) { box = document.createElement('div'); box.id = 'updateNotice'; document.getElementById('banner').after(box); }
+  if (!box) { box = document.createElement('div'); box.id = 'updateNotice'; const anchor = document.getElementById('banner'); if (anchor) anchor.after(box); else document.body.prepend(box); }
   box.innerHTML = UPDATE.next ? '<div class="banner row" role="status"><span class="sp">有新版本，閒置時會自動更新。</span><button data-update>立即更新</button></div>' : '';
 }
 function safeToUpdate() {
   if (document.visibilityState !== 'visible' || !navigator.onLine || !STORAGE_OK || S.timer || UI.sheet || UI.habEdit || UI.shopEdit || UI.nameEdit || UI.tankEdit || UI.planUndo || UI.onbReturning || UI.opened || Q.length || needOnb() || visibleDialog()) return false;
-  if (CLOUD.pending || CLOUD.deleting || CLOUD.busy || CLOUD.choice || CLOUD.armed || CLOUD.deleteArmed || CLOUD.activePushes?.size) return false;
+  if (CLOUD.pending || CLOUD.suspended || CLOUD.deleting || CLOUD.busy || CLOUD.authPending || CLOUD.choice || CLOUD.armed || (CLOUD.deleteArmed && CLOUD.deleteArmed === CLOUD.user?.uid && UI.tab === 'about') || CLOUD.writes?.size || CLOUD.pushPromise || CLOUD.pendingIntroLogin || CLOUD.trialSaveRequested) return false;
   if (document.activeElement?.matches('input,textarea,select,[contenteditable=true]')) return false;
   try { return JSON.stringify(JSON.parse(localStorage.getItem(KEY))) === JSON.stringify(S); }
   catch (_) { return false; }
@@ -28,7 +28,7 @@ function applyUpdate(manual = false) {
     const marker = KEY + '.update-attempt';
     if (UPDATE.session().getItem(marker) === UPDATE.next) { if (manual) toast('已嘗試更新，請稍後再重新整理。'); return false; }
     UPDATE.session().setItem(marker, UPDATE.next);
-  } catch (_) { return false; }
+  } catch (_) { if (manual) toast('無法自動更新，請使用瀏覽器重新整理。'); return false; }
   UPDATE.reload(); return true;
 }
 async function checkUpdate(force = false) {

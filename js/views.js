@@ -33,7 +33,7 @@ function render() {
   const pendN = dailyTasks(D).filter(t => t.pend.length).length;
   document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? `<i class="badge">${pendN}</i>` : ''}</button>`).join('');
   document.getElementById('main').innerHTML = ({ today, quest: quests, tank, shop, log, about })[UI.tab](D);
-  document.body.classList.toggle('intro-first', !!S.introPending); document.body.classList.toggle('sea-on', seaOn()); document.documentElement.classList.toggle('sea-on', seaOn());
+  document.body.classList.toggle('sea-on', seaOn()); document.documentElement.classList.toggle('sea-on', seaOn());
   if (UI.tab === 'tank') tankStart();
   for (const i of document.querySelectorAll('#main textarea, #main input:not([type]), #main input[type=text], #sheet input:not([type]), #sheet input[type=text]')) { i.setAttribute('autocomplete', 'off'); i.setAttribute('autocapitalize', 'off'); i.setAttribute('spellcheck', 'false'); }
   // 不是按鈕的可點元素（圖鑑格子、寶箱名稱、任務名稱…）：讓鍵盤和螢幕閱讀器也用得到
@@ -183,11 +183,12 @@ function today(D) {
   // 昨天沒做完的：在今天點一下帶過來（一件一件，或全部帶入），已經在今天清單裡的不再列出；今天寫滿了就不顯示
   const left = UI.pday === 0 ? carryLeft(P) : [];
   const carryBar = left.length && P.some(x => !x.text.trim()) ? `<div class="favs carry"><small class="dim">昨天沒做完</small>${left.map((t, i) => `<span class="fav"><button class="ghost" data-act="carry" data-v="${i}" title="帶到今天">＋ ${esc(t)}</button></span>`).join('')}${left.length > 1 ? '<button class="ghost carryall" data-act="carryall">全部帶入</button>' : ''}</div>` : '';
-  const last = P.reduce((a, it, i) => it.text.trim() ? i : a, -1), shown = Math.min(P.length, Math.max(S.introPending ? 1 : CONFIG.rewardRows, last + 1, UI.showRows || 0));
+  const last = P.reduce((a, it, i) => it.text.trim() ? i : a, -1), shown = Math.min(P.length, Math.max(CONFIG.rewardRows, last + 1, UI.showRows || 0));
   UI.shownRows = shown;
+  const introTarget = S.introNextTask && UI.pday === 0 ? P.findIndex(it => it.text.trim() && !it.done) : -1;
   const rows = P.slice(0, shown).map((it, i) => {
     const starred = it.text.trim() && favs.includes(it.text.trim());
-    return `<div class="prow ${it.done ? 'done' : ''}">
+    return `<div class="prow ${it.done ? 'done' : ''} ${i === introTarget ? 'intro-target' : ''}">
       <input type="checkbox" data-act="pdone" data-v="${i}" aria-label="完成第 ${i + 1} 件" ${it.done ? 'checked' : ''} ${UI.pday > 0 ? 'disabled title="明天才能打勾"' : ''}>
       <button class="ghost no ${UI.swap === i ? 'sel' : ''}" data-act="swap" data-v="${i}" title="按住拖曳排序，或點兩個編號交換">${i + 1}</button>
       <textarea class="ptext" rows="1" title="${esc(it.text)}" data-pf="text" data-i="${i}" aria-label="第 ${i + 1} 件事" maxlength="200" placeholder="${i === 0 ? '今天最重要的事' : ''}">${esc(it.text)}</textarea>
@@ -205,17 +206,17 @@ function today(D) {
         <button data-act="start">開始專注</button></div></div>
       <div class="segs" id="pomoPlan">${segLine(null, sessionPlan(pm))}</div>
 </section>`;
-  const habits = S.introPending ? '' : UI.habEdit ? habitEditor() : `<section class="px" id="habits">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
+  const habits = UI.habEdit ? habitEditor() : `<section class="px" id="habits">${sh('習慣', 'HABITS', '<button class="ghost" data-act="habedit">編輯</button>')}
       <div class="habits">${chips || '<button class="wide" data-act="habedit">新增第一個習慣</button>'}</div>
       ${risky.join('')}</section>`;
   return `${UI.pday === 0 ? autoNoticeCard() + tutorialResumeCard() + (S.introPending ? '' : nextStep(D, P)) + backupNudge() : ''}${habits}
-    <section class="px" id="six">${S.introPending ? tutorialProgress(2) : ''}${sh(S.introPending ? '今天的一件事' : '最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
-      <div class="mini" style="margin:-2px 0 4px">${UI.pday < 0 ? '昨天 ' : UI.pday > 0 ? '明天 ' : '今天 '}${d.slice(5).replace('-', '/')}${hint && !S.introPending ? '・' + hint : ''}</div>
+    <section class="px" id="six">${sh('最重要的六件事', 'TODAY', `<span class="seg-switch">${[[-1, '昨天'], [0, '今天'], [1, '明天']].map(([o, n]) => `<button class="${UI.pday === o ? 'sel' : ''}" data-act="pday" data-v="${o}">${n}</button>`).join('')}</span>`)}
+      <div class="mini" style="margin:-2px 0 4px">${UI.pday < 0 ? '昨天 ' : UI.pday > 0 ? '明天 ' : '今天 '}${d.slice(5).replace('-', '/')}${hint ? '・' + hint : ''}</div>
       ${UI.pday >= 0 && !S.tipSix ? `<div class="tip row"><span class="sp">小技巧：按住編號拖曳可以排順序，點 ☆ 存成常用。</span><button class="ghost" data-act="tipsix">知道了</button></div>` : ''}
-      ${UI.pday === 0 && !S.introPending ? `<div class="mini">已完成 ${Math.min(filled(P).filter(it => it.done).length, CONFIG.rewardRows)}/${CONFIG.rewardRows} 件・任意完成 ${CONFIG.rewardRows} 件有加碼</div>` : ''}
-      ${S.introPending ? '<p class="tutorial-prompt">在下方寫一件今天想完成的事，例如「閱讀五頁書」。輸入會自動儲存，再按下一步領取小丑魚。</p>' : ''}${UI.pday >= 0 ? carryBar + favBar : ''}${rows}${S.introPending ? introCard() : ''}${UI.planUndo && UI.planUndo.d === d ? '<button class="ghost" data-act="planundo">復原剛才刪除的事項</button>' : ''}
+      ${UI.pday === 0 ? `<div class="mini">已完成 ${Math.min(filled(P).filter(it => it.done).length, CONFIG.rewardRows)}/${CONFIG.rewardRows} 件・任意完成 ${CONFIG.rewardRows} 件有加碼</div>` : ''}
+      ${introTarget >= 0 ? '<p class="mini intro-task-hint">完成這件事後，回來打勾領獎勵。</p>' : ''}${UI.pday >= 0 ? carryBar + favBar : ''}${rows}${UI.planUndo && UI.planUndo.d === d ? '<button class="ghost" data-act="planundo">復原剛才刪除的事項</button>' : ''}
       ${shown < P.length && UI.pday >= 0 ? `<button class="ghost addrow" data-act="addrow">＋ 再加一件</button>` : ''}
-      ${UI.pday < 0 || claimed || S.introPending ? '' : '<div class="row" style="margin-top:8px"><button class="pri" data-act="plansave">寫好了</button></div>'}</section>
+      ${UI.pday < 0 || claimed ? '' : '<div class="row" style="margin-top:8px"><button class="pri" data-act="plansave">寫好了</button></div>'}</section>
     ${timer}`;
 }
 
@@ -244,22 +245,22 @@ const onbLabel = () => '下一步：建立第一件事';
 function renderOnbButton() { const b = document.querySelector('#onbbox [data-act=onbdone]'); if (b) b.textContent = onbLabel(); }   // 打字時只換按鈕上的字，不重畫（輸入框會失去焦點）
 function renderOnb() {
   let el = document.getElementById('onb');
-  if (!needOnb()) { if (el) el.classList.add('hidden'); if (GAME_READY) startGame(); return; }   // 引導做完（或雲端換成做過引導的紀錄）：開始遊戲
+  const firstTask = S.onb && S.introPending && !window.__noOnb;
+  if (!needOnb() && !firstTask) { if (el) el.classList.add('hidden'); if (GAME_READY) startGame(); return; }   // 引導做完（或雲端換成做過引導的紀錄）：開始遊戲
   if (!el) { el = document.createElement('div'); el.id = 'onb'; el.className = 'ov'; el.innerHTML = '<div class="px modal" id="onbbox"></div>'; document.body.appendChild(el); }
   el.classList.remove('hidden');
   const step = UI.onbStep || 1, sel = UI.onbSel || {};
   let html;
-  if (step === 1) {
+  if (firstTask) html = introTasks();
+  else if (step === 1) {
     if (UI.onbReturning) cloudWarm();
     html = `<h2>歡迎來到習慣深潛</h2><p>每天完成一點事，收集海洋生物。</p>
       ${UI.onbReturning ? `<div class="mini">登入後接續你的雲端紀錄。</div>${IN_APP ? '<div class="warn">App 內建瀏覽器無法登入，請用 Chrome 或 Safari 開啟。</div>' : `${loginPrivacyNotice()}<button class="gbtn" data-act="login">${GOOGLE_G}${CLOUD.armed ? '再按一次，選擇 Google 帳戶' : '用 Google 帳戶登入'}</button>`}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div>` : ''}<button class="ghost wide" data-act="onbback">返回</button>` : `<ol class="welcome-route"><li>選擇想養成的習慣</li><li>寫下第一件重要的事</li><li>認識小丑魚，試著餵食</li></ol><button class="pri wide" data-act="onbstart">開始新手導覽</button><div class="mini">不需註冊，紀錄先存在此瀏覽器。</div><div class="row intro-links">${FIREBASE_CONFIG ? '<button class="ghost" data-act="onbreturn">已有紀錄？登入接續</button>' : ''}</div>`}`;
   } else {
     html =`${tutorialProgress(1)}<h2>先選擇想養成的習慣</h2>
       ${CLOUD.user ? `<div class="mini" style="margin:0 0 6px">已綁定 ${esc(CLOUD.user.email || '')}</div>` : ''}
-      <div class="mini" style="margin:0 0 10px">選一個就好，也可以複選；不確定時可先留空。下一步會帶你建立第一件事，之後仍可在「今日」編輯習慣。</div>
       <div class="onbgrid">${ONB_HABITS.map(h => `<button class="onbopt ${sel[h.id] ? 'sel' : ''}" data-act="onbpick" data-v="${h.id}" aria-pressed="${!!sel[h.id]}"><b>${esc(h.n)}</b><small>${esc(h.desc)}</small></button>`).join('')}</div>
       <div class="row onbcustom"><input class="sp" data-onb="name" maxlength="20" placeholder="自訂，例如：喝水" aria-label="自訂習慣名稱" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(UI.onbName || '')}"></div>
-      <div class="mini" style="margin:0 0 12px">自訂的習慣預設每天，可以在「編輯」改成每週或每兩週、每週幾天。</div>
       <button class="pri wide" data-act="onbdone">${onbLabel()}</button>`;
   }
   const box = document.getElementById('onbbox');
@@ -500,7 +501,24 @@ const freeLeft = () => S.feedDay && S.feedDay.d === dayKey() ? Math.max(0, FEED.
 const feedLeft = () => freeLeft() + (S.feed || 0);
 // 新手提示：撒滿這麼多顆飼料以前，海中間會有一句說明（S.tossed＝總共撒過幾顆）
 const FEED_TIP_UNTIL = 3, FEED_TIP = '點水裡撒飼料，魚吃到一定數量會長大';
-const needFeedTip = () => (S.tossed || 0) < FEED_TIP_UNTIL;
+const needFeedTip = () => {
+  if (S.introFeedPending) {
+    const pet = S.logs.find(l => l.k === 'welcome' && l.drop === 'clown');
+    return !pet || stageOf(fedOf(pet.id)) < 2;
+  }
+  return (S.tossed || 0) < FEED_TIP_UNTIL;
+};
+function introFeedProgressText() {
+  const pet = S.logs.find(l => l.k === 'welcome' && l.drop === 'clown');
+  return `已吃到 ${Math.min(GROW[1], pet ? fedOf(pet.id) : 0)}／${GROW[1]} 顆`;
+}
+function feedTipHTML() {
+  return S.introFeedPending ? `點水裡撒飼料，讓小丑魚長大<br><b id="introFeedProgress">${introFeedProgressText()}</b>` : FEED_TIP;
+}
+function updateFeedTipProgress() {
+  const progress = document.getElementById('introFeedProgress'), text = introFeedProgressText();
+  if (progress && progress.textContent !== text) progress.textContent = text;
+}
 function useFeed() {
   if (freeLeft() > 0) { if (!S.feedDay || S.feedDay.d !== dayKey()) S.feedDay = { d: dayKey(), used: 0 }; S.feedDay.used++; }
   else if ((S.feed || 0) > 0) S.feed--;
@@ -584,7 +602,7 @@ function tank(D) {
     <div class="seahud seabar"><div id="feedInfo">${tankFeedHTML()}</div><span class="sp"></span>
       <button class="sr-only" data-act="feedkeyboard">撒一顆飼料</button><button class="feedbuy" data-act="buyfeed" title="用 ${FEED.price} 金幣買 ${FEED.pack} 顆飼料" aria-label="${FEED.pack} 顆飼料，${FEED.price} 金幣">+${FEED.pack}<span class="price">${FEED.price}${COIN}</span></button>
       <div class="sea-nav"><button class="sea-action" data-act="tankview" data-v="dex" title="已解鎖 ${Object.keys(D.col).length} 種生物">圖鑑</button><button class="sea-action" data-act="tankedit" aria-label="管理生物，目前展示 ${n} 隻，最多 ${TANK_LIMIT} 隻">管理生物</button></div></div>
-    ${tutorialSeaCard()}${!n ? '<div class="seaempty"><p>這片海還沒有展示生物</p><button data-act="tab" data-v="shop">前往商店</button><button data-act="tankedit">管理生物</button></div>' : ''}${needFeedTip() ? `<div class="seacoach" aria-live="polite"><i class="ring"></i><span>${FEED_TIP}</span></div>` : ''}</div>`;
+    ${tutorialSeaCard()}${!n ? '<div class="seaempty"><p>這片海還沒有展示生物</p><button data-act="tab" data-v="shop">前往商店</button><button data-act="tankedit">管理生物</button></div>' : ''}${needFeedTip() ? `<div class="seacoach" aria-live="polite"><i class="ring"></i><span>${feedTipHTML()}</span></div>` : ''}</div>`;
 }
 // 大海畫面時：頁尾藏起來、整頁不捲動，海填滿整個視窗
 const seaOn = () => UI.tab === 'tank' && !UI.tankEdit && UI.tankView !== 'dex';
@@ -667,7 +685,6 @@ function tankStart() {
     if (py >= floorY - 4) return;
     if (!useFeed()) { toast(`飼料用完了，明天會再送 ${FEED.free} 顆，也可以用金幣買`); return; }
     TANK.food.push({ x: px, y: py, vy: .25 }); ac(); SFX.tap();
-    markTutorialFed();
     const el = document.getElementById('feedInfo'); if (el) el.innerHTML = tankFeedHTML();
     if (!needFeedTip()) { const tip = document.querySelector('.seacoach'); if (tip) tip.remove(); }
   };
@@ -705,6 +722,8 @@ function tankStart() {
           TANK.food.splice(TANK.food.indexOf(food), 1); SFX.eat();
           const before = stageOf(fedOf(f.key));
           S.fed = S.fed || {}; S.fed[f.key] = fedOf(f.key) + 1;
+          updateFeedTipProgress();
+          markTutorialFed(f.key);
           const after = stageOf(fedOf(f.key));
           if (after > before) {
             S.seen = S.seen || {}; S.seen[f.c.id] = Math.max(S.seen[f.c.id] || 1, after);
@@ -870,7 +889,7 @@ function log(D) {
     <div class="streakbox"><div><small>目前連續</small><b>${curRun}</b><small>天</small></div>
       <div><small>最長連續</small><b>${best}</b><small>天</small></div><div><small>總共打卡</small><b>${allDays.length}</b><small>天</small></div></div></section>
   ${rewardHistory()}<section class="px">${sh('最近習慣紀錄', 'RECENT HABIT')}
-    ${rec.length ? rec.slice(0, 12).map(r => `<div class="entry"><span class="dim" style="flex:none">${r.d.slice(5).replace('-', '/')}</span><span class="sp">${esc(entryText(r))}</span></div>`).join('')
+    ${rec.length ? compactHistory(rec.slice(0, 12).map(r => `<div class="entry"><span class="dim" style="flex:none">${r.d.slice(5).replace('-', '/')}</span><span class="sp">${esc(entryText(r))}</span></div>`), 5)
       : '<div class="dim">點「今日」的習慣卡片打卡，就會記在這裡。</div>'}</section>
   <section class="px">${sh('累積', 'TOTALS')}${(tot => tot ? `<div class="stat">${tot}</div>` : '<div class="dim">完成任務後，累積的數字會出現在這裡。</div>')([
     ...H.map(h => daysOf(h.id) && `<div><small>${esc(h.n)}</small><b>${daysOf(h.id)}</b><small>天</small></div>`),
@@ -888,22 +907,46 @@ const ABOUT_LINKS = [
   { title: '潛水日誌 #3｜印尼・Nusa Penida・PED：蘇眉魚、桶狀海綿與一整片珊瑚花園', sub: '珊瑚、大魚、小生物通通有的一潛', url: 'https://vocus.cc/article/6ae17a47fd89780001bf3b6f' },
   { title: 'OW 潛水考照心得｜課程都在學什麼？我的完整考照紀錄', sub: '從零開始學潛水的紀錄', url: 'https://vocus.cc/article/6a45ddadfd89780001dff50b' },
 ];
-// 「更多」：設定、雲端同步在最上面，下面是關於和沙龍
+function manualBackupSection() {
+  return `<details class="more-detail manual-backup" id="backupSection" ${UI.backupError ? 'open' : ''}><summary>手動備份與還原</summary><div class="more-content">
+      <p class="mini">需要另存一份紀錄或從檔案復原時再使用，平常不必手動操作。</p>
+      ${preLogin() ? `<div id="preloginBackup"><p class="mini">登入前的本機紀錄（${summary(preLogin().s)}）已另存備份，還原會取代目前帳號的雲端進度。</p><div class="row"><button data-act="prerestore">還原登入前的紀錄</button><button class="ghost" data-act="predrop">刪除此備份</button></div></div>` : ''}
+      ${cloudChoiceBackup() ? '<button class="ghost" data-act="cloudbackuprestore">還原選擇前的雲端紀錄</button>' : ''}
+      ${syncBackup() ? '<button class="ghost" data-act="syncbackuprestore">還原同步前的本機紀錄</button>' : ''}
+      <div class="row"><button data-act="export">下載備份</button><button data-act="import">從檔案還原</button></div>
+      ${hasBackupUndo() ? '<button class="ghost" data-act="backupundo">復原上次還原</button>' : ''}
+      ${UI.backupError ? `<div class="warn" role="alert">${esc(UI.backupError)}</div>` : ''}
+    </div></details>`;
+}
+// 「更多」：常用操作直接顯示，協助與關於按需展開。
 function about() {
-  return `${cloudSection()}
-  <section class="px">${sh('設定', '')}<label class="switch"><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button><span>音效</span></label></section>
-  <section class="px" id="backupSection">${sh('備份與還原', '')}
-    <p class="mini">紀錄保存在此瀏覽器；登入後會嘗試同步到雲端，狀態請看上方。清除瀏覽資料可能遺失本機紀錄，建議定期下載備份。</p>
-    <div class="row"><button data-act="export">下載備份</button><button data-act="import">從檔案還原</button></div>
-    <div class="mini">還原會取代目前紀錄，取代前會保留一份本機副本。備份檔上限 10 MiB。</div>
-    ${hasBackupUndo() ? '<button class="ghost" data-act="backupundo">復原上次還原</button>' : ''}
-    ${UI.backupError ? `<div class="warn" role="alert">${esc(UI.backupError)}</div>` : ''}</section>
-  <section class="px">${sh('隱私', '')}<p class="mini">登出或刪除雲端資料後，本機紀錄仍會保留；共用裝置請留意。</p><a class="link" href="privacy.html" target="_blank" rel="noopener">閱讀隱私說明 ↗</a></section>
-  <section class="px">${sh('使用協助', '')}<p class="mini"><b>沒有餵食會餓死嗎？</b><br>不會。不用每天餵，生物也不會餓死或退化；餵食只會累積成長進度。</p><p class="mini">每天午夜 00:00 換日；六件事每天任意三件可獲獎勵，未領獎勵隔天自動入帳，可在「紀錄」查看來源。</p>
-    <p class="mini">回報問題時，可附上版本與瀏覽器資訊；不包含清單、Email 或帳號資料。</p><button data-act="copydiagnostics">複製診斷資訊</button>
-    ${UI.diagnostics ? `<textarea readonly aria-label="診斷資訊">${esc(UI.diagnostics)}</textarea>` : ''}
-    ${/^https:\/\//.test(CONFIG.feedbackUrl || '') ? `<a class="link" href="${esc(CONFIG.feedbackUrl)}" target="_blank" rel="noopener">回報問題／提供建議 ↗</a>` : ''}</section>
-  <section class="px">${sh('關於', '')}<p>我是 Harry，喜歡潛水。這個遊戲是我為了持續寫作和運動做的；稱號、鬼蝠魟和翻車魚，都來自我的潛水經驗。</p></section>
-  <section class="px">${sh('我的沙龍', '')}<div class="salon"><b>${SALON.name}</b><p class="dim">${SALON.desc}</p><a class="link" href="${SALON.url}" target="_blank" rel="noopener">前往沙龍 ↗</a></div></section>
-  <section class="px">${sh('推薦文章', '')}${ABOUT_LINKS.map(l=>`<a class="link" href="${l.url}" target="_blank" rel="noopener"><span class="sp"><b>${esc(l.title)}</b><br><small>${esc(l.sub)}</small></span><span>↗</span></a>`).join('')}</section>`;
+  return `<div class="more-page">
+  <section class="px">${sh('資料與同步', '')}
+    ${cloudSection()}
+    ${manualBackupSection()}
+  </section>
+  <section class="px">${sh('設定', '')}<label class="switch more-sound"><span>音效</span><button class="toggle ${S.mute ? '' : 'on'}" data-act="mute" role="switch" aria-checked="${!S.mute}" aria-label="音效"><i></i></button></label></section>
+  <section class="px more-links">${sh('協助', '')}
+    <details class="more-detail"><summary>常見問題</summary><div class="more-content">
+      <h3>需要每天餵魚嗎？</h3><p class="mini">不用，生物不會餓死或退化，餵食只會幫助成長。</p>
+      <h3>獎勵什麼時候領？</h3><p class="mini">六件事每天任意完成三件可獲獎勵，請到「任務」領取。每天午夜 00:00 換日，未領獎勵會自動入帳，可在「紀錄」查看來源。</p>
+    </div></details>
+    <details class="more-detail" ${UI.diagnostics ? 'open' : ''}><summary>回報問題</summary><div class="more-content">
+      <p class="mini">回報時可附上診斷資訊，僅含版本、瀏覽器、畫面大小與連線狀態，不包含清單、Email 或帳號資料。</p><button data-act="copydiagnostics">複製診斷資訊</button>
+      ${UI.diagnostics ? `<textarea readonly aria-label="診斷資訊">${esc(UI.diagnostics)}</textarea>` : ''}
+      ${/^https:\/\//.test(CONFIG.feedbackUrl || '') ? `<a class="link" href="${esc(CONFIG.feedbackUrl)}" target="_blank" rel="noopener">回報問題／提供建議 ↗</a>` : ''}
+    </div></details>
+  </section>
+  <section class="px more-links">${sh('關於', '')}
+    <details class="more-detail"><summary>隱私說明</summary><div class="more-content">
+      <p class="mini">未登入時，紀錄只存在此瀏覽器。登出後，本機紀錄仍會保留；切換帳號不會帶入另一個帳號的紀錄。共用裝置請留意，登出不會清除本機資料。</p>
+      ${FIREBASE_CONFIG ? '<p class="mini">Google 登入用於辨識帳號，紀錄會存到 Firebase 供跨裝置同步。一般使用者只能存取自己的資料；可在上方刪除雲端資料與帳號。</p>' : ''}
+      <a class="link" href="privacy.html" target="_blank" rel="noopener">閱讀完整隱私說明 ↗</a>
+    </div></details>
+    <details class="more-detail"><summary>關於習慣深潛</summary><div class="more-content">
+      <p>我是 Harry，喜歡潛水。這個遊戲是我為了持續寫作和運動做的；稱號、鬼蝠魟和翻車魚，都來自我的潛水經驗。</p>
+      <h3>我的沙龍</h3><div class="salon"><b>${SALON.name}</b><p class="dim">${SALON.desc}</p><a class="link" href="${SALON.url}" target="_blank" rel="noopener">前往沙龍 ↗</a></div>
+      <h3>推薦文章</h3>${ABOUT_LINKS.map(l=>`<a class="link" href="${l.url}" target="_blank" rel="noopener"><span class="sp"><b>${esc(l.title)}</b><br><small>${esc(l.sub)}</small></span><span>↗</span></a>`).join('')}
+    </div></details>
+  </section></div>`;
 }
