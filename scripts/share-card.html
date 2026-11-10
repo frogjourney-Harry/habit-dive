@@ -1,0 +1,17 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>Habit Dive 分享圖原稿</title>
+<style>html,body{margin:0;width:1200px;height:630px;overflow:hidden}canvas{display:block}</style>
+<canvas width="1200" height="630" aria-label="習慣深潛：每天完成一點事，收集海洋生物"></canvas>
+<script src="../js/creatures.js"></script><script>
+// Code-native export of the project's own pixel artwork. No external assets or data.
+const x=document.querySelector('canvas').getContext('2d');x.imageSmoothingEnabled=false;
+const sea=x.createLinearGradient(0,0,1200,630);sea.addColorStop(0,'#3290c6');sea.addColorStop(1,'#0f4672');x.fillStyle=sea;x.fillRect(0,0,1200,630);
+x.fillStyle='rgba(255,255,255,.7)';x.font='600 23px system-ui';x.fillText('HABIT DIVE',80,124);
+x.fillStyle='#ffffff';x.font='700 76px "Microsoft JhengHei",sans-serif';x.fillText('習慣深潛',76,244);
+x.font='400 37px "Microsoft JhengHei",sans-serif';x.fillText('每天完成一點事，收集海洋生物。',80,330);
+x.fillStyle='rgba(255,255,255,.8)';x.font='400 26px "Microsoft JhengHei",sans-serif';x.fillText('免註冊開始 · Google 備份自由選擇',80,510);
+x.drawImage(stageCanvas(CR.clown,2),902,154,182,126);
+x.drawImage(stageCanvas(CR.damsel,1),1007,412,72,56);
+x.drawImage(stageCanvas(CR.hermit,2),814,440,96,90);
+x.fillStyle='rgba(180,240,255,.45)';[[1125,103,8],[1143,66,5],[967,388,6],[953,358,4]].forEach(([a,b,s])=>x.fillRect(a,b,s,s));
+document.documentElement.dataset.shareReady='true';
+</script></html>

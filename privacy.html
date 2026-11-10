@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>隱私說明｜習慣深潛 Habit Dive</title>
+<meta name="description" content="習慣深潛的本機儲存、Google 登入、Firebase 同步與刪除資料說明。">
+<link rel="icon" href="img/favicon-32.png" type="image/png">
+<link rel="stylesheet" href="css/style.css?v=202611101910">
+<link rel="canonical" href="https://frogjourney-harry.github.io/habit-dive/privacy.html">
+</head>
+<body><div class="wrap">
+<div class="brand"><b>習慣深潛</b><em>HABIT DIVE</em></div>
+<main class="px privacy-document">
+<h1>隱私說明</h1><div class="mini">更新日期：2026 年 11 月 10 日</div>
+<p>這是 Harry（Frog Journey）製作的習慣養成遊戲。不需註冊即可使用；Google 登入與雲端同步由你自行選擇。</p>
+<h2>未登入時</h2>
+<p>清單、習慣、運動與專注紀錄、獎勵、生物收藏及設定，保存在這個瀏覽器的 localStorage。未登入時，遊戲不會把這些紀錄上傳至 Firebase。清除網站資料、使用無痕模式或更換瀏覽器，可能無法保留紀錄，建議定期下載備份。</p>
+<h2>Google 登入與同步</h2>
+<p>Google 與 Firebase Authentication 提供帳號驗證，會處理帳號識別資料，例如 UID、電子郵件與 Google 提供的基本個人資料。登入後，上述遊戲紀錄會同步至 Google Firebase 的 Cloud Firestore，讓你在其他裝置接續使用。</p>
+<p>登入入口出現時，網站會向 Google 載入登入元件；Google 服務可能接收提供連線所需的網路與裝置資訊。遊戲紀錄在登入後才會同步。本網站沒有要求存取 Gmail、Google Drive 或聯絡人的權限。</p>
+<p>網站的資料庫規則設計為：一般使用者只能存取自己帳號的紀錄。資料儲存在第三方雲端服務，不代表開發者或服務供應商在技術上完全無法存取，請不要填入密碼、證件號碼等敏感資料。</p>
+<h2>備份、登出與刪除</h2>
+<ul>
+<li>在「更多 → 備份與還原」下載或還原備份；備份檔含遊戲紀錄與可能的帳號識別資料，請自行妥善保存，不需傳給開發者。</li>
+<li>「登出」會停止此帳號的同步，但本機紀錄仍會保留。</li>
+<li>登入後可在「更多 → 雲端同步」刪除雲端資料與登入帳號。先前下載的備份、此瀏覽器與其他裝置的本機副本，不會一併刪除。</li>
+<li>刪除前請先登出其他裝置，避免其他仍登入的裝置或後續操作重新上傳本機紀錄。刪除時會再次驗證帳號；若只完成部分刪除，此裝置會暫停同步，可重試刪除或登出。也可明確選擇取消刪除並恢復同步；若雲端紀錄已移除，恢復前會提醒你將重新上傳本機紀錄。</li>
+<li>若重新驗證的彈出視窗被阻擋，請允許此網站的彈出視窗，或改用一般 Safari／Chrome 分頁登入後再操作。</li>
+<li>若要移除此裝置的本機紀錄，請在瀏覽器設定清除此網站的儲存資料；操作前可先下載備份。</li>
+</ul>
+<h2>問題回報</h2>
+<p>遊戲的診斷複製功能提供版本、瀏覽器、畫面與連線狀態，不包含清單內容、Email 或帳號資料。回報表單由 Google Forms 提供，只有你開啟並自行送出時才提交你填寫的內容；請不要附上私人備份或敏感資料。</p>
+<p>有遊戲或資料處理問題，可透過<a href="https://forms.gle/RwXYcmxtstLFPbf76" target="_blank" rel="noopener">問題回報表單</a>聯絡製作者。</p>
+<p><a href="index.html">返回遊戲</a></p>
+</main></div></body></html>

@@ -187,7 +187,7 @@ test('水族箱：撒飼料、成長、設定、放生、圖鑑', async () => {
   ok(I.ev("stageOf(fedOf('dr0clown'))") >= 2, '吃滿 10 顆長成成體'); ok(I.S.seen && I.S.seen.clown >= 2, '圖鑑記下看過成體');
   I.check('餵魚');
   await I.click('[data-act=tankedit]'); await I.click('[data-act=intank][data-v="dr1star"]');
-  ok(I.S.outTank.dr1star, '取消勾選 = 不放進水族箱'); await I.click('[data-act=tankdone]'); await new Promise(r => setTimeout(r, 200));
+  ok(!I.S.outTank.dr1star, '取消勾選先留在草稿，不立即改存檔'); await I.click('[data-act=tankdone]'); ok(I.S.outTank.dr1star, '完成後才儲存展示選擇'); await new Promise(r => setTimeout(r, 200));
   eq(fish().length, 4, '水族箱少一隻');
   await I.click('[data-act=tankedit]'); await I.click('[data-act=release][data-v="dr2whaleshark"]'); await I.click('#askyes'); await I.click('[data-act=tankdone]');
   ok(I.S.released.dr2whaleshark, '放生'); ok(I.ev('derive().col').whaleshark === 1, '放生後圖鑑還在');
@@ -217,11 +217,12 @@ test('水族箱：游動平順（速度不會突然跳、位置對到裝置像�
   I.check('游動平順'); I.destroy();
 });
 
-test('水族箱：20 種 × 5 隻全部放進去也不會壞', async () => {
+test('水族箱：舊資料擁有 100 隻，展示 12 隻且收藏與圖鑑保留', async () => {
   const ids = []; for (const c of ['clown','damsel','butterfly','star','hermit','urchin','turtle','octopus','nudi','lion','puffer','cuttle','seahorse','shark','moray','jelly','manta','mola','dolphin','whaleshark']) for (let k = 0; k < 5; k++) ids.push(c);
   const I = await boot({ state: mkState({ logs: [W0, coinLog(100), ...drops(ids)], fed: Object.fromEntries(ids.map((c, i) => ['dr' + i + c, i % 3 === 0 ? 30 : i % 3 === 1 ? 10 : 0])) }) }); await I.dismiss();
   await I.tab('tank'); await new Promise(r => setTimeout(r, 900));
-  eq(I.ev('TANK.fish.length'), 100, '100 隻');
+  eq(I.ev('TANK.fish.length'), 12, '展示前 12 隻');
+  eq(I.ev('tankOwned().length'), 100, '100 隻仍全部擁有');
   const W = I.ev('TANK.W'); let off = 0; for (const f of I.ev('TANK.fish')) if (f.x < -1 || f.x > W - f.w + 2 || !Number.isFinite(f.x) || !Number.isFinite(f.y)) off++;
   eq(off, 0, '沒有生物跑出水族箱或變成 NaN');
   I.check('100 隻'); await I.click('[data-act=tankedit]'); I.check('100 隻設定頁'); await I.click('[data-act=tankdone]');
@@ -240,25 +241,190 @@ test('水族箱：視窗大小改變（手機轉橫向）後畫面不能變形',
   I.destroy();
 });
 
+test('水族箱：跨手機斷點後全部型態縮至八成，回桌面恢復', async () => {
+  const ids = ['clown', 'lion', 'hermit', 'star'].flatMap(id => [id, id, id]);
+  const state = mkState({ logs: [W0, ...drops(ids)], fed: Object.fromEntries(ids.map((id, i) => ['dr' + i + id, [0, 10, 30][i % 3]])) });
+  const I = await boot({ state, width: 1024, height: 844 });
+  try {
+    await I.dismiss(); await I.tab('tank');
+    await new Promise(r => setTimeout(r, 300));
+    const dimensions = () => I.ev('TANK.fish.map(f => ({key:f.key,w:f.w,h:f.h,st:f.st,x:f.x,y:f.y,baseY:f.baseY,ground:f.ground}))');
+    const desktop = new Map(dimensions().map(f => [f.key, f]));
+    eq(I.ev('tankOwned().length'), 12, '測試資料只擁有 12 隻，沒有額外新手生物擠掉型態');
+    eq(desktop.size, 12, '四物種 × 三型態全部展示');
+    for (const width of [600, 390, 601, 1024, 390]) {
+      I.resize(width, 844); I.win.dispatchEvent(new I.win.Event('resize'));
+      await new Promise(r => setTimeout(r, 300));
+      const factor = width <= 600 ? .8 : 1;
+      const current = dimensions();
+      const world = I.ev('({width:TANK.W,height:TANK.H,floor:TANK.floorY})');
+      eq(current.length, desktop.size, width + 'px 展示個體不變');
+      eq(I.ev("getComputedStyle(document.getElementById('nav')).position === 'fixed'"), width <= 600, '手機導覽列與尺寸斷點一致');
+      for (const f of current) {
+        const original = desktop.get(f.key);
+        ok(Math.abs(f.w / original.w - factor) < 1e-9 && Math.abs(f.h / original.h - factor) < 1e-9, width + 'px ' + f.key + ' 寬高比例正確');
+        eq(f.st, original.st, '切換寬度不改變型態');
+        ok(f.x >= 0 && f.x <= world.width - f.w + 1e-8 && f.baseY >= 0 && f.baseY + f.h <= world.height, '切換後基準位置仍在畫布範圍內，允許游動浮沉');
+        if (f.ground) ok(Math.abs(f.y - (world.floor - f.h + 2)) < 1e-8, '海底生物仍貼著沙地');
+      }
+      ok(!I.$('#tank').getContext('2d').imageSmoothingEnabled, '像素圖保持關閉平滑');
+      I.check(width + 'px 尺寸切換');
+    }
+  } finally { I.destroy(); }
+});
+
+test('水族箱管理：滿額替換草稿、取消、完成與重開保存', async () => {
+  const ids = ['clown','lion','hermit','puffer','cuttle','star','clown','lion','hermit','puffer','cuttle','star','clown','lion'];
+  const state = base(...drops(ids)); state.fed = { dr0clown: 35 }; state.names = { dr0clown: '黑糖' };
+  const I = await boot({state}); await I.dismiss(); await I.tab('tank');
+  const original = I.ev('tankResidents().map(l => l.id)');
+  const outBefore = JSON.stringify(I.S.outTank);
+  await I.click('[data-act=tankedit]');
+  ok(I.$('[data-act=intank][data-v=dr12clown]').disabled, '已滿時不能選第 13 隻');
+  await I.click('[data-act=intank][data-v=dr0clown]');
+  await I.click('[data-act=intank][data-v=dr12clown]');
+  eq(JSON.stringify(I.S.outTank), outBefore, '改草稿未改正式選擇');
+  await I.click('[data-act=tankcancel]');
+  eq(I.ev('tankResidents().map(l => l.id)'), original, '取消保留原名單');
+  await I.click('[data-act=tankedit]');
+  await I.click('[data-act=intank][data-v=dr0clown]'); await I.click('[data-act=intank][data-v=dr12clown]');
+  await I.click('[data-act=tankdone]');
+  ok(I.ev("inTank('dr12clown') && !inTank('dr0clown')"), '替換入海成功');
+  eq(I.S.fed.dr0clown,35,'留在收藏仍保留成長'); eq(I.S.names.dr0clown,'黑糖','收藏保留名字');
+  eq(I.ev('tankOwned().length'),14,'沒有放走任何個體');
+  I.resize(1024,844); I.win.dispatchEvent(new I.win.Event('resize')); await new Promise(r=>setTimeout(r,250));
+  eq(I.ev('TANK.fish.length'),12,'桌面仍最多 12 隻');
+  const J=await boot({state:I.stored()}); await J.dismiss(); await J.tab('tank');
+  ok(J.ev("inTank('dr12clown') && !inTank('dr0clown')"),'重開仍保留替換選擇');
+  J.check('重開管理選擇'); J.destroy(); I.check('管理草稿'); I.destroy();
+});
+
+test('水族箱管理：草稿切頁丟棄、外部換資料失效、放走不讓候補補位', async () => {
+  const ids=['clown','lion','hermit','puffer','cuttle','star','clown','lion','hermit','puffer','cuttle','star','clown'];
+  const I=await boot({state:base(...drops(ids))}); await I.dismiss(); await I.tab('tank');
+  await I.click('[data-act=tankedit]'); await I.click('[data-act=intank][data-v=dr0clown]');
+  await I.tab('today'); await I.tab('tank'); await I.click('[data-act=tankedit]');
+  ok(I.$('[data-act=intank][data-v=dr0clown]').checked,'切頁丟棄未完成選擇');
+  await I.click('[data-act=intank][data-v=dr0clown]');
+  I.ev('S = JSON.parse(JSON.stringify(S)); S.outTank.dr1lion = true');
+  await I.click('[data-act=tankdone]');
+  ok(I.UI.tankEdit && I.has('資料已更新'),'外部換資料後不能直接送出舊草稿');
+  ok(!I.S.outTank.dr0clown,'舊草稿沒有覆蓋新資料');
+  await I.click('[data-act=tankcancel]');
+  // Restore a legacy overflow state, then release one of the twelve visible pets.
+  I.ev('S.outTank = {}; save(); render()');
+  await I.click('[data-act=tankedit]');
+  const coins=I.coins(),xp=I.ev('derive().xp');
+  await I.click('[data-act=release][data-v=dr0clown]');
+  ok(I.has('無法復原') && I.has('留在收藏'),'永久放走與收藏清楚區分');
+  await I.click('#askyes');
+  eq(I.ev('tankResidents().length'),11,'放走海中一隻後維持 11 隻');
+  ok(!I.ev("inTank('dr12clown')"),'候補沒有偷偷補位');
+  eq(I.UI.tankDraft.length,11,'草稿也移除放走者');
+  ok(I.$('[data-act=intank][data-v=dr6clown]').closest('label').textContent.includes('小丑魚 2 號'),'放走前一隻不會更改其他個體編號');
+  eq(I.coins(),coins,'沒有新增放走金幣');eq(I.ev('derive().xp'),xp,'沒有新增放走經驗');
+  await I.click('[data-act=tankdone]'); I.check('放走與外部更新'); I.destroy();
+});
+
+test('水族箱管理：真正雲端採用資料時不帶回舊名字或舊選擇', async () => {
+  const state=base(...drops(['clown','star']));state.names={dr0clown:'舊名字'};
+  const I=await boot({state});await I.dismiss();await I.tab('tank');await I.click('[data-act=tankedit]');
+  await I.click('[data-act=intank][data-v=dr0clown]');
+  I.ev("CLOUD.user={uid:'mock-owner'};adopt({...S,names:{dr0clown:'新名字'},outTank:{dr1star:true}})");
+  eq(I.S.names.dr0clown,'新名字','雲端名字沒有被舊管理資料覆蓋');
+  ok(I.UI.tankDraft.includes('dr0clown') && !I.UI.tankDraft.includes('dr1star'),'草稿重新載入雲端展示選擇');
+  ok(I.has('資料已更新'),'明確提示草稿已重載');
+  await I.click('[data-act=tankdone]');
+  ok(I.ev("inTank('dr0clown') && !inTank('dr1star')"),'完成不會恢復舊選擇');
+  I.check('真實 adopt 路徑');I.destroy();
+});
+
+test('水族箱管理：長清單勾選保留焦點、捲動與上限', async () => {
+  const ids=['clown','lion','hermit','puffer','cuttle','star'].flatMap(id=>Array(5).fill(id));
+  const I=await boot({state:base(...drops(ids)),width:390});await I.dismiss();await I.tab('tank');await I.click('[data-act=tankedit]');
+  I.ev("window._choice=document.querySelector('[data-act=intank][data-v=dr11hermit]');_choice.focus();_choice.scrollIntoView({block:'center'});window._choiceTop=_choice.getBoundingClientRect().top;_choice.click()");
+  await flush();
+  ok(I.ev('document.activeElement===window._choice'),'勾選不會換掉焦點節點');
+  ok(I.ev('Math.abs(_choice.getBoundingClientRect().top-window._choiceTop)<2'),'勾選後項目在視窗中的位置不跳動（容許瀏覽器捲動錨定）');
+  ok(I.$('.tank-summary').textContent.includes('11／12'),'同一個計數節點更新選擇');
+  await I.click('[data-act=intank][data-v=dr12hermit]');
+  I.ev("const extra=document.querySelector('[data-act=intank][data-v=dr13hermit]');extra.disabled=false;extra.click()");
+  await flush();eq(I.UI.tankDraft.length,12,'即使繞過 disabled 仍拒絕第 13 隻');
+  ok(!I.$('[data-act=intank][data-v=dr13hermit]').checked,'拒絕後核取狀態與草稿一致');
+  I.check('焦點與防護');I.destroy();
+});
+
+test('水族箱管理：同種強制放走遇到舊彈窗仍可繼續，收藏不補位', async () => {
+  const ids=['clown','clown','clown','clown','clown','lion','hermit','puffer','cuttle','star','lion','star'];
+  const I=await boot({state:base(...drops(ids))});await I.dismiss();
+  I.ev("dropCreature({id:'sixth-clown',t:Date.now(),d:dayKey(),k:'chest',c:0,xp:0},null,'測試',0,CR.clown);save();nextChest()");
+  await I.click('#modal [data-act=close]');
+  ok(I.has('同種最多收藏 5 隻'),'說明同種收藏上限與展示上限不同');
+  // Same ids in a replaced state must not be released through a stale modal.
+  I.ev('S=JSON.parse(JSON.stringify(S));save()');
+  await I.click('#modal [data-act=releasepick][data-v=dr0clown]');
+  ok(!I.S.released.dr0clown,'換資料後舊彈窗不會直接放走');
+  ok(I.$('#modal [data-act=releasepick]'),'仍超額時重建可操作的放走彈窗');
+  await I.click('#modal [data-act=releasepick][data-v=dr0clown]');
+  eq(I.ev("pets('clown').length"),5,'有效操作後同種回到 5 隻');
+  eq(I.ev('tankResidents().length'),11,'永久放走海中個體後不補位');
+  ok(I.S.outTank['sixth-clown'],'第六隻仍留在收藏');
+  // A removed target should close the stale modal and let queued items continue.
+  // Recreate an actual overflow for this race fixture.
+  I.ev("S.released.dr0clown=false;Q.push({release:'clown',newId:'sixth-clown'});UI.opened=false;nextChest()");
+  I.ev("S=JSON.parse(JSON.stringify(S));S.released.dr0clown=true;save()");
+  await I.click('#modal [data-act=releasepick][data-v=dr0clown]');
+  ok(I.$('#ov').classList.contains('hidden'),'不再超額時關閉舊彈窗，不會卡住');
+  I.check('強制放走競態');I.destroy();
+});
+
+test('水族箱管理：新生物有位入海、滿額收藏並可直接管理', async () => {
+  const ids=['clown','lion','hermit','puffer','cuttle','star','clown','lion','hermit','puffer','cuttle'];
+  const I=await boot({state:base(...drops(ids))}); await I.dismiss();
+  I.ev("dropCreature({id:'newA',t:Date.now(),d:dayKey(),k:'chest',c:0,xp:0},null,'測試',0,CR.star); save(); nextChest()");
+  ok(I.ev("inTank('newA')"),'第 12 隻自動入海'); await I.dismiss();
+  I.ev("dropCreature({id:'newB',t:Date.now(),d:dayKey(),k:'chest',c:0,xp:0},null,'測試',0,CR.clown); save(); nextChest()");
+  ok(!I.ev("inTank('newB')") && I.S.outTank.newB,'第 13 隻留在收藏');
+  ok(I.has('大海已滿') && I.has('已留在收藏'),'開箱說明滿額去向');
+  await I.click('#modal [data-act=seamanage]');
+  ok(I.UI.tankEdit && I.has('管理生物'),'直接進入管理');
+  eq(I.ev('tankOwned().length'),13,'仍擁有 13 隻');
+  I.check('新生物收藏'); I.destroy();
+});
+
+test('水族箱管理：全留收藏可回管理，失效個體不可寫回', async () => {
+  const I=await boot({state:base(...drops(['clown','star']))});await I.dismiss();await I.tab('tank');
+  await I.click('[data-act=tankedit]'); await I.click('[data-act=intank][data-v=dr0clown]');await I.click('[data-act=intank][data-v=dr1star]');
+  await I.click('[data-act=tankdone]'); eq(I.ev('TANK.fish.length'),0,'可以選擇零展示');
+  ok(I.$('.seaempty [data-act=tankedit]'),'空海仍可管理');
+  await I.click('.seaempty [data-act=tankedit]');await I.click('[data-act=intank][data-v=dr0clown]');
+  I.ev('S.released.dr0clown = true; save()');
+  await I.click('[data-act=tankdone]'); ok(!I.ev("inTank('dr0clown')"),'已放走個體不能由草稿復活');
+  I.check('空海與失效個體');I.destroy();
+});
+
 test('運動紀錄：各種運動、怪數字、補登昨天', async () => {
   const I = await boot({ state: mkState() }); await I.dismiss();
   await I.click(['#habits .hab', '運動']);
   await I.type('#exType', '跑步'); await I.type('#ex_dist', '5'); await I.type('#ex_min', '30'); ok(I.has("配速 6'00\"/km"), '跑步配速：' + I.$('#exPace').innerText);
-  await I.click('[data-act=exadd]'); ok(I.has('跑步・5 km・30 分'), '紀錄文字');
+  await I.click('[data-act=exadd]'); ok(!I.UI.sheet && I.UI.tab==='today', '成功後關閉表單回到今日');
+  await I.habit('運動');ok(I.has('跑步・5 km・30 分'), '紀錄文字');
   await I.type('#exType', '游泳'); await I.type('#ex_m', '200'); await I.type('#ex_min', '10'); ok(I.has("配速 5'00\"/100m"), '游泳配速：' + I.$('#exPace').innerText);
   await I.click('[data-act=exadd]');
-  await I.type('#exType', '潛水'); await I.type('#ex_depth', '18'); await I.type('#ex_site', '<b>Manta Point</b>'); await I.type('#ex_note', '看到 5 隻');
-  await I.click('[data-act=exadd]'); ok(!I.$('#sheet .entry b'), '潛點裡的 HTML 要跳脫');
+  await I.habit('運動');await I.type('#exType', '騎車');await I.type('#ex_dist','12');await I.type('#ex_min','40');await I.type('#ex_note','<b>河濱</b>');
+  await I.click('[data-act=exadd]');await I.habit('運動');ok(!I.$('#sheet .entry b'),'備註裡的 HTML 要跳脫');
   for (const bad of ['-5', '0', '1e999', '99999999999999999999']) {
     await I.type('#exType', '跑步'); await I.type('#ex_dist', bad); await I.type('#ex_min', bad); await I.click('[data-act=exadd]');
     I.check('輸入 ' + bad);
   }
   const txt = I.$('#sheet').innerText; ok(!/-5 km|-5 分|Infinity|e\+/.test(txt), '負數、無限大、科學記號不能直接出現在紀錄裡：' + txt.replace(/\n/g, ' ').slice(0, 200));
-  await I.type('#exType', '登山'); await I.type('#ex_dist', '12.3'); await I.type('#ex_gain', '800'); await I.click('[data-act=exadd]');
+  await I.click('[data-act=sheetclose]');await I.habit('運動');await I.type('#exType', '走路');await I.type('#ex_dist','2.5');await I.type('#ex_min','35');await I.click('[data-act=exadd]');
+  await I.habit('運動');
   await I.click('[data-act=shday][data-v="-1"]'); await I.type('#exType', '重訓'); await I.type('#ex_min', '45');
   const rBefore = I.S.logs.length; await I.click('[data-act=exadd]');
   eq(I.S.logs.length, rBefore, '補登昨天沒有獎勵'); ok(I.S.checks['2026-11-01'] && I.S.checks['2026-11-01'].exercise.length === 1, '紀錄記在昨天');
-  const n = I.$$('#sheet [data-act=chkdel]').length; await I.click('#sheet [data-act=chkdel]'); ok(I.S.checks['2026-11-01'] === undefined, '刪掉昨天唯一的紀錄後，那天的資料夾也清掉');
+  await I.habit('運動');await I.click('[data-act=shday][data-v="-1"]');
+  await I.click('#sheet [data-act=chkdel]'); ok(I.S.checks['2026-11-01'] === undefined, '刪掉昨天唯一的紀錄後，那天的資料夾也清掉');
   I.check('運動紀錄'); I.destroy();
 });
 
@@ -271,6 +437,41 @@ test('連勝：每天習慣漏一天不斷、連漏兩天歸零；每週習慣�
   eq((await streakOf(mk(['2026-11-02', '2026-10-30', '2026-10-29']))).n, 1, '連漏兩天就斷：只剩今天');
   const t = await streakOf(mk(['2026-11-01', '2026-10-31'])); eq(t.n, 2, '今天還沒做：昨天前天仍算 2');
   eq((await streakOf(mk(['2026-10-25']))).n, 0, '很久以前做過的不算');
+});
+
+test('運動表單：大眾選單、留空完成與一天只算一天', async () => {
+  const I=await boot({state:mkState()});await I.dismiss();await I.habit('運動');
+  const options=[...I.$('#exType').options].map(o=>o.value);
+  eq(options,['其他運動','走路','跑步','騎車','重訓','伸展／瑜伽','游泳'],'不預設跑步，也不提供潛水');
+  eq(I.$('#exType').value,'其他運動','初始不假設特定運動');
+  await I.click('[data-act=exadd]');ok(!I.UI.sheet&&I.UI.tab==='today','留空可完成並返回今日');
+  await I.habit('運動');await I.type('#exType','騎車');await I.type('#ex_min','25');await I.click('[data-act=exadd]');
+  eq(I.S.checks[D0].exercise.length,2,'同一天可記兩次活動');
+  eq(I.ev("perCount(derive(),habit('exercise'),periodKey(dayKey(),1))"),1,'週進度只計完成天數');
+  eq(I.S.logs.filter(l=>l.key==='hab:exercise:'+D0).length,1,'不因多筆重複發打卡獎勵');I.check('大眾運動');I.destroy();
+});
+
+test('運動表單：類型及今天昨天草稿保留，公尺公里不混用', async () => {
+  const I=await boot({state:mkState()});await I.dismiss();await I.habit('運動');
+  await I.type('#exType','跑步');await I.type('#ex_min','30');await I.type('#ex_dist','5');await I.type('#ex_note','公園');
+  await I.type('#exType','游泳');eq(I.$('#ex_min').value,'30','切換保留時間');eq(I.$('#ex_note').value,'公園','切換保留備註');eq(I.$('#ex_m').value,'','公里不會誤當公尺');await I.type('#ex_m','500');
+  await I.type('#exType','跑步');eq(I.$('#ex_dist').value,'5','切回跑步保留原距離');ok(I.$('#exPace').textContent.includes("6'00"),'切回後配速重新顯示');
+  await I.click('[data-act=shday][data-v="-1"]');eq(I.$('#ex_min').value,'','昨天是另一份草稿');await I.type('#ex_min','20');await I.type('#ex_note','昨天散步');
+  await I.click('[data-act=shday][data-v="0"]');eq(I.$('#ex_min').value,'30','回今天保留原時間');eq(I.$('#ex_note').value,'公園','今天備註不被昨天覆蓋');
+  await I.type('#exType','游泳');eq(I.$('#ex_m').value,'500','游泳專屬距離仍保留');await I.click('[data-act=exadd]');
+  const entry=I.S.checks[D0].exercise[0];eq(entry.m,500,'只儲存目前類型的公尺');ok(!('dist' in entry),'不偷偷送出另一類型的公里');I.check('運動草稿');I.destroy();
+});
+
+test('運動表單：錯誤保留輸入，舊潛水登山只讀顯示不遺失', async () => {
+  const legacy=[{t:1,type:'潛水',depth:18,min:40,site:'舊潛點'},{t:2,type:'登山',dist:12,gain:800,min:240}];
+  const I=await boot({state:mkState({checks:{[D0]:{exercise:legacy}}})});await I.dismiss();await I.habit('運動');
+  ok(I.has('潛水')&&I.has('舊潛點')&&I.has('爬升 800 m'),'舊資料仍完整顯示');
+  ok(![...I.$('#exType').options].some(o=>o.value==='潛水'),'歷史不會把潛水塞回新增選單');
+  await I.type('#ex_min','-3');await I.type('#ex_note','保留內容');await I.click('[data-act=exadd]');
+  ok(!!I.UI.sheet,'失敗不關表單');eq(I.$('#ex_min').value,'-3','錯誤數字原樣保留');eq(I.$('#ex_note').value,'保留內容','備註保留');eq(I.S.checks[D0].exercise.length,2,'錯誤不新增紀錄');
+  I.ev('S=JSON.parse(JSON.stringify(S));renderSheet()');await I.click('[data-act=exadd]');eq(I.$('#ex_min').value,'-3','同步重畫仍保留輸入');eq(I.S.checks[D0].exercise.length,2,'錯誤草稿不會自動送出');
+  await I.type('#ex_min','30');await I.click('[data-act=exadd]');eq(I.S.checks[D0].exercise.length,3,'同步後明確送出只新增一筆');eq(I.S.checks[D0].exercise[2].note,'保留內容','同步後保留備註');
+  await I.habit('運動');I.ev('S.checks[dayKey()].exercise.unshift({t:99,type:"走路",min:5})');await I.click('[data-act=chkdel]');eq(I.S.checks[D0].exercise.length,4,'過期清單不會誤刪新紀錄');ok(I.has('紀錄已更新'),'提示重選');await I.click('[data-act=chkdel]');eq(I.S.checks[D0].exercise.length,3,'更新後仍能刪除正確紀錄');I.check('舊運動與錯誤');I.destroy();
 });
 
 test('日期工具：跨年、閏日、週與兩週期間', async () => {
@@ -406,7 +607,7 @@ test('大海：整個視窗都是海、頂端列和分頁列浮在上面、不�
     I.check('全屏 ' + w); I.destroy();
   }
   const I = await boot({ state: base(...drops(['clown'])) }); await I.dismiss(); await I.tab('tank'); await I.click('[data-act=tankedit]');
-  ok(I.has('讓牠游走') && !I.has('放生'), '設定裡的按鈕是「讓牠游走」');
+  eq(I.$('[data-act=release]').textContent, '放走', '管理頁使用精簡的「放走」按鈕');
   await I.click('[data-act=release]'); ok(I.$('#askmsg').textContent.includes('游走'), '確認框也寫游走'); await I.click('#askyes'); ok(I.has('小丑魚游走了'), '提示：小丑魚游走了'); I.destroy();
 });
 

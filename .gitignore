@@ -1,0 +1,17 @@
+# Credentials and local environment files must never be added accidentally.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*service-account*.json
+*service_account*.json
+.claude/settings.local.json
+
+# Private preview input and local review artifacts stay on this computer.
+/size-preview/specimens.json
+/reviews/*.packet.txt
+/reviews/*.scope.json
+/reviews/*.review.md
+/docs/prepublish-source-context.md

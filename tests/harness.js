@@ -67,7 +67,7 @@ function SHIM(o, P) {
   HTMLAnchorElement.prototype.click = function () { if (this.download) { window.__downloads.push({ name: this.download, href: this.href }); return; } return aClick.call(this); };
   // 5. 假的 Firebase（完全不連網路）
   const DB = P.__cloudDb; let cur = o.cloudUser ? mkUser(o.cloudUser) : null, authCb = null;
-  function mkUser(u) { return { uid: u.uid, email: u.email || u.uid + '@test', async delete() { DB.deletedAccounts = (DB.deletedAccounts || []).concat(u.uid); }, async reauthenticateWithPopup() {} }; }
+  function mkUser(u) { return { uid: u.uid, email: u.email || u.uid + '@test', async delete() { DB.deletedAccounts = (DB.deletedAccounts || []).concat(u.uid); if (cur && cur.uid === u.uid) { cur = null; if (authCb) await authCb(null); } }, async reauthenticateWithPopup() {} }; }
   // 即時監聽：同一個帳號的文件一有變動，每個開著的裝置都會收到（模擬 Firestore 的 onSnapshot）
   const L = DB.listeners || (DB.listeners = {});
   const snapOf = uid => { const d = DB.docs[uid]; return { exists: !!d, data: () => d, metadata: { hasPendingWrites: false } }; };
@@ -119,7 +119,7 @@ async function boot(o = {}) {
   frame.style.cssText = `position:fixed;left:-30000px;top:0;border:0;width:${w}px;height:${h}px`;
   frame.srcdoc = html;
   const loaded = new Promise(r => { frame.onload = r; });
-  document.body.appendChild(frame);
+  (o.mount || document.body).appendChild(frame);
   await loaded; await flush(6);
   return mkInst(frame, storeId, opts);
 }

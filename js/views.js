@@ -1,6 +1,20 @@
 // 畫面：頂端列、今日、習慣面板、圖鑑、生物個體與水族箱、商店、紀錄、關於。
 /* ========= 畫面 ========= */
 const IN_APP = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger|Twitter|TikTok|musical_ly|Bytedance|KAKAOTALK|Snapchat|Pinterest/i.test(navigator.userAgent);
+// A sync redraw must not remove the button between touch-down and click.
+const TOUCH_RENDER = { held: false, queued: false, timer: 0 };
+function releaseTouchRender() {
+  TOUCH_RENDER.held = false; clearTimeout(TOUCH_RENDER.timer);
+  if (TOUCH_RENDER.queued) setTimeout(() => { if (TOUCH_RENDER.queued) render(); }, 0);
+}
+document.addEventListener('pointerdown', event => {
+  if (event.pointerType !== 'touch') return;
+  TOUCH_RENDER.held = true; clearTimeout(TOUCH_RENDER.timer);
+}, { capture: true, passive: true });
+document.addEventListener('pointerup', () => { if (TOUCH_RENDER.held) TOUCH_RENDER.timer = setTimeout(releaseTouchRender, 400); }, { capture: true, passive: true });
+document.addEventListener('click', releaseTouchRender, true);
+document.addEventListener('pointercancel', releaseTouchRender, true);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') releaseTouchRender(); });
 function renderStat(D = derive()) {
   const lv = levelOf(D.xp), lo = xpFor(lv), hi = xpFor(lv + 1), pct = (D.xp - lo) / (hi - lo) * 100;
   document.getElementById('stat').innerHTML = `
@@ -8,6 +22,9 @@ function renderStat(D = derive()) {
     <span class="coin">${D.coins.toLocaleString()}${COIN}</span>`;
 }
 function render() {
+  if (TOUCH_RENDER.held) { TOUCH_RENDER.queued = true; return; }
+  TOUCH_RENDER.queued = false;
+  UI.renderedState = S;
   const D = derive();
   renderStat(D);
   document.getElementById('banner').innerHTML = (STORAGE_OK ? '' : `<div class="banner warn">這個瀏覽器目前無法儲存紀錄（可能是無痕模式，或封鎖了網站資料）。紀錄只在這個分頁裡，關掉就會消失。到「更多」→「備份」可以先下載一份。</div>`) + (IN_APP && !UI.iabOk
@@ -235,7 +252,7 @@ function renderOnb() {
   if (step === 1) {
     if (UI.onbReturning) cloudWarm();
     html = `<h2>歡迎來到習慣深潛</h2><p>每天完成一點事，收集海洋生物。</p>
-      ${UI.onbReturning ? `<div class="mini">登入後接續你的雲端紀錄。</div>${IN_APP ? '<div class="warn">App 內建瀏覽器無法登入，請用 Chrome 或 Safari 開啟。</div>' : `<button class="gbtn" data-act="login">${GOOGLE_G}${CLOUD.armed ? '再按一次，選擇 Google 帳戶' : '用 Google 帳戶登入'}</button>`}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div>` : ''}<button class="ghost wide" data-act="onbback">返回</button>` : `<ol class="welcome-route"><li>選擇想養成的習慣</li><li>寫下第一件重要的事</li><li>認識小丑魚，試著餵食</li></ol><button class="pri wide" data-act="onbstart">開始新手導覽</button><div class="mini">不需註冊，紀錄先存在此瀏覽器。</div><div class="row intro-links">${FIREBASE_CONFIG ? '<button class="ghost" data-act="onbreturn">已有紀錄？登入接續</button>' : ''}</div>`}`;
+      ${UI.onbReturning ? `<div class="mini">登入後接續你的雲端紀錄。</div>${IN_APP ? '<div class="warn">App 內建瀏覽器無法登入，請用 Chrome 或 Safari 開啟。</div>' : `${loginPrivacyNotice()}<button class="gbtn" data-act="login">${GOOGLE_G}${CLOUD.armed ? '再按一次，選擇 Google 帳戶' : '用 Google 帳戶登入'}</button>`}${CLOUD.error ? `<div class="warn">${esc(CLOUD.error)}</div>` : ''}<button class="ghost wide" data-act="onbback">返回</button>` : `<ol class="welcome-route"><li>選擇想養成的習慣</li><li>寫下第一件重要的事</li><li>認識小丑魚，試著餵食</li></ol><button class="pri wide" data-act="onbstart">開始新手導覽</button><div class="mini">不需註冊，紀錄先存在此瀏覽器。</div><div class="row intro-links">${FIREBASE_CONFIG ? '<button class="ghost" data-act="onbreturn">已有紀錄？登入接續</button>' : ''}</div>`}`;
   } else {
     html =`${tutorialProgress(1)}<h2>先選擇想養成的習慣</h2>
       ${CLOUD.user ? `<div class="mini" style="margin:0 0 6px">已綁定 ${esc(CLOUD.user.email || '')}</div>` : ''}
@@ -267,19 +284,41 @@ function finishOnb() {
 /* ========= 習慣打卡面板 ========= */
 // 每種運動要記的欄位不一樣：潛水記深度和潛點、登山記爬升；跑步、游泳會算配速。[欄位, 名稱, 單位, 間隔]
 const EX_FIELDS = {
-  '跑步': [['dist', '距離', 'km', .1], ['min', '時間', '分鐘', 1]],
-  '游泳': [['m', '距離', '公尺', 50], ['min', '時間', '分鐘', 1]],
+  '其他運動': [['min', '時間', '分鐘', 1]],
+  '走路': [['min', '時間', '分鐘', 1], ['dist', '距離', 'km', .1]],
+  '跑步': [['min', '時間', '分鐘', 1], ['dist', '距離', 'km', .1]],
+  '騎車': [['min', '時間', '分鐘', 1], ['dist', '距離', 'km', .1]],
   '重訓': [['min', '時間', '分鐘', 1]],
-  '潛水': [['depth', '最大深度', '公尺', 1], ['min', '潛水時間', '分鐘', 1], ['site', '潛點', '', 0]],
-  '登山': [['dist', '距離', 'km', .1], ['gain', '爬升', '公尺', 10], ['min', '時間', '分鐘', 1]],
-  '其他': [['min', '時間', '分鐘', 1]],
+  '伸展／瑜伽': [['min', '時間', '分鐘', 1]],
+  '游泳': [['min', '時間', '分鐘', 1], ['m', '距離', '公尺', 50]],
 };
+const EX_LIMITS = { min: 1440, dist: 1000, m: 100000 };
+function exerciseDraft() {
+  const sheet = UI.sheet;
+  if (!sheet || !sheet.id || habit(sheet.id)?.kind !== 'exercise') return null;
+  if (sheet.exerciseState !== S) {
+    sheet.exerciseDrafts = sheet.exerciseDrafts || {}; sheet.exerciseState = S;
+  }
+  const date = sheetDay();
+  return sheet.exerciseDrafts[date] || (sheet.exerciseDrafts[date] = { type: ETAGS[0], min: '', note: '', specific: {} });
+}
+function stashExerciseDraft() {
+  const draft = exerciseDraft(); if (!draft) return;
+  for (const key of ['min', 'note']) {
+    const input = document.getElementById('ex_' + key); if (input) draft[key] = input.value;
+  }
+  const values = draft.specific[draft.type] || (draft.specific[draft.type] = {});
+  for (const [key] of EX_FIELDS[draft.type] || []) {
+    const input = document.getElementById('ex_' + key); if (key !== 'min' && input) values[key] = input.value;
+  }
+  return true;
+}
 const fmtPace = sec => { const s = Math.round(sec); return `${Math.floor(s / 60)}'${pad(s % 60)}"`; };
 const swimMeters = e => e.m || (e.type === '游泳' && e.dist ? e.dist * 1000 : 0);
 function paceText(e) {
-  if (!(e.min > 0)) return '';
-  if (e.type === '跑步' && e.dist > 0) return `配速 ${fmtPace(e.min * 60 / e.dist)}/km`;
-  if (e.type === '游泳' && swimMeters(e) > 0) return `配速 ${fmtPace(e.min * 60 / (swimMeters(e) / 100))}/100m`;
+  if (!Number.isFinite(+e.min) || !(e.min > 0)) return '';
+  if (e.type === '跑步' && Number.isFinite(+e.dist) && e.dist > 0) return `配速 ${fmtPace(e.min * 60 / e.dist)}/km`;
+  if (e.type === '游泳' && Number.isFinite(+swimMeters(e)) && swimMeters(e) > 0) return `配速 ${fmtPace(e.min * 60 / (swimMeters(e) / 100))}/100m`;
   return '';
 }
 function exText(e) {
@@ -316,15 +355,16 @@ function renderSheet() {
   const goal = h.weeks ? `${h.weeks === 1 ? '每週' : '每兩週'} ${h.target} ${esc(countWord(h))}・${periodWord(h)}（${md(p0)}–${md(addDays(p0, 7 * h.weeks - 1))}）${perCount(D, h, p0)}/${h.target}` : '每天';
   let body;
   if (h.kind === 'exercise') {
-    const type = UI.sheet.exType || ETAGS[0];
+    const draft = exerciseDraft(), type = ETAGS.includes(draft.type) ? draft.type : ETAGS[0];
+    draft.type = type;
     body = `
-      ${list.map((e, i) => `<div class="entry"><span class="sp">${esc(exText(e) || '運動')}</span><button class="ghost" data-act="chkdel" data-v="${i}">✕</button></div>`).join('')}
+      ${list.map((e, i) => `<div class="entry"><span class="sp">${esc(exText(e) || '運動')}</span><button class="ghost" data-act="chkdel" data-v="${i}" data-entry="${esc(JSON.stringify(e))}">✕</button></div>`).join('')}
       <div class="form">
         <label class="ex-type"><span>運動類型</span><select id="exType">${ETAGS.map(t => `<option ${t === type ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
-        ${EX_FIELDS[type].map(([k, label, unit, step]) => `<label class="ex-field${step ? '' : ' full'}"><span>${label}${unit ? `（${unit}）` : ''}<small>選填</small></span><input id="ex_${k}" ${step ? `type="number" min="0" step="${step}" inputmode="decimal"` : 'maxlength="60"'} aria-label="${label}${unit ? `（${unit}）` : ''}" placeholder="${step ? '例如：' + (k === 'dist' ? '3' : '30') : label}"></label>`).join('')}
-        <span class="dim" id="exPace" style="align-self:center"></span>
-        <input id="ex_note" class="f-wide" maxlength="200" placeholder="備註">
-      </div><div id="exError" class="warn" role="alert"></div><div class="mini">可直接記錄完成；距離、時間與備註皆為選填。</div><button class="pri wide" data-act="exadd">記錄這次${type}</button>`;
+        ${EX_FIELDS[type].map(([k, label, unit]) => `<label class="ex-field${EX_FIELDS[type].length === 1 ? ' full' : ''}"><span>${label}（${unit}）<small>選填</small></span><input id="ex_${k}" type="text" inputmode="decimal" maxlength="12" aria-label="${label}（${unit}）" aria-describedby="exError" value="${esc(k === 'min' ? draft.min : draft.specific[type]?.[k] || '')}" placeholder="例如：${k === 'dist' ? '3' : k === 'm' ? '500' : '30'}"></label>`).join('')}
+        <span class="dim" id="exPace" style="align-self:center">${paceText({type,min:+draft.min,dist:+draft.specific[type]?.dist,m:+draft.specific[type]?.m})}</span>
+        <label class="ex-field full"><span>備註<small>選填</small></span><input id="ex_note" maxlength="200" value="${esc(draft.note)}" placeholder="例如：公園健走、上肢訓練"></label>
+      </div><div id="exError" class="warn" role="alert"></div><div class="mini">留空也能記錄完成；同一天多次運動只算一天。</div><button class="pri wide" data-act="exadd">記錄運動</button>`;
   } else body = list.length
       ? `<button class="wide" data-act="chk">✓ 已完成，點一下取消</button>`
       : `<button class="pri wide" data-act="chk">完成打卡</button>`;
@@ -363,7 +403,46 @@ const MAX_PETS = 5;
 const GROW = [0, 10, 30];                                  // 吃到幾顆：幼體 → 成體 → 特殊型態
 const fedOf = key => (S.fed && S.fed[key]) || 0;
 const stageOf = n => GROW.filter(t => n >= t).length;
-const inTank = id => !(S.outTank && S.outTank[id]);
+const TANK_LIMIT = 12;
+const tankOwned = () => S.logs.filter(l => CR[l.drop] && !(S.released && S.released[l.id]));
+const tankResidents = () => tankOwned().filter(l => !(S.outTank && S.outTank[l.id])).slice(0, TANK_LIMIT);
+const inTank = id => tankResidents().some(l => l.id === id);
+function setTankSelection(ids) {
+  const owned = tankOwned(), valid = new Set(owned.map(l => l.id)), selected = new Set(ids);
+  if (selected.size > TANK_LIMIT || [...selected].some(id => !valid.has(id))) return false;
+  // 個體 id 可能來自匯入；無原型字典避免 __proto__ 等名稱改變物件原型。
+  const out = Object.assign(Object.create(null), S.outTank || {});
+  for (const l of owned) { if (selected.has(l.id)) delete out[l.id]; else out[l.id] = true; }
+  S.outTank = out;
+  return true;
+}
+function beginTankSelection() {
+  UI.tankEdit = true; UI.tankDraft = tankResidents().map(l => l.id); UI.tankDraftState = S;
+  UI.tankDraftNotice = ''; UI.nameEdit = null;
+}
+function tankSelectionDraft() {
+  if (!UI.tankDraft || UI.tankDraftState !== S) {
+    const changed = !!UI.tankDraft;
+    beginTankSelection();
+    if (changed) UI.tankDraftNotice = '資料已更新，展示選擇已重新載入，請確認後再完成。';
+  }
+  const owned = new Set(tankOwned().map(l => l.id));
+  UI.tankDraft = [...new Set(UI.tankDraft)].filter(id => owned.has(id)).slice(0, TANK_LIMIT);
+  return UI.tankDraft;
+}
+function closeTankSelection() {
+  UI.tankEdit = false; UI.tankDraft = null; UI.tankDraftState = null; UI.nameEdit = null;
+}
+function releaseTankPet(id) {
+  const l = tankOwned().find(p => p.id === id); if (!l) return false;
+  const residents = tankResidents().map(p => p.id).filter(key => key !== id);
+  S.seen = S.seen || {}; S.seen[l.drop] = seenStage(l.drop);
+  S.released = S.released || {}; S.released[id] = true;
+  if (S.names) delete S.names[id];
+  setTankSelection(residents);
+  if (UI.tankDraftState === S && UI.tankDraft) UI.tankDraft = UI.tankDraft.filter(key => key !== id);
+  return true;
+}
 // 幫個體取的名字：存在 S.names（key 是個體 id），沒取名字就是空字串
 const PET_NAME_MAX = 10;
 const petName = id => { const n = S.names && typeof S.names === 'object' ? S.names[id] : ''; return typeof n === 'string' ? Array.from(n.trim()).slice(0, PET_NAME_MAX).join('') : ''; };
@@ -393,9 +472,11 @@ function stageImg(c, s, scale, sil = false, cls = '') {
   return `<img class="sprite ${cls}" src="${u.src}" width="${u.w * scale}" height="${u.h * scale}" alt="">`;
 }
 
+function seaPageHeader(title, meta, actions) {
+  return `<div class="sh sea-page-head"><div class="sea-page-title"><b>${title}</b>${meta}</div><div class="sea-page-actions">${actions}</div></div>`;
+}
 function dex(D) {
-  return `<section class="px">${sh('水下生物圖鑑', 'COLLECTION', `<span class="dim">${Object.keys(D.col).length} / ${CREATURES.length}</span><button data-act="tankview" data-v="">返回大海</button>`)}
-    <div class="mini">點生物看介紹和成長型態。</div>
+  return `<section class="px sea-collection">${seaPageHeader('水下生物圖鑑', `<div class="sea-page-meta">${Object.keys(D.col).length} / ${CREATURES.length} 種</div>`, '<button class="ghost" data-act="tankview" data-v="">返回大海</button>')}
     ${RARITY.map((R, r) => `<div class="grp row"><span class="rar" style="background:${R.color}">${R.name}</span></div>
       <div class="dex">${CREATURES.filter(c => c.r === r).map(c => D.col[c.id]
         ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${stageImg(c, seenStage(c.id), Math.min(5, Math.floor(100 / stageCanvas(c, seenStage(c.id)).width)))}<div class="nm">${c.name}</div><small>${pets(c.id).length} 隻</small></div>`
@@ -465,29 +546,44 @@ function tankFeedHTML() {
   return `${img(SHRIMP, 2, false, 'feedic')}<span class="fpills"><span class="fpill free${f ? '' : ' out'}" title="今天免費的飼料，每天 ${FEED.free} 顆">今日免費 ${f}/${FEED.free}</span><span class="fpill paid" title="用金幣買的飼料">已購 ${b}</span></span>`;
 }
 function tankEditor(D) {
-  const owned = CREATURES.filter(c => pets(c.id).length);
-  return `<section class="px">${sh('大海設定', 'SEA', '<button class="pri" data-act="tankdone">完成</button>')}
-    <div class="mini">勾選要放進大海的個體；點「取名」，名字會跟著牠游。</div>
+  const owned = CREATURES.filter(c => pets(c.id).length), draft = new Set(tankSelectionDraft());
+  const shown = new Set(tankResidents().map(l => l.id));
+  return `<section class="px tank-manager">${seaPageHeader('管理生物', `<div class="tank-summary sea-page-meta" role="status" aria-live="polite">已選 ${draft.size}／${TANK_LIMIT} 隻</div>`, '<button class="ghost" data-act="tankcancel">取消</button><button class="pri" data-act="tankdone">完成</button>')}
+    <p class="mini tank-draft-hint">${draft.size >= TANK_LIMIT ? '已選滿，先取消一隻再替換。' : '勾選生物，按完成儲存。'}</p>
+    ${UI.tankDraftNotice ? `<div class="warn" role="status">${UI.tankDraftNotice}</div>` : ''}
     ${owned.map(c => {
-      const P = pets(c.id);
+      const P = pets(c.id), numbers = new Map(S.logs.filter(l => l.drop === c.id).map((l, i) => [l.id, i + 1]));
       return `<div class="tset"><div class="row"><b class="sp">${c.name}</b></div>
-        ${P.map(p => `<div class="entry"><label class="row sp" style="gap:8px"><input type="checkbox" data-act="intank" data-v="${esc(p.id)}" ${inTank(p.id) ? 'checked' : ''}>
-          ${stageImg(c, stageOf(p.fed), 3)}<small>${petName(p.id) ? `<b>${esc(petName(p.id))}</b>・` : ''}${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</small></label>
-          <button class="ghost" data-act="petname" data-v="${esc(p.id)}">${petName(p.id) ? '改名' : '取名'}</button>
-          <button class="ghost" data-act="release" data-v="${esc(p.id)}">讓牠游走</button>
-          ${UI.nameEdit === p.id ? `<div class="pname"><input data-nf="${esc(p.id)}" value="${esc(petName(p.id))}" maxlength="${PET_NAME_MAX}" placeholder="幫牠取個名字" aria-label="${esc(c.name)}的名字"><button class="pri" data-act="petnamedone">完成</button></div>` : ''}</div>`).join('')}</div>`;
+        ${P.map(p => `<div class="entry"><label class="row sp tank-choice"><input type="checkbox" data-act="intank" data-v="${esc(p.id)}" ${draft.has(p.id) ? 'checked' : ''} ${!draft.has(p.id) && draft.size >= TANK_LIMIT ? 'disabled' : ''}>
+          ${stageImg(c, stageOf(p.fed), 3)}<small><b>${esc(petName(p.id) || c.name + ' ' + numbers.get(p.id) + ' 號')}</b><span class="tank-pet-meta" title="吃了 ${p.fed} 顆">${stageName(c, stageOf(p.fed))}<span class="tank-pet-status">・${shown.has(p.id) ? '海中' : '收藏'}${draft.has(p.id) !== shown.has(p.id) ? draft.has(p.id) ? ' → 海中' : ' → 收藏' : ''}</span></span></small></label>
+          <div class="tank-pet-actions"><button class="ghost" data-act="petname" data-v="${esc(p.id)}">${petName(p.id) ? '改名' : '取名'}</button><button class="ghost" data-act="release" data-v="${esc(p.id)}">放走</button></div>
+          ${UI.nameEdit === p.id ? `<div class="pname"><input data-nf="${esc(p.id)}" value="${esc(petName(p.id))}" maxlength="${PET_NAME_MAX}" placeholder="名字自動儲存" aria-label="${esc(c.name)}的名字"><button class="pri" data-act="petnamedone">完成</button></div>` : ''}</div>`).join('')}</div>`;
     }).join('') || '<div class="dim">還沒有生物，到商店買寶箱吧。</div>'}</section>`;
+}
+function refreshTankSelection() {
+  const draft = new Set(tankSelectionDraft()), shown = new Set(tankResidents().map(l => l.id));
+  const summary = document.querySelector('.tank-summary');
+  if (summary) summary.textContent = `已選 ${draft.size}／${TANK_LIMIT} 隻`;
+  const hint = document.querySelector('.tank-draft-hint');
+  if (hint) hint.textContent = draft.size >= TANK_LIMIT ? '已選滿，先取消一隻再替換。' : '勾選生物，按完成儲存。';
+  for (const input of document.querySelectorAll('.tank-manager [data-act=intank]')) {
+    const id = input.dataset.v;
+    input.checked = draft.has(id); input.disabled = !draft.has(id) && draft.size >= TANK_LIMIT;
+    const status = input.closest('label').querySelector('.tank-pet-status');
+    status.textContent = (shown.has(id) ? '・海中' : '・收藏') +
+      (draft.has(id) !== shown.has(id) ? draft.has(id) ? ' → 海中' : ' → 收藏' : '');
+  }
 }
 function tank(D) {
   if (UI.tankEdit) return tankEditor(D);
   if (UI.tankView === 'dex') return dex(D);
-  const n = CREATURES.filter(c => pets(c.id).some(p => inTank(p.id))).length;
+  const n = tankResidents().length;
   // 沒有框：畫布透明、填滿整個視窗，魚直接游在網站背景的海裡。
   // 海裡不放任何按鈕：飼料、補充、圖鑑、設定都在最下面一條不透明的工具列（跟分頁列連在一起），海和沙地停在它上面；新手（還沒撒滿 3 顆飼料）海中間有一句說明
   return `<div class="sea"><canvas id="tank" class="tank" aria-label="大海，點水裡撒飼料"></canvas>
     <div class="seahud seabar"><div id="feedInfo">${tankFeedHTML()}</div><span class="sp"></span>
       <button class="sr-only" data-act="feedkeyboard">撒一顆飼料</button><button class="feedbuy" data-act="buyfeed" title="用 ${FEED.price} 金幣買 ${FEED.pack} 顆飼料" aria-label="${FEED.pack} 顆飼料，${FEED.price} 金幣">+${FEED.pack}<span class="price">${FEED.price}${COIN}</span></button>
-      <button data-act="tankview" data-v="dex" title="已解鎖 ${Object.keys(D.col).length} 種生物">圖鑑<i class="cnt">${Object.keys(D.col).length}</i></button><button data-act="tankedit">設定</button></div>
+      <div class="sea-nav"><button class="sea-action" data-act="tankview" data-v="dex" title="已解鎖 ${Object.keys(D.col).length} 種生物">圖鑑</button><button class="sea-action" data-act="tankedit" aria-label="管理生物，目前展示 ${n} 隻，最多 ${TANK_LIMIT} 隻">管理生物</button></div></div>
     ${tutorialSeaCard()}${!n ? '<div class="seaempty"><p>這片海還沒有展示生物</p><button data-act="tab" data-v="shop">前往商店</button><button data-act="tankedit">管理生物</button></div>' : ''}${needFeedTip() ? `<div class="seacoach" aria-live="polite"><i class="ring"></i><span>${FEED_TIP}</span></div>` : ''}</div>`;
 }
 // 大海畫面時：頁尾藏起來、整頁不捲動，海填滿整個視窗
@@ -529,13 +625,16 @@ function tankStart() {
     const st = stageOf(fedOf(f.key));
     f.st = st; f.s = stageCanvas(f.c, st);
     const sc = TANK_SPECIES[f.c.id][0] * STAGE_SCALE[st - 1];
-    f.w = Math.round(f.s.width * sc); f.h = Math.round(f.s.height * sc);
+    // 與尺寸預覽一致：保留原本的物種、型態大小，再將手機版寬高各縮小 20%。
+    const sizeScale = cv.clientWidth <= 600 ? .8 : 1;
+    f.w = Math.round(f.s.width * sc) * sizeScale; f.h = Math.round(f.s.height * sc) * sizeScale;
   };
   TANK.fish = [];
+  const residents = new Set(tankResidents().map(l => l.id));
   for (const c of CREATURES) {
     const P = pets(c.id), [, speed, ground] = TANK_SPECIES[c.id];
     P.forEach((p, i) => {
-      if (!inTank(p.id)) return;
+      if (!residents.has(p.id)) return;
       const f = { c, key: p.id, no: i + 1, many: P.length > 1, name: petName(p.id), ground: !!ground, ph: Math.random() * 6, rest: 0,
         vx: speed * SWIM * (.8 + Math.random() * .4) * (Math.random() < .5 ? -1 : 1) };
       look(f);
@@ -628,7 +727,7 @@ function tankStart() {
       }
       if (f.x < 0) { f.x = 0; f.vx = Math.abs(f.vx); f.mx = Math.max(0, f.mx || 0); } else if (f.x > W - f.w) { f.x = W - f.w; f.vx = -Math.abs(f.vx); f.mx = Math.min(0, f.mx || 0); }
       x.save();
-      if (f.vx < 0) { x.translate(rp(f.x) + f.w, rp(f.y)); x.scale(-1, 1); x.drawImage(f.s, 0, 0, f.w, f.h); }
+      if (f.vx < 0) { x.translate(rp(f.x + f.w), rp(f.y)); x.scale(-1, 1); x.drawImage(f.s, 0, 0, f.w, f.h); }
       else x.drawImage(f.s, rp(f.x), rp(f.y), f.w, f.h);
       x.restore();
     }
@@ -799,8 +898,7 @@ function about() {
     <div class="mini">還原會取代目前紀錄，取代前會保留一份本機副本。備份檔上限 10 MiB。</div>
     ${hasBackupUndo() ? '<button class="ghost" data-act="backupundo">復原上次還原</button>' : ''}
     ${UI.backupError ? `<div class="warn" role="alert">${esc(UI.backupError)}</div>` : ''}</section>
-  <section class="px">${sh('隱私', '')}<p class="mini">未登入時，紀錄只存在此瀏覽器。登出或刪除雲端資料後，本機紀錄仍會保留；共用裝置請留意。</p>
-    ${FIREBASE_CONFIG ? '<p class="mini">Google 登入用於辨識帳號，紀錄會存到 Firebase 供跨裝置同步。一般使用者只能存取自己的資料；我不會查看或使用你的紀錄。可在上方刪除雲端資料與帳號。</p>' : ''}</section>
+  <section class="px">${sh('隱私', '')}<p class="mini">登出或刪除雲端資料後，本機紀錄仍會保留；共用裝置請留意。</p><a class="link" href="privacy.html" target="_blank" rel="noopener">閱讀隱私說明 ↗</a></section>
   <section class="px">${sh('使用協助', '')}<p class="mini"><b>沒有餵食會餓死嗎？</b><br>不會。不用每天餵，生物也不會餓死或退化；餵食只會累積成長進度。</p><p class="mini">每天午夜 00:00 換日；六件事每天任意三件可獲獎勵，未領獎勵隔天自動入帳，可在「紀錄」查看來源。</p>
     <p class="mini">回報問題時，可附上版本與瀏覽器資訊；不包含清單、Email 或帳號資料。</p><button data-act="copydiagnostics">複製診斷資訊</button>
     ${UI.diagnostics ? `<textarea readonly aria-label="診斷資訊">${esc(UI.diagnostics)}</textarea>` : ''}

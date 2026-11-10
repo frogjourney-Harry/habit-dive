@@ -74,8 +74,13 @@ test('原始碼掃描：資源路徑大小寫、外部連線', async () => {
   const base = new URL('../', location.href).href, html = await (await fetch(base + 'index.html?_=' + Date.now())).text();
   const refs = [...html.matchAll(/(?:src|href)="([^"#]+)"/g)].map(m => m[1]).filter(u => !/^https?:|^mailto:/.test(u));
   for (const u of refs) { const r = await fetch(base + u.split('?')[0], { cache: 'no-store' }); ok(r.ok, '資源存在：' + u); }
-  const ext = [...html.matchAll(/(?:src|href)="(https?:[^"]+)"/g)].map(m => m[1]); const bad = ext.filter(u => !/vocus\.cc/.test(u));
-  eq(bad, [], '除了 vocus 連結，不能有外部資源（離線也要能用）');
+  for (const [name, markup] of [['index.html',html],['privacy.html',await (await fetch(base+'privacy.html')).text()]]) {
+    const doc = new DOMParser().parseFromString(markup, 'text/html');
+    const ext = [...doc.querySelectorAll('[src],[srcset],link[href]:not([rel=canonical]),video[poster],object[data]')]
+      .flatMap(el => ['src','srcset','href','poster','data'].map(key => el.getAttribute(key)).filter(Boolean))
+      .filter(u => /https?:\/\/|^\/\//i.test(u));
+    eq(ext, [], name+' 的載入型資源不使用外部網址；canonical 與分享 metadata 不觸發資源載入');
+  }
   const files = ['js/sync.js', 'js/ui.js', 'js/main.js', 'js/views.js', 'js/core.js', 'js/game.js'];
   for (const f of files) { const s = await (await fetch(base + f + '?_=' + Date.now())).text(); const hosts = [...s.matchAll(/https?:\/\/([\w.-]+)/g)].map(m => m[1]).filter(h => !/vocus\.cc|gstatic\.com|firebase/.test(h)); eq([...new Set(hosts)], [], f + ' 沒有未知的外部網址'); }
 });
@@ -349,6 +354,54 @@ test('引導：已有紀錄的登入入口、iPhone 登入與 App 內建瀏覽�
   await M.click('#onb [data-act=onbback]'); await M.click('#onb [data-act=onbstart]'); ok(M.$('#onb').textContent.includes('第 1 步，共 3 步'),'仍可不登入開始導覽');
   M.destroy(); B.destroy(); A.destroy();
 });
+test('餵魚教學：提示半透明、文字點擊穿透且餵食按鈕可操作', async () => {
+  const I=await boot({state:mkState({logs:[W0,...drops(['clown'])],introFeedPending:true,tossed:0}),width:390,height:844});await I.dismiss();await I.tab('tank');
+  const guide=I.$('.sea-guide'),style=I.win.getComputedStyle(guide),color=style.backgroundColor.match(/[\d.]+/g);
+  ok(color.length===4&&Number(color[3])>0&&Number(color[3])<.75,'提示背景半透明，文字不整體淡掉');
+  ok(guide.getBoundingClientRect().height<180,'教學提示維持精簡高度');
+  const rect=guide.querySelector('p').getBoundingClientRect();
+  eq(I.doc.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2).id,'tank','提示文字區不攔截水面點擊');
+  const used=I.S.feedDay?.used||0;await I.click('.sea-guide [data-act=feedkeyboard]');
+  eq(I.S.feedDay.used,used+1,'教學按鈕仍能撒飼料');ok(I.has('新手導覽完成'),'完成回饋保留');I.check('半透明教學');I.destroy();
+});
+
+test('登入隱私：新手接續與更多頁登入前可見摘要及完整說明', async () => {
+  resetCloud();
+  const A=await boot({onb:true,seed:{}});
+  await A.click('#onb [data-act=onbreturn]');await flush(10);
+  const B=await boot({state:mkState()});await B.dismiss();await B.tab('about');await flush(10);
+  try {
+    for(const [I,root] of [[A,'#onb'],[B,'#cloudBox']]){
+      const note=I.$(root+' .login-privacy'),button=I.$(root+' [data-act=login]'),link=note.querySelector('a');
+      ok(I.vis(note)&&I.vis(button),'登入前可見隱私摘要與 Google 按鈕');
+      ok(note.textContent.includes('Firebase')&&note.textContent.includes('不登入也能玩'),'交代同步目的及選用性');
+      ok(!note.closest('details'),'不藏在預設收合區塊');
+      ok(!!(note.compareDocumentPosition(button)&I.win.Node.DOCUMENT_POSITION_FOLLOWING),'摘要在登入按鈕前');
+      eq(link.getAttribute('href'),'privacy.html','完整說明使用獨立頁面');
+      ok(link.target==='_blank'&&link.rel.includes('noopener'),'閱讀說明不丟失目前畫面');
+    }
+    let calls=0;const auth=A.win.firebase.auth(),original=auth.signInWithPopup;
+    auth.signInWithPopup=async()=>{calls++;ok(A.vis(A.$('#onb .login-privacy')),'啟動 Google 登入前提醒仍可見');return original()};
+    window.__cloudDb.nextUser={uid:'privacy-mock'};
+    await A.click('#onb [data-act=login]');await flush(12);
+    eq(calls,1,'沒有額外確認步驟破壞原本登入操作');
+  } finally {A.destroy();B.destroy()}
+});
+
+test('隱私頁與分享資訊：不登入可讀，公開描述吻合選用雲端', async () => {
+  const base=new URL('../',location.href).href;
+  const response=await fetch(base+'privacy.html');ok(response.ok,'獨立隱私頁存在');
+  const doc=new DOMParser().parseFromString(await response.text(),'text/html');
+  ok(!doc.querySelector('script'),'隱私頁不啟動遊戲、登入或 Firebase');
+  ok(doc.body.textContent.includes('localStorage')&&doc.body.textContent.includes('Cloud Firestore'),'說明本機與雲端資料');
+  ok(doc.body.textContent.includes('本機紀錄仍會保留')&&doc.body.textContent.includes('不會一併刪除'),'說明登出不等於刪除所有紀錄');
+  ok(doc.body.textContent.includes('Gmail')&&doc.body.textContent.includes('Google Drive'),'說明沒有請求其他 Google 服務權限');
+  const index=new DOMParser().parseFromString(await (await fetch(base+'index.html')).text(),'text/html');
+  ok(index.querySelector('meta[name=description]').content.includes('Google'),'分享摘要不宣稱資料永遠只在瀏覽器');
+  eq(index.querySelector('meta[property="og:url"]').content,'https://frogjourney-harry.github.io/habit-dive/','分享網址指向正式遊戲');
+  ok(!!index.querySelector('meta[property="og:image"]'),'分享使用既有圖示');
+});
+
 test('專注畫面的結束：一分鐘內直接結束，之後才確認；按鈕夠大', async () => {
   const I = await boot({ state: mkState() }); await I.dismiss();
   await I.click('[data-act=start]'); await I.advance(20e3);
@@ -359,3 +412,27 @@ test('專注畫面的結束：一分鐘內直接結束，之後才確認；按�
   I.check('結束'); I.destroy();
 });
 
+test('手機觸控：同步重畫不移除正在點擊的分頁', async () => {
+  const I=await boot({state:mkState(),width:393,height:771});await I.dismiss();
+  const button=I.$('nav [data-v=tank]');
+  button.dispatchEvent(new I.win.PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',pointerId:1}));
+  I.ev('render()');ok(button.isConnected,'觸控期間保留原按鈕');
+  button.dispatchEvent(new I.win.PointerEvent('pointerup',{bubbles:true,pointerType:'touch',pointerId:1}));button.click();await flush();
+  eq(I.UI.tab,'tank','同一次點擊正常進入大海');ok(I.$('#tank'),'水面可用');
+  await I.tab('today');I.ev('S.favs=["A","B"];save(false);render()');const stale=I.$('[data-act=delfav]');
+  ok(stale,'常用刪除入口存在');if(stale){stale.dispatchEvent(new I.win.PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',pointerId:2}));I.ev('S=JSON.parse(JSON.stringify(S));S.favs=["B"];save(false);render()');stale.click();await flush();eq(I.S.favs,['B'],'舊按鈕不會刪除同步後另一項');}
+  I.check('觸控重畫');I.destroy();
+});
+
+test('版本更新：只在新版、閒置且完成儲存後自動刷新', async () => {
+  const I=await boot({state:mkState()});await I.dismiss();I.ev('save(false);window.__reloads=0;UPDATE.reload=()=>window.__reloads++;const memory=new Map();UPDATE.session=()=>({getItem:k=>memory.get(k),setItem:(k,v)=>memory.set(k,v)})');
+  eq(I.ev('releaseVersion(new DOMParser().parseFromString(\'<script src="js/firebase-config.js?v=200001010000"></script><script src="js/config.js?v=202611101910&test=1#x"></script>\',"text/html"))'),'202611101910','版本解析不誤抓 Firebase 且支援其他參數');
+  I.win.fetch=async()=>({ok:true,text:async()=>'<script src="js/config.js?v=209901010000"></script>'});
+  await I.win.checkUpdate(true);eq(I.win.__reloads,0,'操作後不立刻重整');ok(I.$('#updateNotice').textContent.includes('新版本'),'簡短告知新版');
+  await I.habit('運動');I.ev('UPDATE.activity=Date.now()-61000;applyUpdate()');eq(I.win.__reloads,0,'填表時不重整');
+  await I.click('[data-act=sheetclose]');I.ev('UPDATE.activity=Date.now()-61000;CLOUD.pending=true;applyUpdate()');eq(I.win.__reloads,0,'等待上傳時不重整');
+  I.ev('CLOUD.pending=false;UI.tankEdit=true;applyUpdate()');eq(I.win.__reloads,0,'管理生物草稿不被更新丟棄');
+  I.ev('UI.tankEdit=false;S.timer={start:Date.now()};applyUpdate()');eq(I.win.__reloads,0,'番茄鐘期間不重整');
+  I.ev('delete S.timer;save(false);UPDATE.activity=Date.now()-61000;applyUpdate();applyUpdate()');eq(I.win.__reloads,1,'儲存完閒置自動更新，防止重整迴圈');
+  I.check('版本更新');I.destroy();
+});

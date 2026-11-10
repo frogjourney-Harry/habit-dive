@@ -17,11 +17,17 @@ async function exportBackup() {
   toast(IN_APP ? '如果沒有下載，請改用 Chrome 或 Safari 開啟再備份' : '備份檔已下載');
 }
 function sheetDay() { return addDays(dayKey(), UI.sheet.day); }
+function finishHabitEntry() {
+  UI.sheet = null; UI.tab = 'today'; UI.pday = 0; UI.showRows = 0; UI.swap = null;
+}
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const v = b.dataset.v;
+  if (UI.renderedState && UI.renderedState !== S && b.closest('#main') && b.dataset.act !== 'tab') {
+    render(); toast('資料已更新，請重新操作'); return;
+  }
   switch (b.dataset.act) {
-    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); UI.tankEdit = false; UI.tankView = ''; UI.logView = ''; UI.swap = null; UI.tab = v; if (v === 'today') { UI.pday = 0; UI.showRows = 0; } render(); window.scrollTo(0, 0); break;
+    case 'tab': if (UI.shopEdit) finishShop(); if (UI.habEdit) finishHabits(); closeTankSelection(); UI.tankView = ''; UI.logView = ''; UI.swap = null; UI.tab = v; if (v === 'today') { UI.pday = 0; UI.showRows = 0; } render(); window.scrollTo(0, 0); break;
     case 'pday': UI.pday = +v; UI.swap = null; UI.showRows = 0; render(); break;
     case 'prowdel': {
       const d = viewDay(), P = getPlan(d), index = +v, item = P[index];
@@ -70,31 +76,39 @@ document.addEventListener('click', async e => {
     case 'askno': ask.res && ask.res(false); break;
     case 'habtap':
       UI.sheet = { id: v, day: 0 }; renderSheet(); break;
-    case 'shday': UI.sheet.day = +v; renderSheet(); break;
+    case 'shday': if (stashExerciseDraft() === false) break; UI.sheet.day = +v; renderSheet(); break;
     case 'sheetclose': UI.sheet = null; renderSheet(); break;
     case 'chk': {
-      const d = sheetDay(), id = UI.sheet.id;
+      const d = sheetDay(), id = UI.sheet.id, today = UI.sheet.day === 0;
       if (dayChecks(d, id).length) { while (dayChecks(d, id).length) delCheck(d, id, 0); }
-      else { addCheck(d, id, {}); clearLeave(id, d); ac(); SFX.tap(); }
-      reward(() => {}, UI.sheet.day === 0); break;
+      else { addCheck(d, id, {}); clearLeave(id, d); ac(); SFX.tap(); finishHabitEntry(); }
+      reward(() => {}, today); break;
     }
     case 'leave': { const msg = toggleLeave(UI.sheet.id, sheetDay()); save(); render(); renderSheet(); if (msg) toast(msg); break; }
     case 'exadd': {
       const type = document.getElementById('exType').value, e = { type };
-      let skipped = false;
-      for (const [k, , , step] of EX_FIELDS[type]) {
-        const v = document.getElementById('ex_' + k).value.trim();
+      if (!ETAGS.includes(type)) { document.getElementById('exError').textContent = '請選擇運動類型。'; break; }
+      if (stashExerciseDraft() === false) break;
+      let error = '', firstInvalid = null;
+      for (const [k, label, unit] of EX_FIELDS[type]) {
+        const input = document.getElementById('ex_' + k), v = input.value.trim();
+        input.removeAttribute('aria-invalid');
         if (!v) continue;
-        if (step) { const n = +v; if (Number.isFinite(n) && n > 0 && n <= 100000) e[k] = n; else skipped = true; }   // 負數、0、無限大、離譜的大數都不收
-        else e[k] = v.slice(0, 60);
+        const n = Number(v);
+        if (/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(v) && Number.isFinite(n) && n > 0 && n <= EX_LIMITS[k]) e[k] = n;
+        else { input.setAttribute('aria-invalid', 'true'); firstInvalid = firstInvalid || input; error = error || `${label}請填大於 0、不超過 ${EX_LIMITS[k]} ${unit}的數字，或留空。`; }
       }
       const note = document.getElementById('ex_note').value.trim().slice(0, 200); if (note) e.note = note;
-      if (skipped) { document.getElementById('exError').textContent = '請輸入大於 0 且不超過 100000 的數字，或清空該欄位。'; return; }
-      UI.sheet.exType = type;
-      addCheck(sheetDay(), 'exercise', e); ac(); SFX.tap();
-      reward(() => {}, UI.sheet.day === 0); break;
+      if (error) { document.getElementById('exError').textContent = error; firstInvalid.focus(); return; }
+      const d = sheetDay(), today = UI.sheet.day === 0;
+      addCheck(d, UI.sheet.id, e); ac(); SFX.tap(); finishHabitEntry();
+      reward(() => {}, today); break;
     }
-    case 'chkdel': delCheck(sheetDay(), UI.sheet.id, +v); reward(() => {}, false); break;
+    case 'chkdel': {
+      const current = dayChecks(sheetDay(), UI.sheet.id)[+v];
+      if (b.dataset.entry !== JSON.stringify(current)) { stashExerciseDraft(); renderSheet(); toast('紀錄已更新，請重新選擇'); break; }
+      delCheck(sheetDay(), UI.sheet.id, +v); reward(() => {}, false); break;
+    }
     case 'habedit': UI.habEdit = true; render(); break;
     case 'habdone': finishHabits(); render(); toast('習慣已更新'); break;
     case 'habadd':
@@ -160,23 +174,43 @@ document.addEventListener('click', async e => {
     case 'login': cloudLogin(); break;
     case 'logout': cloudLogout(); break;
     case 'clouddel': cloudDelete(); break;
+    case 'clouddeleteconfirm': cloudDeleteConfirmed(); break;
+    case 'clouddeleteback': CLOUD.deleteArmed = null; renderCloud(); break;
+    case 'clouddeletioncancel': resumeCloudSync(); break;
     case 'prerestore': cloudRestorePre(); break;
     case 'predrop': cloudDropPre(); break;
-    case 'tankedit': UI.tankEdit = true; render(); break;
+    case 'tankedit': beginTankSelection(); render(); break;
+    case 'seamanage': UI.opened = false; UI.tab = 'tank'; UI.tankView = ''; beginTankSelection(); render(); nextChest(); break;
     case 'tankview': UI.tankView = v; render(); window.scrollTo(0, 0); break;
     // 任務頁點未完成的任務：跳到「今日」頁對應的區塊（六件事、習慣、番茄鐘）
     case 'goto': { const [id, pd] = v.split(':'); UI.tab = 'today'; UI.pday = +pd || 0; render(); const el = document.getElementById(id); if (el) el.scrollIntoView({ block: 'start' }); } break;
-    case 'intank': S.outTank = S.outTank || {}; if (b.checked) delete S.outTank[v]; else S.outTank[v] = true; save(); break;
+    case 'intank': {
+      if (!UI.tankEdit) { b.checked = false; break; }
+      if (UI.tankDraftState !== S || !tankOwned().some(l => l.id === v)) { tankSelectionDraft(); render(); toast('資料已更新，請重新確認選擇'); break; }
+      const draft = tankSelectionDraft();
+      if (b.checked && !draft.includes(v)) {
+        if (draft.length >= TANK_LIMIT) { toast(`已選滿 ${TANK_LIMIT} 隻，先取消一隻再替換`); refreshTankSelection(); break; }
+        draft.push(v);
+      } else if (!b.checked) UI.tankDraft = draft.filter(id => id !== v);
+      refreshTankSelection(); break;
+    }
     case 'release': {
-      const lg = S.logs.find(l => l.id === v), c = lg && CR[lg.drop]; if (!c) break;
-      const p = pets(c.id).find(x => x.id === v), st = p ? `（${stageName(c, stageOf(p.fed))}）` : '';
+      const state = S, lg = tankOwned().find(l => l.id === v), c = lg && CR[lg.drop]; if (!c) break;
+      const p = pets(c.id).find(x => x.id === v), st = p ? `（${stageName(c, stageOf(p.fed))}，吃了 ${p.fed} 顆）` : '';
       const nm = petName(v);
-      if (!(await ask(`讓這隻${c.name}${nm ? `「${nm}」` : ''}${st}游走？\n牠會游走，不會再出現在你的大海裡。圖鑑的收集紀錄會保留。`, '讓牠游走'))) break;
-      S.released = S.released || {}; S.released[v] = true; if (S.names) delete S.names[v]; save(); render(); renderSheet(); toast(`${nm || c.name}游走了`); break;
+      if (!(await ask(`讓這隻${c.name}${nm ? `「${nm}」` : ''}${st}永久游走？\n放走後無法復原，圖鑑紀錄會保留。只想換展示生物，取消勾選留在收藏即可。`, '讓牠游走'))) break;
+      if (S !== state || !releaseTankPet(v)) { toast('資料已更新，請重新確認生物'); render(); break; }
+      save(); render(); renderSheet(); toast(`${nm || c.name}游走了`); break;
     }
     case 'releasepick': {
       const lg = S.logs.find(l => l.id === v), nm = petName(v);
-      S.released = S.released || {}; S.released[v] = true; if (S.names) delete S.names[v]; save();
+      const current = UI.cur;
+      if (!current || !current.release || current.releaseState !== S || !lg || lg.drop !== current.release || !releaseTankPet(v)) {
+        UI.opened = false;
+        if (current && current.release && pets(current.release).length > MAX_PETS) Q.unshift({release:current.release,newId:current.newId});
+        render(); nextChest(); toast('資料已更新，請重新確認生物'); break;
+      }
+      save();
       UI.opened = false; render(); nextChest(); toast(`${nm || CR[lg.drop].name}游走了`); break;
     }
     case 'fav': {
@@ -212,7 +246,13 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'petnamedone': UI.nameEdit = null; render(); break;
-    case 'tankdone': UI.tankEdit = false; UI.nameEdit = null; render(); toast('大海已更新'); break;
+    case 'tankcancel': closeTankSelection(); render(); break;
+    case 'tankdone': {
+      if (!UI.tankEdit) break;
+      if (UI.tankDraftState !== S) { tankSelectionDraft(); render(); toast('資料已更新，請確認展示選擇後再完成'); break; }
+      if (!setTankSelection(tankSelectionDraft())) { toast(`最多展示 ${TANK_LIMIT} 隻，請重新選擇`); break; }
+      save(); closeTankSelection(); render(); toast('大海已更新'); break;
+    }
     case 'buyfeed': {
       if (derive().coins < FEED.price) { toast(`金幣不夠，飼料要 ${FEED.price} 金幣`); break; }
       S.logs.push({ id: rid(), t: Date.now(), d: dayKey(), k: 'redeem', name: `飼料 ${FEED.pack} 顆`, c: -FEED.price });
@@ -235,7 +275,7 @@ document.addEventListener('click', async e => {
       else { save(); render(); }
       break;
     case 'introfinish': S.introCompleteNotice = false; save(); UI.tab = 'today'; render(); toast('新手導覽完成，現在可以開始安排今天了'); break;
-    case 'seagoto': UI.opened = false; UI.tab = 'tank'; UI.tankEdit = false; UI.tankView = ''; render(); nextChest(); break;
+    case 'seagoto': UI.opened = false; UI.tab = 'tank'; closeTankSelection(); UI.tankView = ''; render(); nextChest(); break;
     case 'backuplater': S.backupNudgeDismissed = true; save(); render(); break;
     case 'backupinvite': UI.tab = 'about'; render(); document.getElementById('cloudBox')?.scrollIntoView(); break;
     case 'cloudbackuprestore': { const backup = cloudChoiceBackup(); if (backup && await ask('改用選擇前的雲端紀錄？目前紀錄會先另存備份。', '還原雲端紀錄')) { restoreBackup(prepareBackup(backup.s)); render(); } break; }
@@ -296,6 +336,7 @@ document.addEventListener('pointerup', () => {
   if (DRAG.i == null) return;
   const { i, to, moved } = DRAG; DRAG.i = null;
   if (!moved) return;
+  releaseTouchRender();
   DRAG.until = performance.now() + 350;   // 拖完放開時緊接著的 click 不要再當成「點編號交換」（觸控拖曳不會有 click，所以只擋一下子）
   if (to === i) { render(); return; }
   const P = getPlan(viewDay()); P.splice(to, 0, P.splice(i, 1)[0]); UI.swap = null;
@@ -315,8 +356,9 @@ document.addEventListener('input', e => {
     }
     return;
   }
-  if (el.id === 'exType') { UI.sheet.exType = el.value; renderSheet(); return; }
+  if (el.id === 'exType') { if (stashExerciseDraft() === false) return; const draft = exerciseDraft(); if (!draft) return; draft.type = ETAGS.includes(el.value) ? el.value : ETAGS[0]; renderSheet(); return; }
   if (el.id && el.id.startsWith('ex_')) {
+    stashExerciseDraft();
     const g = k => { const i = document.getElementById('ex_' + k); return i ? +i.value : 0; };
     const p = document.getElementById('exPace');
     if (p) p.textContent = paceText({ type: document.getElementById('exType').value, dist: g('dist'), m: g('m'), min: g('min') });
@@ -363,7 +405,7 @@ function refreshFromStorage() {
 }
 window.addEventListener('storage', e => { if (!e.key || e.key === KEY) refreshFromStorage(); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFromStorage(); });
-document.addEventListener('focusout', () => { if (syncPending) { syncPending = false; setTimeout(() => { render(); renderSheet(); tick(); }, 0); } });
+document.addEventListener('focusout', () => { if (syncPending) { syncPending = false; setTimeout(() => { render(); if (!UI.sheet || habit(UI.sheet.id)?.kind !== 'exercise') renderSheet(); tick(); }, 0); } });
 
 /* ========= 啟動 ========= */
 // 新手禮物、恢復雲端登入、補發每日獎勵：一次性，引導做完才開始

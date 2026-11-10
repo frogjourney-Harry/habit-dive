@@ -4,7 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>習慣深潛</title>
-<meta name="description" content="像素風的習慣養成遊戲：每天寫下最重要的事，完成就賺金幣、在商店開寶箱收集水下生物。資料只存在你自己的瀏覽器。">
+<meta name="description" content="每天完成一點事，收集海洋生物。免註冊即可開始，紀錄先保存在瀏覽器，也可選擇 Google 雲端同步。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="習慣深潛 Habit Dive">
+<meta property="og:description" content="每天完成一點事，收集海洋生物。免註冊即可開始，Google 雲端同步自由選擇。">
+<meta property="og:url" content="https://frogjourney-harry.github.io/habit-dive/">
+<meta property="og:image" content="https://frogjourney-harry.github.io/habit-dive/img/share-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:alt" content="習慣深潛：每天完成一點事，收集海洋生物">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://frogjourney-harry.github.io/habit-dive/">
 <meta name="theme-color" content="#3290c6">
 <meta name="color-scheme" content="light">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,7 +23,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <!-- 資料存在使用者自己的瀏覽器（localStorage）。只有看到 Google 登入按鈕或選擇登入的人，才會載入 Firebase；登入後才同步到雲端（js/sync.js）。 -->
-<link rel="stylesheet" href="css/style.css?v=202611071429">
+<link rel="stylesheet" href="css/style.css?v=202611101910">
 </head>
 <body>
 <div class="bubbles" id="bubbles"></div>
@@ -32,13 +43,14 @@
 <input type="file" id="importFile" accept=".json,application/json" class="hidden">
 
 <!-- 一般 script（不是 module），依順序載入、共用全域變數；直接雙擊 index.html 也能在本機打開 -->
-<script src="js/config.js?v=202611071429"></script>
-<script src="js/creatures.js?v=202611071429"></script>
-<script src="js/core.js?v=202611071429"></script>
-<script src="js/game.js?v=202611071429"></script>
-<script src="js/views.js?v=202611071429"></script>
-<script src="js/firebase-config.js?v=202611071429"></script>
-<script src="js/sync.js?v=202611071429"></script>
-<script src="js/ui.js?v=202611071429"></script><script src="js/main.js?v=202611071429"></script>
+<script src="js/config.js?v=202611101910"></script>
+<script src="js/creatures.js?v=202611101910"></script>
+<script src="js/core.js?v=202611101910"></script>
+<script src="js/game.js?v=202611101910"></script>
+<script src="js/views.js?v=202611101910"></script>
+<script src="js/firebase-config.js?v=202611101910"></script>
+<script src="js/sync.js?v=202611101910"></script>
+<script src="js/ui.js?v=202611101910"></script><script src="js/main.js?v=202611101910"></script>
+<script src="js/update.js?v=202611101910"></script>
 </body>
 </html>

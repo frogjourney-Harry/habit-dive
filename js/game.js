@@ -38,8 +38,10 @@ function grant(kind, tag, o = {}) {
 function dropCreature(log, rates, title, tint = 0, fixed = null) {
   const D = derive(), cr = fixed || rollCreature(rates), isNew = !D.col[cr.id];
   log.drop = cr.id;
+  const seaFull = tankResidents().length >= TANK_LIMIT;
   S.logs.push(log);
-  Q.push({ title, cr, isNew, xp: log.xp || 0, c: log.c || 0, tint, direct: !!fixed });
+  if (seaFull) { S.outTank = S.outTank || {}; S.outTank[log.id] = true; }
+  Q.push({ title, cr, isNew, xp: log.xp || 0, c: log.c || 0, tint, direct: !!fixed, seaFull });
   if (pets(cr.id).length > MAX_PETS) Q.push({ release: cr.id, newId: log.id });
   return log;
 }
@@ -232,10 +234,11 @@ function nextChest() {
   if (it.release) {
     const c = CR[it.release], P = pets(c.id);
     if (P.length <= MAX_PETS) { UI.opened = false; nextChest(); return; }
-    m.innerHTML = `<h2>${c.name}已經有 ${MAX_PETS} 隻了</h2><p class="dim">每種最多養 ${MAX_PETS} 隻，選一隻讓牠游走。</p>
+    it.releaseState = S;
+    m.innerHTML = `<h2>${c.name}已經有 ${MAX_PETS} 隻了</h2><p class="dim">同種最多收藏 ${MAX_PETS} 隻，與大海的 ${TANK_LIMIT} 隻展示名額分開計算。請選一隻永久放走，放走後無法復原，圖鑑紀錄會保留。</p>
       ${P.map(p => `<div class="entry" style="text-align:left">${stageImg(c, stageOf(p.fed), 2)}
         <span class="sp">${p.id === it.newId ? '<b class="new">新抽到的</b>・' : ''}${petName(p.id) ? esc(petName(p.id)) + '・' : ''}${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</span>
-        <button class="${p.id === it.newId ? 'pri' : ''}" data-act="releasepick" data-v="${p.id}">讓牠游走</button></div>`).join('')}`;
+        <button class="${p.id === it.newId ? 'pri' : ''}" data-act="releasepick" data-v="${esc(p.id)}">放走</button></div>`).join('')}`;
     return;
   }
   if (it.level !== undefined) {
@@ -265,9 +268,10 @@ function openChest() {
     ${stageImg(cr, 1, Math.min(10, Math.floor(160 / stageCanvas(cr, 1).width)), false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
     <h2>${cr.name} <small>幼體</small> ${it.isNew ? '<span class="new">新發現</span>' : ''}</h2>
     <div class="dim" style="font-size:15px">${cr.fact}</div>
+    ${it.seaFull ? '<p class="sea-full-note" role="status">大海已滿，這隻生物已留在收藏。可到管理生物替換，成長進度會保留。</p>' : ''}
     ${it.xp || it.c > 0 ? `<div class="gain">${it.xp ? `<span style="color:var(--xp)">+${it.xp} XP</span>　` : ''}${it.c > 0 ? `<span class="coin">+${it.c}${COIN}</span>` : ''}</div>` : ''}
 
-    <button class="pri" data-act="seagoto">去大海看看</button><button class="ghost" data-act="close">${it.direct ? '先寫清單' : Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
+    <button class="pri" data-act="${it.seaFull ? 'seamanage' : 'seagoto'}">${it.seaFull ? '選擇展示生物' : '去大海看看'}</button><button class="ghost" data-act="close">${it.direct ? '先寫清單' : Q.length ? `下一個（還有 ${Q.length}）` : '收下'}</button>`;
   SFX.open(cr.r);
 }
 

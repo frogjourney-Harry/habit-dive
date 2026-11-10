@@ -82,7 +82,7 @@ function tutorialResumeCard() {
   return `<section class="px tutorial-resume">${tutorialProgress(3)}<b>${S.introCompleteNotice?'你已完成第一次餵食':'還差最後一步：試著餵魚'}</b><p class="mini">到大海完成這段導覽，再開始安排今天。</p><button data-act="seagoto">${S.introCompleteNotice?'查看導覽完成畫面':'繼續新手導覽'}</button></section>`;
 }
 function tutorialSeaContents() {
-  return S.introCompleteNotice ? `<b>新手導覽完成！</b><p class="mini">你已認識習慣與清單，並撒下第一顆飼料。魚吃到飼料就會慢慢長大。</p><button class="pri" data-act="introfinish">完成導覽，回到今日</button>` : `${tutorialProgress(3)}<b>最後一步：餵食小丑魚</b><p class="mini">點一下水裡撒飼料，也可以按下方按鈕。每天有 10 顆免費飼料。</p><p class="mini">不用每天餵，牠們不會餓死，成長進度也不會倒退。餵食只是讓牠們長大。</p><button class="pri" data-act="feedkeyboard">試著撒一顆飼料</button>`;
+  return S.introCompleteNotice ? `<div class="sea-guide-body"><div><b>新手導覽完成！</b><p class="mini">魚吃到飼料就會慢慢長大。</p></div><button class="pri" data-act="introfinish">回到今日</button></div>` : `${tutorialProgress(3)}<div class="sea-guide-body"><div><b>餵食小丑魚</b><p class="mini">點水裡撒飼料，每天免費 10 顆。不餵也不會餓死或退化。</p></div><button class="pri" data-act="feedkeyboard">撒一顆</button></div>`;
 }
 function tutorialSeaCard() {
   return S.introFeedPending || S.introCompleteNotice ? `<section class="sea-guide" aria-live="polite">${tutorialSeaContents()}</section>` : '';

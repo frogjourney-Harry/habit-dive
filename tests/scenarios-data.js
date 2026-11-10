@@ -3,6 +3,178 @@ const loginAs = async (I, uid = 'u1') => { window.__cloudDb.nextUser = { uid }; 
 const hide = (I, hidden) => { Object.defineProperty(I.doc, 'visibilityState', { get: () => hidden ? 'hidden' : 'visible', configurable: true }); I.doc.dispatchEvent(new I.win.Event('visibilitychange')); return flush(12); };
 const resetCloud = () => { Object.assign(window.__cloudDb, { docs: {}, fail: false, log: [], listeners: {}, popupBlocked: false, redirected: false, deletedAccounts: [], nextUser: null }); };
 
+test('雲端刪除：待上傳、切頁與帳號刪除等待期間都不重建資料', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  try {
+    I.ev("window.finishAccountDelete=null;const originalDelete=CLOUD.user.delete.bind(CLOUD.user);CLOUD.user.delete=async()=>{await new Promise(r=>window.finishAccountDelete=r);await originalDelete()};save()");
+    await I.click('[data-act=clouddel]');await I.click('#askyes');await I.click('[data-act=clouddeleteconfirm]');await flush(10);
+    ok(I.ev('typeof finishAccountDelete === "function"'),'已完成文件刪除，正在等待帳號刪除');
+    ok(!window.__cloudDb.docs.u1,'雲端文件已刪除');
+    await I.ev('cloudSchedule();cloudPush();cloudPull(false)');await hide(I,true);await hide(I,false);
+    ok(!window.__cloudDb.docs.u1,'計時器與切頁不會重建文件');
+    I.ev('finishAccountDelete()');await flush(16);
+    ok(!I.ev('CLOUD.user'),'完成後已解除登入狀態');
+    ok(!I.ev("localStorage.getItem(KEY+'.delete-cloud.u1')"),'成功後移除本機暫停標記');
+    ok(I.S.logs.length>0,'本機遊戲紀錄保留');I.check('刪除防重傳');
+  } finally {I.destroy()}
+});
+
+test('雲端刪除：取消重新驗證不先刪資料', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  try {
+    I.ev("CLOUD.user.reauthenticateWithPopup=async()=>{throw {code:'auth/popup-closed-by-user'}}");
+    await I.click('[data-act=clouddel]');await I.click('#askyes');await I.click('[data-act=clouddeleteconfirm]');await flush(10);
+    ok(!!window.__cloudDb.docs.u1,'取消驗證後雲端文件仍在');
+    eq(window.__cloudDb.deletedAccounts.length,0,'帳號未刪除');
+    ok(I.has('已取消刪除')&&!I.ev('cloudSyncPaused()'),'清楚回報取消，不留下刪除鎖');
+    I.check('取消刪除');
+  } finally {I.destroy()}
+});
+
+test('雲端刪除：部分失敗與重新載入後維持暫停，重試可完成', async () => {
+  resetCloud();let I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  try {
+    I.ev("CLOUD.user.delete=async()=>{throw new Error('mock-offline')}");
+    await I.click('[data-act=clouddel]');await I.click('#askyes');await I.click('[data-act=clouddeleteconfirm]');await flush(10);
+    ok(!window.__cloudDb.docs.u1&&I.has('帳號尚未刪除'),'正確交代文件已刪除、帳號未完成');
+    ok(I.ev('cloudSyncPaused()'),'暫停後不會自動上傳');
+    await I.ev('save();cloudPush()');ok(!window.__cloudDb.docs.u1,'再次儲存也不重建文件');
+    I=await I.reload({cloudUser:{uid:'u1'}});await I.dismiss();await I.tab('about');await flush(16);
+    ok(I.ev('cloudSyncPaused()')&&!window.__cloudDb.docs.u1,'重開仍保持同帳號的暫停標記');
+    ok(I.has('重試刪除')&&!I.$('[data-act=cloudretry]'),'提供重試刪除，不提供誤導的重試上傳');
+    await I.click('[data-act=clouddel]');await I.click('#askyes');await I.click('[data-act=clouddeleteconfirm]');await flush(16);
+    ok(!I.ev('CLOUD.user')&&!window.__cloudDb.docs.u1,'重試成功且沒有殘留雲端資料');I.check('部分刪除重試');
+  } finally {I.destroy()}
+});
+
+test('雲端刪除：等待已開始的交易結束後才刪除文件', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  try {
+    I.ev("const db=firebase.firestore();const originalTx=db.runTransaction;window.releaseTx=null;db.runTransaction=async fn=>{await new Promise(r=>window.releaseTx=r);return originalTx(fn)};firebase.firestore=Object.assign(()=>db,firebase.firestore);save();window.activeUpload=cloudPush()");
+    await I.click('[data-act=clouddel]');await I.click('#askyes');await I.click('[data-act=clouddeleteconfirm]');await flush(8);
+    ok(!!window.__cloudDb.docs.u1,'交易仍在等待時尚未先刪文件');
+    I.ev('releaseTx()');await flush(20);
+    ok(!window.__cloudDb.docs.u1&&!I.ev('CLOUD.user'),'交易結束後完成刪除，不留下孤兒文件');I.check('在途交易刪除');
+  } finally {I.destroy()}
+});
+
+test('水族箱管理：兩台假雲端切換展示，刪除 outTank 鍵可同步且草稿更新', async () => {
+  resetCloud();
+  const ids=['clown','lion','hermit','puffer','cuttle','star','clown','lion','hermit','puffer','cuttle','star','clown'];
+  const A=await boot({state:base(...drops(ids))}); await A.dismiss();await loginAs(A);
+  const B=await boot({seed:{}});await B.dismiss();await loginAs(B);
+  const until=async fn=>{for(let i=0;i<100&&!fn();i++)await new Promise(r=>setTimeout(r,20))};
+  const synced=()=>{const m=(window.__cloudDb.docs.u1||{}).mtime;return A.S.mtime===m&&B.S.mtime===m&&!A.ev('CLOUD.pending')&&!B.ev('CLOUD.pending')};
+  try {
+    for(let i=0;i<5&&!synced();i++){await A.ev('CLOUD.pending?cloudPush():0');await B.ev('CLOUD.pending?cloudPush():0');await until(synced)}
+    ok(synced(),'兩台先完成同步');
+    await B.tab('tank');await B.click('[data-act=tankedit]');
+    await B.click('[data-act=intank][data-v=dr1lion]');
+    await A.tab('tank');await A.click('[data-act=tankedit]');
+    await A.click('[data-act=intank][data-v=dr0clown]');await A.click('[data-act=intank][data-v=dr12clown]');
+    await A.click('[data-act=tankdone]');await A.ev('cloudPush()');
+    await until(()=>!!B.S.outTank.dr0clown);
+    ok(B.S.outTank.dr0clown && !B.S.outTank.dr12clown,'B 收到 A 的整份展示選擇');
+    ok(B.UI.tankDraft.includes('dr1lion')&&B.UI.tankDraft.includes('dr12clown'),'B 舊草稿被新雲端選擇取代');
+    ok(B.has('資料已更新'),'B 管理中明確提示資料已重載');
+    await B.click('[data-act=intank][data-v=dr12clown]');await B.click('[data-act=intank][data-v=dr0clown]');
+    await B.click('[data-act=tankdone]');await B.ev('cloudPush()');
+    await until(()=>!A.S.outTank.dr0clown&&!!A.S.outTank.dr12clown);
+    ok(!A.S.outTank.dr0clown && A.S.outTank.dr12clown,'A 收到刪除 outTank 鍵後的反向替換');
+    const cloud=JSON.parse(window.__cloudDb.docs.u1.data);
+    ok(!cloud.outTank.dr0clown && cloud.outTank.dr12clown,'雲端不會把已刪的鍵聯集帶回');
+    eq(A.ev('tankResidents().length'),12,'A 展示 12 隻');eq(B.ev('tankResidents().length'),12,'B 展示 12 隻');
+    A.check('雙裝置 A');B.check('雙裝置 B');
+  } finally {A.destroy();B.destroy()}
+});
+
+test('雲端刪除：已提交交易延後回覆且取消驗證，不誤判自己為衝突', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  try {
+    I.ev("const db=firebase.firestore(),tx=db.runTransaction;let first=true;db.runTransaction=async fn=>{const out=await tx(fn);if(first){first=false;await new Promise(r=>window.releaseAck=r)}return out};firebase.firestore=Object.assign(()=>db,firebase.firestore);CLOUD.user.reauthenticateWithPopup=()=>new Promise((_,reject)=>window.cancelReauth=()=>reject({code:'auth/popup-closed-by-user'}));save();window.upload=cloudPush()");
+    await flush(8);await I.click('[data-act=clouddel]');await I.click('#askyes');await I.click('[data-act=clouddeleteconfirm]');
+    I.ev('releaseAck()');await flush(8);
+    eq(I.ev('CLOUD.base'),window.__cloudDb.docs.u1.wid,'暫停期間仍記下自己已提交的版本');
+    I.ev('cancelReauth()');await flush(10);
+    await I.ev("S.favs.push('取消後新增');save();cloudPush()");
+    ok(I.S.favs.includes('取消後新增')&&JSON.parse(window.__cloudDb.docs.u1.data).favs.includes('取消後新增'),'取消後的新修改不會被自己的舊提交蓋掉');I.check('交易回覆競態');
+  } finally {I.destroy()}
+});
+
+test('雲端刪除：暫停而未提交的交易，取消刪除後仍會補上傳', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  try {
+    I.ev("const db=firebase.firestore(),tx=db.runTransaction;let first=true;db.runTransaction=async fn=>{if(first){first=false;await new Promise(r=>window.releaseTx=r)}return tx(fn)};firebase.firestore=Object.assign(()=>db,firebase.firestore);CLOUD.user.reauthenticateWithPopup=()=>new Promise((_,reject)=>window.cancelReauth=()=>reject({code:'auth/popup-closed-by-user'}));S.favs.push('等待上傳');save();window.upload=cloudPush()");
+    await I.click('[data-act=clouddel]');await I.click('#askyes');await I.click('[data-act=clouddeleteconfirm]');I.ev('releaseTx()');await flush(8);
+    I.ev('cancelReauth()');await flush(8);
+    ok(I.ev('CLOUD.pending'),'取消後未完成的上傳仍有排程');
+    await I.ev('cloudPush()');ok(JSON.parse(window.__cloudDb.docs.u1.data).favs.includes('等待上傳'),'未提交修改確實補傳');I.check('中止交易補傳');
+  } finally {I.destroy()}
+});
+
+test('雲端刪除：彈窗被擋時保留資料並提供瀏覽器操作指引', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  try {
+    I.ev("CLOUD.user.reauthenticateWithPopup=async()=>{throw {code:'auth/popup-blocked'}}");
+    await I.click('[data-act=clouddel]');await I.click('#askyes');await I.click('[data-act=clouddeleteconfirm]');await flush(8);
+    ok(!!window.__cloudDb.docs.u1&&window.__cloudDb.deletedAccounts.length===0,'彈窗被擋不先刪除任何資料');
+    ok(I.has('允許彈出視窗')&&I.has('Safari／Chrome'),'具體說明一般瀏覽器的重試方法');
+    I.check('彈窗被擋');
+  } finally {I.destroy()}
+});
+
+test('雲端刪除：部分失敗後可明確取消，只有確認才重建雲端', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  try {
+    I.ev("CLOUD.user.delete=async()=>{throw new Error('mock-offline')}");
+    await I.click('[data-act=clouddel]');await I.click('#askyes');await I.click('[data-act=clouddeleteconfirm]');await flush(8);
+    await I.click('[data-act=clouddeletioncancel]');
+    ok(I.has('重新建立雲端資料'),'恢復前明示會重新上傳本機紀錄');await I.click('#askno');
+    ok(!window.__cloudDb.docs.u1&&I.ev('cloudSyncPaused()'),'不確認時仍保持暫停');
+    await I.click('[data-act=clouddeletioncancel]');await I.click('#askyes');await flush(12);
+    ok(!!window.__cloudDb.docs.u1&&!I.ev('cloudSyncPaused()'),'明確同意後才能重新建立雲端');I.check('取消刪除與復原同步');
+  } finally {I.destroy()}
+});
+
+test('雲端刪除：驗證按鈕直接啟動彈窗，儲存失敗不誤稱驗證失敗', async () => {
+  resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
+  try {
+    await I.click('[data-act=clouddel]');await I.click('#askyes');
+    ok(!!I.$('[data-act=clouddeleteconfirm]')&&!!window.__cloudDb.docs.u1,'先顯示明確的驗證刪除按鈕，尚未刪資料');
+    let synchronous=true,calls=0;const user=I.ev('CLOUD.user'),original=user.reauthenticateWithPopup;
+    user.reauthenticateWithPopup=()=>{calls++;ok(synchronous,'驗證呼叫在按鈕 click 同步階段，沒有先 await');return original()};
+    window.__storageMode=window.__storageMode||{};window.__storageMode[I.storeId]='full';
+    I.$('[data-act=clouddeleteconfirm]').click();synchronous=false;await flush(10);
+    eq(calls,1,'驗證只啟動一次');ok(I.has('儲存空間問題'),'精確回報儲存暫停標記失敗');
+    ok(!!window.__cloudDb.docs.u1&&window.__cloudDb.deletedAccounts.length===0,'沒有可靠暫停標記就不進行新的刪除');
+  } finally {delete window.__storageMode[I.storeId];I.destroy()}
+});
+
+test('備份識別值：保留字 id 必須拒絕，合法舊資料不受影響', async () => {
+  const I=await boot({state:mkState()});await I.dismiss();
+  for(const id of ['__proto__','constructor','prototype']){
+    const data=mkState({logs:[{id,d:D0,k:'chest',drop:'clown',c:0,xp:0}]});let rejected=false;
+    try{I.win.prepareBackup(data)}catch(_){rejected=true}ok(rejected,'拒絕保留字個體 id：'+id);
+    const legacy=I.win.migrate(mkState({logs:[{id,d:D0,k:'chest',drop:'clown',c:0,xp:0}]}));eq(legacy.logs.length,1,'既有資料不丟棄');ok(!['__proto__','constructor','prototype'].includes(legacy.logs[0].id),'既有 id 安全遷移');
+  }
+  const recovery=JSON.parse('{"v":5,"logs":[{"id":"constructor","k":"chest","drop":"clown"}],"fed":{"constructor":"invalid"},"outTank":{"constructor":true},"names":{"constructor":"小魚"}}');
+  const fixed=I.win.migrate(recovery),key=fixed.logs[0].id;eq(fixed.fed[key],0,'舊無效餵食值安全歸零');ok(fixed.outTank[key],'收藏狀態搬到安全 id');eq(fixed.names[key],'小魚','名字搬到安全 id');
+  I.check('保留字驗證');I.destroy();
+});
+
+test('備份識別值：同種超額放走視窗不得把個體 id 當成 HTML 屬性', async () => {
+  const evil='pet" onclick="window.__xss=1';
+  const logs=drops(Array(6).fill('clown'));logs[0].id=evil;
+  const I=await boot({state:base(...logs)});await I.dismiss();
+  try {
+    I.ev("Q.push({release:'clown',newId:'dr5clown'});nextChest()");
+    const button=I.$$('#modal [data-act=releasepick]').find(b=>b.dataset.v===evil);
+    ok(!!button&&!button.hasAttribute('onclick'),'個體 id 只能留在 data-v，不得注入事件屬性');
+    if(button){button.click();await flush(8);ok(!I.win.__xss,'點擊不執行 id 內容');ok(I.S.released[evil],'特殊識別值仍能正確處理個體')}
+    I.check('識別值轉義');
+  } finally {I.destroy()}
+});
+
 test('兩個分頁同時開：一邊改了另一邊不能蓋掉', async () => {
   const A = await boot({ state: mkState() }); await A.dismiss();
   const B = await boot({ storeId: A.storeId }); await B.dismiss();
@@ -147,7 +319,7 @@ test('雲端：斷線、彈窗被擋、刪除帳號', async () => {
   const C = await boot({ seed: {} }); await C.dismiss(); window.__cloudDb.popupBlocked = true; await C.tab('about'); await C.click('.gbtn'); await flush(8);
   ok(window.__cloudDb.redirected, '彈窗被擋時改用 redirect'); ok(C.errors.length === 0, 'redirect 沒有錯誤'); window.__cloudDb.popupBlocked = false;
   // 刪除帳號
-  await A.tab('about'); await A.click('[data-act=clouddel]'); await A.click('#askyes'); await flush(10);
+  await A.tab('about'); await A.click('[data-act=clouddel]'); await A.click('#askyes'); await A.click('[data-act=clouddeleteconfirm]'); await flush(10);
   ok(!window.__cloudDb.docs.u1, '雲端資料被刪掉'); ok((window.__cloudDb.deletedAccounts || []).includes('u1'), '帳號被刪掉'); ok(A.S.logs.length > 0, '本機資料還在');
   A.check('刪帳號'); A.destroy(); C.destroy();
 });

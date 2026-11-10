@@ -227,7 +227,7 @@ nav .badge{display:inline-block;min-width:18px;height:18px;margin-left:5px;paddi
 /* 新手提示：海中間一個閃動的圈加一句話，撒滿 3 顆飼料就不再出現；點得穿，點下去就是撒飼料 */
 .seacoach{position:absolute;left:0;right:0;top:42%;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;text-align:center;padding:0 16px}
 .seacoach .ring{width:28px;height:28px;border-radius:50%;box-shadow:0 0 0 2px #fff;animation:coachping 1.4s ease-out infinite}
-.seacoach span{font-size:14px;color:var(--ink);background:rgba(255,255,255,.92);padding:6px 14px;border-radius:99px}
+.seacoach span{font-size:14px;color:#000000;background:rgba(255,255,255,.48);padding:6px 14px;border-radius:99px}
 @keyframes coachping{0%{transform:scale(.6);opacity:1}100%{transform:scale(1.5);opacity:0}}
 @media (prefers-reduced-motion:reduce){ .seacoach .ring{animation:none} }
 body.sea-on .foot{display:none}
@@ -256,6 +256,31 @@ body.sea-on .brand,body.sea-on #banner{position:relative;z-index:3}
 .tset .entry .pname button{margin:0;flex:none}
 .tset .entry button{order:2}
 .tset select{font-size:14px}
+.sea-page-head{align-items:center;flex-wrap:nowrap;gap:12px;margin-bottom:14px}
+.sea-page-title{flex:1;min-width:0}
+.sea-page-meta{font-size:12px;color:var(--ink-muted);margin-top:4px}
+.sea-page-head .sea-page-meta{font-weight:400}
+.sea-page-actions{display:flex;align-items:center;gap:6px;flex:none}
+.sea-page-actions button{margin:0;padding:8px 12px}
+.tank-draft-hint{margin:0 0 8px}
+.tank-choice{display:grid;grid-template-columns:26px 54px minmax(0,1fr);min-height:52px;gap:8px;min-width:0;flex:1 1 0}
+.tank-choice input{width:20px;height:20px}
+.tank-choice .sprite{max-width:54px;height:auto;justify-self:center}
+.tank-choice small{min-width:0;overflow-wrap:anywhere;line-height:1.5}
+.tank-pet-meta{display:block;color:var(--ink-muted);font-size:12px}
+.tank-pet-actions{display:flex;gap:2px;align-items:center;flex:none;order:2}
+.tank-pet-actions button{padding:6px;margin:0}
+.tank-manager .tset .entry{padding:10px 0;border-bottom:1px solid var(--hairline)}
+.tank-manager .tset .entry button{font-size:12px}
+.sea-nav{display:flex;align-items:center;gap:4px;flex:none}
+.seabar .sea-action{display:inline-flex;align-items:center;justify-content:center;min-height:32px;line-height:1.4}
+.sea-full-note{padding:10px;background:var(--fill);border-radius:var(--r-sm);font-size:14px;text-align:left}
+.login-privacy{font-size:13px;color:var(--ink-muted);line-height:1.65;margin:10px 0 8px;text-align:left}
+.login-privacy p{margin:0 0 3px}
+.login-privacy a{display:inline-block;padding:4px 0;text-underline-offset:3px}
+.privacy-document h1{font-size:23px;margin:0 0 4px}
+.privacy-document h2{font-size:17px;margin:24px 0 8px}
+.privacy-document p,.privacy-document li{font-size:14px}
 .shop .it.chest .ic{width:40px}
 .feedpile{display:flex;justify-content:center;gap:6px;margin:14px 0}
 .feedpile i{width:10px;height:10px;background:#ef7d57;box-shadow:2px 2px 0 #a6492b}
@@ -485,6 +510,7 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
 .ex-field span{font-size:14px;color:var(--ink)}
 .ex-field small{margin-left:6px;font-size:12px;color:var(--ink-muted)}
 .ex-field input{width:100%;min-height:44px}
+.form input[aria-invalid="true"]{border-color:var(--warning);box-shadow:0 0 0 1px var(--warning)}
 .reward-state{display:block;font-size:12px;color:var(--ink-muted)}
 .intro-links{justify-content:center}
 .seaempty{position:fixed;top:35%;left:16px;right:16px;text-align:center;z-index:3;color:var(--on-hero)}
@@ -537,9 +563,14 @@ textarea.ptext::placeholder{color:var(--ink-subtle)}
 .tutorial-progress .complete span{background:var(--success);color:var(--on-success)}
 .tutorial-prompt{font-size:14px;line-height:1.6;background:var(--fill);padding:12px;border-radius:var(--r-lg);margin:8px 0 12px}
 .intro-first #six{box-shadow:var(--shadow-card),inset 0 3px var(--primary)}
-.sea-guide{position:fixed;top:94px;left:16px;right:16px;max-width:688px;margin:0 auto;background:var(--surface);color:var(--ink);border-radius:var(--r-xl);box-shadow:var(--shadow-card);padding:16px;z-index:4;max-height:55vh;overflow:auto}
-.sea-guide .tutorial-progress{margin-bottom:12px}
-.sea-guide button{margin:8px 0 0}
+.sea-guide{position:fixed;top:94px;left:16px;right:16px;max-width:688px;margin:0 auto;background:rgba(255,255,255,.46);color:#143c55;border:1px solid rgba(255,255,255,.25);border-radius:var(--r-lg);padding:12px;z-index:4;pointer-events:none}
+.sea-guide .tutorial-progress{margin-bottom:5px}
+.sea-guide .tutorial-progress ol{display:none}
+.sea-guide .tutorial-label,.sea-guide .mini,.sea-guide b{color:#000000}
+.sea-guide .mini{font-size:12px;margin:4px 0 0}
+.sea-guide-body{display:flex;align-items:center;gap:12px}
+.sea-guide-body>div{flex:1;min-width:0}
+.sea-guide button{margin:0;flex:none;min-height:40px;pointer-events:auto}
 .sea-guide~.seacoach{display:none}
 @media(min-width:601px){.sea-guide{top:150px}}.onbopt::after{content:'點選';font-size:12px;line-height:1.4;color:var(--ink-muted);margin-top:4px}
 .onbopt.sel::after{content:'✓ 已選擇';color:var(--primary);font-weight:600}

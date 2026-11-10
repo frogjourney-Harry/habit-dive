@@ -50,12 +50,12 @@ const DEFAULT_HABITS = [
 ];
 // 第一次打開時讓人勾選的習慣（desc＝畫面上的說明）。運動有專屬功能；其他都是一般習慣，unit＝次數的單位
 const ONB_HABITS = [
-  { id: 'exercise', e: '🏃', n: '運動', kind: 'exercise', weeks: 1, target: 3, desc: '每週 3 天，可記距離和時間' },
-  { id: 'write',    e: '📝', n: '寫作', kind: 'custom',   weeks: 1, target: 1, unit: '篇', desc: '每週 1 篇' },
+  { id: 'exercise', e: '🏃', n: '運動', kind: 'exercise', weeks: 1, target: 3, desc: '每週 3 天，時間和距離選填' },
+  { id: 'write',    e: '📝', n: '寫作', kind: 'custom',   weeks: 1, target: 1, desc: '每週 1 天，寫一點也算' },
   { id: 'read',     e: '📚', n: '閱讀', kind: 'custom',   weeks: 1, target: 3, desc: '每週 3 天' },
   { id: 'meditate', e: '🧘', n: '冥想', kind: 'custom',   weeks: 0, target: 1, desc: '每天' },
 ];
-const ETAGS =['跑步', '游泳', '重訓', '潛水', '登山', '其他'];
+const ETAGS = ['其他運動', '走路', '跑步', '騎車', '重訓', '伸展／瑜伽', '游泳'];
 const RARITY = [
   { name: '普通', color: 'var(--r0)' }, { name: '少見', color: 'var(--r1)' }, { name: '稀有', color: 'var(--r2)' },
   { name: '史詩', color: 'var(--r3)' }, { name: '傳說', color: 'var(--r4)' },

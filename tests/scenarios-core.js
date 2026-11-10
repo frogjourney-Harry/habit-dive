@@ -26,7 +26,7 @@ test('每日流程：寫清單→打勾→習慣→領取，金額對得上', as
   for (let i = 0; i < 3; i++) await I.tick(i);
   eq(rewardLogs(I).length, 3, '前三件各一份獎勵');
   ok(I.S.logs.some(l => l.key === 'top3:' + D0), '三件都完成要有 top3 獎勵');
-  await I.habit('運動'); await I.type('#ex_min', '30'); await I.click('[data-act=exadd]'); await I.click('#sheet [data-act=sheetclose]');
+  await I.habit('運動'); await I.type('#ex_min', '30'); await I.click('[data-act=exadd]'); ok(!I.UI.sheet,'運動成功後自動收起');
   ok(I.S.logs.some(l => l.key === 'hab:exercise:' + D0), '運動打卡有獎勵');
   ok(I.S.logs.some(l => l.key === 'anyhab:' + D0), '任一習慣要有獎勵');
   const before = I.coins(), pendC = I.S.logs.filter(l => l.pend).reduce((a, l) => a + l.c, 0), pendXp = I.S.logs.filter(l => l.pend).reduce((a, l) => a + l.xp, 0), x0 = I.xp();
@@ -152,7 +152,7 @@ test('舊存檔的 Vocus 習慣：設定過或打過卡的改成一般習慣，�
   eq(I.S.logs.filter(l => l.key === 'hab:vocus:' + D0).length, 1, '今天的打卡獎勵沒有重複發');
   eq(I.coins(), 60 + 30, '已入帳的金幣不變（昨天那份），今天的還待領');
   eq(I.S.checks[D0].vocus.length, 2, '打卡紀錄原樣保留');
-  await I.tab('today'); ok(I.has('本週 1/2 篇'), '週期改算天數（今天兩篇算一天）：' + I.$('#habits').innerText.replace(/\s+/g, ' '));
+  await I.tab('today'); ok(I.has('本週 1/2 天'), '週期改算天數（今天兩篇算一天）：' + I.$('#habits').innerText.replace(/\s+/g, ' '));
   await I.habit('Vocus'); ok(I.$('#sheet [data-act=chk]') && !I.$('#artTitle'), '面板是一般的打卡按鈕，沒有文章標題欄');
   await I.click('#sheet [data-act=sheetclose]'); await I.tab('log'); ok(!I.has('篇文章'), '紀錄頁不再有「篇文章」的統計');
   I.check('轉換後'); I.destroy();
@@ -369,7 +369,7 @@ test('漏一天就斷：漏掉時自動用掉當月的假，補打卡就退回',
   ok(I.has('昨天漏了，自動用掉 1 天假保住連勝'), '面板也寫出來');
   await I.click('[data-act=chk]');
   ok(!I.ev("onLeave('hwake', addDays(dayKey(), -1))") && I.ev("leaveLeft('hwake', dayKey())") === 2, '補打卡昨天：假退回');
-  eq(streakOf(I).n, 4, '連勝 4 天'); await I.click('[data-act=sheetclose]'); ok(!row(), '提醒消失');
+  eq(streakOf(I).n, 4, '連勝 4 天'); ok(!I.UI.sheet,'補打卡成功後自動收起'); ok(!row(), '提醒消失');
   I.check('自動請假'); I.destroy();
 });
 
@@ -437,7 +437,7 @@ test('請假：畫面操作、重開還在、壞資料不當掉', async () => {
   ok(I.has('已完成') && !I.has('今天已請假'), '今天改成打卡：請假自動取消');
   ok(!I.S.leaves.hwake['2026-11-02'], '紀錄裡今天的請假被清掉');
   ok(I.ev("leaveLeft('hwake', dayKey())") === 1, '額度剩 1（昨天那天還在）');
-  await I.click('[data-act=sheetclose]'); await I.tab('quest'); I.check('請假畫面');
+  ok(!I.UI.sheet,'完成打卡後回今日'); await I.tab('quest'); I.check('請假畫面');
   const J = await I.reload(); await J.dismiss(); ok(J.ev("onLeave('hwake', addDays(dayKey(), -1))"), '重開後請假還在');
   for (const bad of ['"x"', '[1]', '{"hwake": 5}', '{"hwake": "x"}', 'null']) { J.ev(`S.leaves = ${bad}; save(); render()`); J.ev("toggleLeave('hwake', dayKey())"); J.ev('render()'); J.check('壞的 leaves ' + bad); }
   J.destroy(); I.destroy();
@@ -581,7 +581,7 @@ test('上線體驗：換件和刪除後，清單、任務與待領獎勵一致',
 test('上線體驗：今日返回今天，運動錯誤留在欄位，彈窗管理焦點', async () => {
  const I=await startToday(); await I.click('[data-act=pday][data-v="-1"]'); await I.tab('shop'); await I.tab('today');
  eq(I.UI.pday,0,'主導覽今日回到今天');
- await I.habit('運動'); await flush(6);
+ await I.habit('運動'); await I.type('#exType','跑步'); await flush(6);
  eq(I.$('#sheetov').getAttribute('role'),'dialog','面板有 dialog 語意');
  ok(I.$('#sheetov').contains(I.doc.activeElement),'焦點進入面板');
  ok(I.$('#ex_dist').labels.length,'距離有固定標題');

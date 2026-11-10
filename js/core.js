@@ -41,6 +41,7 @@ function prepareBackup(data) {
   const date = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && keyOf(parseKey(d)) === d;
   for (const log of data.logs) {
     if (!dataObject(log) || (log.d != null && !date(log.d))) throw new Error('備份紀錄錯誤');
+    if (['__proto__', 'constructor', 'prototype'].includes(String(log.id))) throw new Error('不安全的個體識別值');
     for (const key of ['c', 'xp']) if (log[key] != null && !Number.isFinite(Number(log[key]))) throw new Error('備份數值錯誤');
   }
   for (const key of ['plans', 'checks']) for (const [d, value] of Object.entries(data[key] || {}))
@@ -48,6 +49,24 @@ function prepareBackup(data) {
   return migrate(Object.assign(blank(), data));
 }
 function migrate(s) {
+  // Only recover legacy individual ids and their own references; external imports
+  // are still strictly checked by prepareBackup before reaching this migration.
+  const legacyIds = new Map();
+  if (Array.isArray(s.logs)) for (const log of s.logs) {
+    if (!dataObject(log) || !['__proto__', 'constructor', 'prototype'].includes(String(log.id))) continue;
+    const oldId = String(log.id);
+    let safe = 'legacy-' + oldId;
+    while (s.logs.some(other => other !== log && other?.id === safe) || ['fed', 'released', 'outTank', 'held', 'names'].some(key => dataObject(s[key]) && Object.prototype.hasOwnProperty.call(s[key], safe))) safe += '-old';
+    log.id = safe; if (!legacyIds.has(oldId)) legacyIds.set(oldId, safe);
+  }
+  if (legacyIds.size) for (const key of ['fed', 'released', 'outTank', 'held', 'names']) {
+    if (!dataObject(s[key])) continue;
+    s[key] = Object.fromEntries(Object.entries(s[key]).map(([id, value]) => [legacyIds.get(id) || id,
+      key === 'fed' && legacyIds.has(id) ? (Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0) : value]));
+  }
+  for (const key of ['fed', 'released', 'outTank', 'names', 'held', 'seen', 'leaves']) {
+    if (dataObject(s[key])) s[key] = Object.fromEntries(Object.entries(s[key]).filter(([id]) => !['__proto__', 'constructor', 'prototype'].includes(id)));
+  }
   checkDataKeys(s);
   const old = (s.v || 1) < 3;
   s.logs = (Array.isArray(s.logs) ? s.logs : []).filter(l => l && typeof l === 'object');
@@ -211,7 +230,7 @@ function carryEditDrafts(old) {
   if (typeof UI === 'undefined') return;
   if (UI.shopEdit && Array.isArray(old.shop)) S.shop = old.shop;
   if (UI.habEdit && Array.isArray(old.habits)) S.habits = old.habits;
-  if (UI.tankEdit && old.names) S.names = old.names;
+  // 生物名字已逐次儲存；換入新資料時不能把舊名字當成編輯草稿覆蓋回去。
 }
 
 /* ========= 存檔瘦身 ========= */
@@ -255,7 +274,8 @@ function catOf(id) {
 const catList = () => gcats();
 const placeholder = c => c.ph || `${c.n}：今天要做什麼？`;
 const periodWord = h => h.weeks === 1 ? '本週' : '這兩週';
-const countWord = h => h.unit || '天';
+// Period progress counts distinct completed days, not articles or entry counts.
+const countWord = h => '天';
 
 // 習慣打卡紀錄：S.checks[日期][習慣 id] = [{ t, title?, type?, dist?, min?, note? }]
 const dayChecks = (d, id) => (S.checks[d] && S.checks[d][id]) || [];
