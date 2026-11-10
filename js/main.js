@@ -16,6 +16,9 @@ async function exportBackup() {
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   toast(IN_APP ? '如果沒有下載，請改用 Chrome 或 Safari 開啟再備份' : '備份檔已下載');
 }
+function finishCheck() {
+  UI.sheet = null; UI.tab = 'today'; UI.pday = 0; UI.showRows = 0; UI.swap = null;
+}
 function sheetDay() { return addDays(dayKey(), UI.sheet.day); }
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
@@ -73,10 +76,10 @@ document.addEventListener('click', async e => {
     case 'shday': UI.sheet.day = +v; renderSheet(); break;
     case 'sheetclose': UI.sheet = null; renderSheet(); break;
     case 'chk': {
-      const d = sheetDay(), id = UI.sheet.id;
+      const d = sheetDay(), id = UI.sheet.id, today = UI.sheet.day === 0;
       if (dayChecks(d, id).length) { while (dayChecks(d, id).length) delCheck(d, id, 0); }
-      else { addCheck(d, id, {}); clearLeave(id, d); ac(); SFX.tap(); }
-      reward(() => {}, UI.sheet.day === 0); break;
+      else { addCheck(d, id, {}); clearLeave(id, d); ac(); SFX.tap(); finishCheck(); }
+      reward(() => {}, today); break;
     }
     case 'leave': { const msg = toggleLeave(UI.sheet.id, sheetDay()); save(); render(); renderSheet(); if (msg) toast(msg); break; }
     case 'exadd': {
@@ -90,9 +93,9 @@ document.addEventListener('click', async e => {
       }
       const note = document.getElementById('ex_note').value.trim().slice(0, 200); if (note) e.note = note;
       if (skipped) { document.getElementById('exError').textContent = '請輸入大於 0 且不超過 100000 的數字，或清空該欄位。'; return; }
-      UI.sheet.exType = type;
-      addCheck(sheetDay(), 'exercise', e); ac(); SFX.tap();
-      reward(() => {}, UI.sheet.day === 0); break;
+      const today = UI.sheet.day === 0;
+      addCheck(sheetDay(), 'exercise', e); ac(); SFX.tap(); finishCheck();
+      reward(() => {}, today); break;
     }
     case 'chkdel': delCheck(sheetDay(), UI.sheet.id, +v); reward(() => {}, false); break;
     case 'habedit': UI.habEdit = true; render(); break;

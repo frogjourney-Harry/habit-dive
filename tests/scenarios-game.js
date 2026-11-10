@@ -244,21 +244,22 @@ test('運動紀錄：各種運動、怪數字、補登昨天', async () => {
   const I = await boot({ state: mkState() }); await I.dismiss();
   await I.click(['#habits .hab', '運動']);
   await I.type('#exType', '跑步'); await I.type('#ex_dist', '5'); await I.type('#ex_min', '30'); ok(I.has("配速 6'00\"/km"), '跑步配速：' + I.$('#exPace').innerText);
-  await I.click('[data-act=exadd]'); ok(I.has('跑步・5 km・30 分'), '紀錄文字');
+  await I.click('[data-act=exadd]'); await I.habit('運動'); ok(I.has('跑步・5 km・30 分'), '紀錄文字');
   await I.type('#exType', '游泳'); await I.type('#ex_m', '200'); await I.type('#ex_min', '10'); ok(I.has("配速 5'00\"/100m"), '游泳配速：' + I.$('#exPace').innerText);
-  await I.click('[data-act=exadd]');
+  await I.click('[data-act=exadd]'); await I.habit('運動');
   await I.type('#exType', '潛水'); await I.type('#ex_depth', '18'); await I.type('#ex_site', '<b>Manta Point</b>'); await I.type('#ex_note', '看到 5 隻');
-  await I.click('[data-act=exadd]'); ok(!I.$('#sheet .entry b'), '潛點裡的 HTML 要跳脫');
+  await I.click('[data-act=exadd]'); await I.habit('運動'); ok(!I.$('#sheet .entry b'), '潛點裡的 HTML 要跳脫');
   for (const bad of ['-5', '0', '1e999', '99999999999999999999']) {
     await I.type('#exType', '跑步'); await I.type('#ex_dist', bad); await I.type('#ex_min', bad); await I.click('[data-act=exadd]');
     I.check('輸入 ' + bad);
+    if (!I.UI.sheet) await I.habit('運動');
   }
   const txt = I.$('#sheet').innerText; ok(!/-5 km|-5 分|Infinity|e\+/.test(txt), '負數、無限大、科學記號不能直接出現在紀錄裡：' + txt.replace(/\n/g, ' ').slice(0, 200));
-  await I.type('#exType', '登山'); await I.type('#ex_dist', '12.3'); await I.type('#ex_gain', '800'); await I.click('[data-act=exadd]');
+  await I.type('#exType', '登山'); await I.type('#ex_dist', '12.3'); await I.type('#ex_gain', '800'); await I.click('[data-act=exadd]'); await I.habit('運動');
   await I.click('[data-act=shday][data-v="-1"]'); await I.type('#exType', '重訓'); await I.type('#ex_min', '45');
   const rBefore = I.S.logs.length; await I.click('[data-act=exadd]');
   eq(I.S.logs.length, rBefore, '補登昨天沒有獎勵'); ok(I.S.checks['2026-11-01'] && I.S.checks['2026-11-01'].exercise.length === 1, '紀錄記在昨天');
-  const n = I.$$('#sheet [data-act=chkdel]').length; await I.click('#sheet [data-act=chkdel]'); ok(I.S.checks['2026-11-01'] === undefined, '刪掉昨天唯一的紀錄後，那天的資料夾也清掉');
+  await I.habit('運動'); await I.click('[data-act=shday][data-v="-1"]'); const n = I.$$('#sheet [data-act=chkdel]').length; await I.click('#sheet [data-act=chkdel]'); ok(I.S.checks['2026-11-01'] === undefined, '刪掉昨天唯一的紀錄後，那天的資料夾也清掉');
   I.check('運動紀錄'); I.destroy();
 });
 

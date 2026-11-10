@@ -26,7 +26,7 @@ test('每日流程：寫清單→打勾→習慣→領取，金額對得上', as
   for (let i = 0; i < 3; i++) await I.tick(i);
   eq(rewardLogs(I).length, 3, '前三件各一份獎勵');
   ok(I.S.logs.some(l => l.key === 'top3:' + D0), '三件都完成要有 top3 獎勵');
-  await I.habit('運動'); await I.type('#ex_min', '30'); await I.click('[data-act=exadd]'); await I.click('#sheet [data-act=sheetclose]');
+  await I.habit('運動'); await I.type('#ex_min', '30'); await I.click('[data-act=exadd]'); ok(!I.UI.sheet, '成功後自動關閉');
   ok(I.S.logs.some(l => l.key === 'hab:exercise:' + D0), '運動打卡有獎勵');
   ok(I.S.logs.some(l => l.key === 'anyhab:' + D0), '任一習慣要有獎勵');
   const before = I.coins(), pendC = I.S.logs.filter(l => l.pend).reduce((a, l) => a + l.c, 0), pendXp = I.S.logs.filter(l => l.pend).reduce((a, l) => a + l.xp, 0), x0 = I.xp();
@@ -369,7 +369,7 @@ test('漏一天就斷：漏掉時自動用掉當月的假，補打卡就退回',
   ok(I.has('昨天漏了，自動用掉 1 天假保住連勝'), '面板也寫出來');
   await I.click('[data-act=chk]');
   ok(!I.ev("onLeave('hwake', addDays(dayKey(), -1))") && I.ev("leaveLeft('hwake', dayKey())") === 2, '補打卡昨天：假退回');
-  eq(streakOf(I).n, 4, '連勝 4 天'); await I.click('[data-act=sheetclose]'); ok(!row(), '提醒消失');
+  eq(streakOf(I).n, 4, '連勝 4 天'); ok(!I.UI.sheet, '補登後關閉'); ok(!row(), '提醒消失');
   I.check('自動請假'); I.destroy();
 });
 
@@ -437,7 +437,7 @@ test('請假：畫面操作、重開還在、壞資料不當掉', async () => {
   ok(I.has('已完成') && !I.has('今天已請假'), '今天改成打卡：請假自動取消');
   ok(!I.S.leaves.hwake['2026-11-02'], '紀錄裡今天的請假被清掉');
   ok(I.ev("leaveLeft('hwake', dayKey())") === 1, '額度剩 1（昨天那天還在）');
-  await I.click('[data-act=sheetclose]'); await I.tab('quest'); I.check('請假畫面');
+  ok(!I.UI.sheet, '打卡後關閉'); await I.tab('quest'); I.check('請假畫面');
   const J = await I.reload(); await J.dismiss(); ok(J.ev("onLeave('hwake', addDays(dayKey(), -1))"), '重開後請假還在');
   for (const bad of ['"x"', '[1]', '{"hwake": 5}', '{"hwake": "x"}', 'null']) { J.ev(`S.leaves = ${bad}; save(); render()`); J.ev("toggleLeave('hwake', dayKey())"); J.ev('render()'); J.check('壞的 leaves ' + bad); }
   J.destroy(); I.destroy();
@@ -615,4 +615,33 @@ test('上線體驗：長清單可換行與診斷資訊不包含私人紀錄', as
  ok(!info.includes(text) && !info.includes('@test'),'診斷不含清單與Email');
  ok(info.includes('瀏覽器') && info.includes('畫面'),'只提供排查環境資訊');
  I.check('長文字'); I.destroy();
+});
+
+
+test('打卡成功返回今日：習慣、運動、補登與錯誤內容保留', async () => {
+ const I=await startToday();
+ I.ev("S.habits.push({id:'read',n:'閱讀',e:'📖',kind:'custom',weeks:0,target:1}); UI.tab='quest'; UI.pday=1; UI.sheet={id:'read',day:0}; render(); renderSheet()");
+ await I.click('#sheet [data-act=chk]');
+ eq(I.UI.sheet,null,'習慣成功關閉視窗'); eq([I.UI.tab,I.UI.pday],['today',0],'回到今日');
+ ok(I.S.checks[D0].read.length===1,'習慣已存');
+ await I.habit('運動'); await I.click('[data-act=shday][data-v="-1"]');
+ await I.type('#ex_dist','-1'); await I.type('#ex_min','30'); await I.type('#ex_note','保留這段內容');
+ await I.click('[data-act=exadd]');
+ ok(I.UI.sheet && I.vis(I.$('#sheetov')),'錯誤保留視窗');
+ eq([I.$('#ex_dist').value,I.$('#ex_min').value,I.$('#ex_note').value],['-1','30','保留這段內容'],'錯誤保留全部輸入');
+ await I.type('#ex_dist','5'); const n=I.S.logs.length; await I.click('[data-act=exadd]');
+ eq(I.UI.sheet,null,'運動成功關閉'); eq([I.UI.tab,I.UI.pday],['today',0],'補登也返回今日');
+ eq(I.S.checks['2026-11-01'].exercise[0].note,'保留這段內容','補登日期和內容正確');
+ eq(I.S.logs.length,n,'補登不發新獎勵'); I.check('打卡返回'); I.destroy();
+});
+
+test('提前寫清單跨日不重開：已領不重發，未確認補發一次', async () => {
+ const A=await startToday(); await A.plan(['明天一','明天二','明天三'],1); await A.saveList(); await A.claimAll();
+ const paid=A.S.logs.find(l=>l.key==='plan:2026-11-03'); ok(paid && !paid.pend,'前一天已領到清單獎勵');
+ await A.advance(24*3600e3); await A.tab('quest');
+ eq(A.S.logs.filter(l=>l.key==='plan:2026-11-03').length,1,'跨日不重發已領獎勵');
+ const row=A.$$('.qc').find(e=>e.innerText.includes('寫好清單')); ok(row && row.classList.contains('got'),'今天顯示已完成'); A.destroy();
+ const B=await startToday(); await B.plan(['明天一','明天二','明天三'],1); await B.advance(24*3600e3); await B.tab('quest');
+ const logs=B.S.logs.filter(l=>l.key==='plan:2026-11-03'); eq(logs.length,1,'持續開著跨日也補發'); ok(logs[0] && logs[0].pend,'補發後可領取');
+ B.check('跨日清單'); B.destroy();
 });
