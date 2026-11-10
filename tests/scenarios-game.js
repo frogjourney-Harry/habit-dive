@@ -217,11 +217,14 @@ test('水族箱：游動平順（速度不會突然跳、位置對到裝置像�
   I.check('游動平順'); I.destroy();
 });
 
-test('水族箱：20 種 × 5 隻全部放進去也不會壞', async () => {
+test('水族箱：收藏 100 隻仍限制展示數量且圖鑑完整', async () => {
   const ids = []; for (const c of ['clown','damsel','butterfly','star','hermit','urchin','turtle','octopus','nudi','lion','puffer','cuttle','seahorse','shark','moray','jelly','manta','mola','dolphin','whaleshark']) for (let k = 0; k < 5; k++) ids.push(c);
   const I = await boot({ state: mkState({ logs: [W0, coinLog(100), ...drops(ids)], fed: Object.fromEntries(ids.map((c, i) => ['dr' + i + c, i % 3 === 0 ? 30 : i % 3 === 1 ? 10 : 0])) }) }); await I.dismiss();
   await I.tab('tank'); await new Promise(r => setTimeout(r, 900));
-  eq(I.ev('TANK.fish.length'), 100, '100 隻');
+  eq(I.ev('TANK.fish.length'), 8, '手機同時展示最多 8 隻');
+  eq(I.S.logs.filter(l=>l.drop).length,100,'100 隻收藏保留');
+  I.resize(900,760); I.win.dispatchEvent(new I.win.Event('resize')); await new Promise(r=>setTimeout(r,300));
+  eq(I.ev('TANK.fish.length'),16,'桌面同時展示最多 16 隻');
   const W = I.ev('TANK.W'); let off = 0; for (const f of I.ev('TANK.fish')) if (f.x < -1 || f.x > W - f.w + 2 || !Number.isFinite(f.x) || !Number.isFinite(f.y)) off++;
   eq(off, 0, '沒有生物跑出水族箱或變成 NaN');
   I.check('100 隻'); await I.click('[data-act=tankedit]'); I.check('100 隻設定頁'); await I.click('[data-act=tankdone]');
@@ -420,4 +423,35 @@ test('各頁頂端列的位置一樣（大海頁不會捲動也不能左右跳�
     for (const t of ['tank', 'quest', 'shop', 'log', 'about']) { await I.tab(t); eq(pos(), ref, `${w}px：「${t}」頁的頂端列、金幣、分頁列跟今日頁對齊`); eq(cs(), t === 'tank' ? 'hidden' : 'scroll', `${w}px：「${t}」頁${t === 'tank' ? '沒有捲軸（海畫到最右邊）' : '一律有捲軸（內容短也有）'}`); }
     I.destroy();
   }
+});
+
+test('水族箱：手機體型縮小、海底分散且重畫保留位置', async () => {
+ const I=await boot({state:base(coinLog(500),...drops(['clown','star','hermit','urchin']))}); await I.dismiss();
+ I.resize(900,760); await I.tab('tank'); await new Promise(r=>setTimeout(r,200));
+ const desktop=I.ev('TANK.fish.map(f=>({key:f.key,w:f.w,h:f.h}))');
+ I.resize(393,760); I.win.dispatchEvent(new I.win.Event('resize')); await new Promise(r=>setTimeout(r,300));
+ const mobile=I.ev('TANK.fish.map(f=>({key:f.key,w:f.w,h:f.h}))');
+ for (const f of mobile) { const d=desktop.find(g=>g.key===f.key); ok(f.w<d.w && f.h<d.h,'手機生物縮小：'+f.key); }
+ eq(mobile.length,desktop.length,'全部生物仍展示');
+ I.ev('TANK.fish=[]; tankStart()');
+ const ground=I.ev('TANK.fish.filter(f=>f.ground).sort((a,b)=>a.x-b.x).map(f=>({key:f.key,x:f.x,w:f.w}))');
+ ok(ground.every((f,i)=>!i || f.x>=ground[i-1].x+ground[i-1].w),'海底生物分散入場');
+ I.ev('tankStart()');
+ ok(ground.every(f=>Math.abs(I.ev(`TANK.fish.find(g=>g.key===${JSON.stringify(f.key)}).x`)-f.x)<2),'重畫不跳回新的位置');
+ I.ev('TANK.fish.filter(f=>f.ground).forEach(f=>{f.x=TANK.W-f.w;f.mx=0;f.vx=Math.abs(f.vx);f.rest=0})');
+ await new Promise(r=>setTimeout(r,2500));
+ const span=I.ev('(()=>{const g=TANK.fish.filter(f=>f.ground).map(f=>f.x+f.w/2);return Math.max(...g)-Math.min(...g)})()');
+ ok(span>8,'擠在右側時會逐漸分開'); I.check('手機水族箱'); I.destroy();
+});
+
+
+test('水族箱展示名額：取消展示後遞補，隱藏個體保留成長', async () => {
+ const I=await boot({state:base(coinLog(500),...drops(['clown','star','hermit','urchin','lion','puffer','cuttle','jelly','manta','turtle']))}); await I.dismiss(); await I.tab('tank');
+ const before=I.ev('TANK.fish.map(f=>f.key)'); eq(before.length,8,'手機上限');
+ const hidden=I.ev('S.logs.filter(l=>l.drop).map(l=>l.id).filter(id=>!TANK.fish.some(f=>f.key===id))');
+ await I.click('[data-act=tankedit]'); ok(I.has('等待展示') && I.has('8/8'),'顯示名額與等待狀態');
+ await I.click(`[data-act=intank][data-v="${before[0]}"]`); await I.click('[data-act=tankdone]');
+ ok(!I.ev('TANK.fish.map(f=>f.key)').includes(before[0]),'取消的個體退出');
+ ok(I.ev('TANK.fish.map(f=>f.key)').includes(hidden[0]),'等待個體遞補');
+ eq(I.S.logs.filter(l=>l.drop).length,10,'收藏不減少'); I.check('展示上限'); I.destroy();
 });

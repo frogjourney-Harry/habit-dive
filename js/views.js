@@ -364,6 +364,10 @@ const MAX_PETS = 5;
 const GROW = [0, 10, 30];                                  // 吃到幾顆：幼體 → 成體 → 特殊型態
 const fedOf = key => (S.fed && S.fed[key]) || 0;
 const stageOf = n => GROW.filter(t => n >= t).length;
+const tankLimit = (width = innerWidth) => width <= 600 ? 8 : 16;
+function tankResidents(width = innerWidth) {
+  return S.logs.filter(l => CR[l.drop] && !(S.released && S.released[l.id]) && inTank(l.id)).slice(0, tankLimit(width));
+}
 const inTank = id => !(S.outTank && S.outTank[id]);
 // 幫個體取的名字：存在 S.names（key 是個體 id），沒取名字就是空字串
 const PET_NAME_MAX = 10;
@@ -483,14 +487,14 @@ function tankFeedHTML() {
   return `${img(SHRIMP, 2, false, 'feedic')}<span class="fpills"><span class="fpill free${f ? '' : ' out'}" title="今天免費的飼料，每天 ${FEED.free} 顆">今日免費 ${f}/${FEED.free}</span><span class="fpill paid" title="用金幣買的飼料">已購 ${b}</span></span>`;
 }
 function tankEditor(D) {
-  const owned = CREATURES.filter(c => pets(c.id).length);
+  const owned = CREATURES.filter(c => pets(c.id).length), shown = new Set(tankResidents().map(l => l.id));
   return `<section class="px">${sh('大海設定', 'SEA', '<button class="pri" data-act="tankdone">完成</button>')}
-    <div class="mini">勾選要放進大海的個體；點「取名」，名字會跟著牠游。</div>
+    <div class="mini">目前展示 ${shown.size}/${tankLimit()} 隻。手機最多 8 隻、桌面最多 16 隻；勾選的生物依獲得順序入場，超出名額的留在收藏。取消勾選可空出名額。</div>
     ${owned.map(c => {
       const P = pets(c.id);
       return `<div class="tset"><div class="row"><b class="sp">${c.name}</b></div>
         ${P.map(p => `<div class="entry"><label class="row sp" style="gap:8px"><input type="checkbox" data-act="intank" data-v="${esc(p.id)}" ${inTank(p.id) ? 'checked' : ''}>
-          ${stageImg(c, stageOf(p.fed), 3)}<small>${petName(p.id) ? `<b>${esc(petName(p.id))}</b>・` : ''}${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆</small></label>
+          ${stageImg(c, stageOf(p.fed), 3)}<small>${petName(p.id) ? `<b>${esc(petName(p.id))}</b>・` : ''}${stageName(c, stageOf(p.fed))}・吃了 ${p.fed} 顆<small>${shown.has(p.id) ? '展示中' : inTank(p.id) ? '等待展示' : '留在收藏'}</small></small></label>
           <button class="ghost" data-act="petname" data-v="${esc(p.id)}">${petName(p.id) ? '改名' : '取名'}</button>
           <button class="ghost" data-act="release" data-v="${esc(p.id)}">讓牠游走</button>
           ${UI.nameEdit === p.id ? `<div class="pname"><input data-nf="${esc(p.id)}" value="${esc(petName(p.id))}" maxlength="${PET_NAME_MAX}" placeholder="幫牠取個名字" aria-label="${esc(c.name)}的名字"><button class="pri" data-act="petnamedone">完成</button></div>` : ''}</div>`).join('')}</div>`;
@@ -499,7 +503,7 @@ function tankEditor(D) {
 function tank(D) {
   if (UI.tankEdit) return tankEditor(D);
   if (UI.tankView === 'dex') return dex(D);
-  const n = CREATURES.filter(c => pets(c.id).some(p => inTank(p.id))).length;
+  const n = tankResidents().length;
   // 沒有框：畫布透明、填滿整個視窗，魚直接游在網站背景的海裡。
   // 海裡不放任何按鈕：飼料、補充、圖鑑、設定都在最下面一條不透明的工具列（跟分頁列連在一起），海和沙地停在它上面；新手（還沒撒滿 3 顆飼料）海中間有一句說明
   return `<div class="sea"><canvas id="tank" class="tank" aria-label="大海，點水裡撒飼料"></canvas>
@@ -546,14 +550,15 @@ function tankStart() {
   const look = f => {
     const st = stageOf(fedOf(f.key));
     f.st = st; f.s = stageCanvas(f.c, st);
-    const sc = TANK_SPECIES[f.c.id][0] * STAGE_SCALE[st - 1];
+    const sc = TANK_SPECIES[f.c.id][0] * STAGE_SCALE[st - 1] * (cv.clientWidth <= 600 ? .8 : 1);
     f.w = Math.round(f.s.width * sc); f.h = Math.round(f.s.height * sc);
   };
   TANK.fish = [];
+  const residents = new Set(tankResidents(cv.clientWidth).map(l => l.id));
   for (const c of CREATURES) {
     const P = pets(c.id), [, speed, ground] = TANK_SPECIES[c.id];
     P.forEach((p, i) => {
-      if (!inTank(p.id)) return;
+      if (!residents.has(p.id)) return;
       const f = { c, key: p.id, no: i + 1, many: P.length > 1, name: petName(p.id), ground: !!ground, ph: Math.random() * 6, rest: 0,
         vx: speed * SWIM * (.8 + Math.random() * .4) * (Math.random() < .5 ? -1 : 1) };
       look(f);
@@ -563,6 +568,11 @@ function tankStart() {
       TANK.fish.push(f);
     });
   }
+  // 海底生物第一次入場時分散在沙地上，重畫則保留既有位置。
+  const groundFish = TANK.fish.filter(f => f.ground);
+  groundFish.forEach((f, i) => {
+    if (!prev.has(f.key)) f.x = (W - f.w) * (i + 1) / (groundFish.length + 1);
+  });
   TANK.fish.sort((a, b) => b.w * b.h - a.w * a.h);   // 大的畫在後面，小的在前面
   // 海底的沙：顏色壓暗一點、邊緣起伏、往上淡淡地融進海水，不要像一條亮色的地板。只畫一次，每一格直接貼上去
   const sand = document.createElement('canvas'), sx = sand.getContext('2d'), FADE = 6;
@@ -639,7 +649,17 @@ function tankStart() {
           if (Math.random() < .004 * dt) f.rest = 60 + Math.random() * 180;
           if (Math.random() < .003 * dt) f.vx = -f.vx;   // 偶爾掉頭
         }
-        steer(f, f.rest > 0 ? 0 : f.vx, 0, dt, false);
+        // 沒有飼料時，與鄰近的海底生物保持一點間距；吃飼料仍可聚攏。
+        const cx = f.x + f.w / 2;
+        const near = TANK.fish.filter(g => g.ground && g !== f)
+          .sort((a, b) => Math.abs(a.x + a.w / 2 - cx) - Math.abs(b.x + b.w / 2 - cx))[0];
+        let drift = f.rest > 0 ? 0 : f.vx;
+        if (near && Math.abs(cx - (near.x + near.w / 2)) < (f.w + near.w) / 2 + 4) {
+          const away = cx === near.x + near.w / 2 ? (f.key < near.key ? -1 : 1) : Math.sign(cx - (near.x + near.w / 2));
+          drift = away * Math.max(.08, sp0);
+          f.vx = away * sp0;
+        }
+        steer(f, drift, 0, dt, false);
       } else wander(f, dt, W, floorY);
       if (!f.ground) {
         f.baseY = Math.max(2, Math.min(floorY - f.h + 2, f.baseY));
