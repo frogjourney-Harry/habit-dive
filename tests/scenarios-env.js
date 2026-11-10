@@ -452,20 +452,63 @@ test('手機觸控：同步重畫不移除正在點擊的分頁', async () => {
   I.check('觸控重畫');I.destroy();
 });
 
-test('版本更新：只在新版、閒置且完成儲存後自動刷新', async () => {
-  const I=await boot({state:mkState()});await I.dismiss();I.ev('save(false);window.__reloads=0;UPDATE.reload=()=>window.__reloads++;const memory=new Map();UPDATE.session=()=>({getItem:k=>memory.get(k),setItem:(k,v)=>memory.set(k,v)})');
-  eq(I.ev('releaseVersion(new DOMParser().parseFromString(\'<script src="js/firebase-config.js?v=200001010000"></script><script src="js/config.js?v=202611101910&test=1#x"></script>\',"text/html"))'),'202611101910','版本解析不誤抓 Firebase 且支援其他參數');
-  I.win.fetch=async()=>({ok:true,text:async()=>'<script src="js/config.js?v=209901010000"></script>'});
-  await I.win.checkUpdate(true);eq(I.win.__reloads,0,'操作後不立刻重整');ok(I.$('#updateNotice').textContent.includes('新版本'),'簡短告知新版');
-  await I.habit('運動');I.ev('UPDATE.activity=Date.now()-61000;applyUpdate()');eq(I.win.__reloads,0,'填表時不重整');
-  await I.click('[data-act=sheetclose]');I.ev('UPDATE.activity=Date.now()-61000;CLOUD.pending=true;applyUpdate()');eq(I.win.__reloads,0,'等待上傳時不重整');
-  I.ev('CLOUD.pending=false;UI.tankEdit=true;applyUpdate()');eq(I.win.__reloads,0,'管理生物草稿不被更新丟棄');
-  I.ev('UI.tankEdit=false;S.timer={start:Date.now()};applyUpdate()');eq(I.win.__reloads,0,'番茄鐘期間不重整');
-  I.ev('delete S.timer;save(false);UPDATE.activity=Date.now()-61000;applyUpdate();applyUpdate()');eq(I.win.__reloads,1,'儲存完閒置自動更新，防止重整迴圈');
-  I.check('版本更新');I.destroy();
+async function updateFixture() {
+  const I=await boot({state:mkState()});await I.dismiss();
+  I.ev('save(false);window.__updateTime=1000000;UPDATE.now=()=>__updateTime;window.__reloads=0;UPDATE.reload=()=>window.__reloads++;window.__updateStorage=new Map();UPDATE.session=()=>({getItem:k=>__updateStorage.get(k)||null,setItem:(k,v)=>__updateStorage.set(k,v),removeItem:k=>__updateStorage.delete(k)})');
+  return I;
+}
+const releaseReply = version => ({ok:true,text:async()=>`<script src="js/config.js?v=${version}"></script>`});
+
+test('版本更新：使用中只提示，手動更新保護操作並恢復原分頁', async () => {
+  const I=await updateFixture();
+  eq(I.ev('releaseVersion(new DOMParser().parseFromString(\'<script src="js/firebase-config.js?v=200001010000"></script><script src="js/config.js?v=202611101910&test=1#x"></script>\',"text/html"))'),'202611101910','版本不誤抓Firebase且支援額外參數');
+  I.win.fetch=async()=>releaseReply('209901010000');await I.win.checkUpdate(true);
+  I.ev('__updateTime+=3600000;applyUpdate()');eq(I.win.__reloads,0,'即使看魚閒置一小時也不自動刷新');ok(I.$('#updateNotice').textContent.includes('有新版本'),'只留簡短更新提示');
+  await I.habit('運動');I.ev('applyUpdate(true)');eq(I.win.__reloads,0,'表單未完成不更新');await I.click('[data-act=sheetclose]');
+  for(const flag of ['pending','authPending']){I.ev(`CLOUD.${flag}=true;applyUpdate(true);CLOUD.${flag}=false`);eq(I.win.__reloads,0,'同步或登入中不更新：'+flag)}
+  I.ev('UI.tankEdit=true;applyUpdate(true);UI.tankEdit=false;S.timer={start:Date.now()};applyUpdate(true)');eq(I.win.__reloads,0,'管理草稿與番茄鐘不更新');
+  I.ev('delete S.timer;save(false)');await I.tab('tank');
+  I.ev('__updateStorage.set(KEY+".update-attempt",JSON.stringify({version:UPDATE.next,time:Date.now()}));applyUpdate(true);applyUpdate(true)');eq(I.win.__reloads,1,'手動更新可略過自動嘗試標記，連點不重載兩次');
+  I.ev('UI.tab="today";UPDATE.current=UPDATE.next;UPDATE.reloading=false;restoreUpdateView()');eq(I.UI.tab,'tank','重新載入後恢復大海');ok(!I.UI.sheet&&!I.UI.tankEdit,'不還原彈窗或草稿');ok(I.ev('!__updateStorage.has(KEY+".update-view")'),'導覽狀態只恢復一次');I.check('使用中更新');I.destroy();
 });
 
+test('版本更新：離開一分鐘再回來，快速檢查可安全自動更新', async () => {
+  const I=await updateFixture();let requests=0;I.win.fetch=async()=>{requests++;return releaseReply('209901010000')};
+  I.ev('UPDATE.checked=__updateTime;UPDATE.hiddenAt=__updateTime;__updateTime+=61000');await I.win.resumeUpdate();
+  eq(requests,1,'回前景不受持續使用的30分鐘節流限制');eq(I.win.__reloads,1,'沒有互動且快速完成檢查即可更新，不等idle');I.check('回前景更新');I.destroy();
+});
 
+test('版本更新：檢查期間有操作、回應太慢或再次隱藏都不刷新', async () => {
+  for(const scenario of ['interaction','slow','hidden']){
+    const I=await updateFixture();let reply;I.win.fetch=()=>new Promise(resolve=>reply=resolve);
+    I.ev('UPDATE.hiddenAt=__updateTime;__updateTime+=61000');const checking=I.win.resumeUpdate();
+    if(scenario==='interaction')I.doc.body.dispatchEvent(new I.win.Event('pointerdown',{bubbles:true}));
+    if(scenario==='slow')I.ev('__updateTime+=2100');
+    if(scenario==='hidden'){Object.defineProperty(I.doc,'visibilityState',{get:()=> 'hidden',configurable:true});I.win.updateVisibility()}
+    reply(releaseReply('209901010000'));await checking;eq(I.win.__reloads,0,'不打斷：'+scenario);
+    I.ev('__updateTime+=120000;applyUpdate()');eq(I.win.__reloads,0,'之後也不重新倒數刷新：'+scenario);
+    if(scenario!=='hidden'){ok(I.$('#updateNotice'),'仍提供手動更新');I.ev('UPDATE.hiddenAt=__updateTime;__updateTime+=61000');await I.win.resumeUpdate();eq(I.win.__reloads,1,'留待下一次回前景更新：'+scenario)}
+    if(scenario==='hidden'){ok(!I.ev('UPDATE.busy'),'背景回應也會釋放檢查鎖');Object.defineProperty(I.doc,'visibilityState',{get:()=> 'visible',configurable:true});I.ev('__clock.advance(2000);__updateTime+=2000');await I.win.resumeUpdate();ok(I.$('#updateNotice'),'背景查到新版，短暫切回仍立即提供提示');eq(I.win.__reloads,0,'短暫切回只提示不自動刷新');I.win.updatePageHide();I.ev('__clock.advance(61000);__updateTime+=61000');await I.win.resumeUpdate();eq(I.win.__reloads,1,'背景收到的新版本留到下次回前景更新')}
+    I.check('取消回前景刷新');I.destroy();
+  }
+});
+
+test('版本更新：短暫切換只提示，回前景與持續使用各自節流', async () => {
+  const I=await updateFixture();let requests=0;I.win.fetch=async()=>{requests++;return releaseReply('209901010000')};
+  I.ev('UPDATE.hiddenAt=__updateTime;__updateTime+=2000');await I.win.resumeUpdate();eq(I.win.__reloads,0,'只離開兩秒不自動刷新');
+  I.win.fetch=async()=>{requests++;return releaseReply(I.ev('UPDATE.current'))};I.ev('UPDATE.next="";UPDATE.hiddenAt=__updateTime;__updateTime+=61000');await I.win.resumeUpdate();eq(requests,1,'回前景檢查五分鐘內不重複下載');
+  I.ev('UPDATE.hiddenAt=__updateTime;__updateTime+=300000');await I.win.resumeUpdate();eq(requests,2,'回前景短節流到期可重新檢查');
+  await I.win.checkUpdate();eq(requests,2,'持續使用仍受30分鐘節流');I.ev('__updateTime+=1800000');await I.win.checkUpdate();eq(requests,3,'持續使用30分鐘後再檢查');eq(I.win.__reloads,0,'一般檢查只提示不自動更新');I.check('更新節流');I.destroy();
+});
+
+test('版本更新：bfcache回來可檢查，自動重試有冷卻且不還原過期草稿', async () => {
+  const I=await updateFixture();I.win.fetch=async()=>releaseReply('209901010000');
+  I.ev('UPDATE.hiddenAt=__updateTime;__updateTime+=61000');await I.win.updatePageShow({persisted:true});eq(I.win.__reloads,1,'bfcache恢復也走同一更新流程');
+  I.ev('UPDATE.reloading=false;UPDATE.hiddenAt=__updateTime;__updateTime+=61000');await I.win.resumeUpdate();eq(I.win.__reloads,1,'同一版本不會自動重載迴圈');
+  I.ev('__clock.advance(16*60000);UPDATE.hiddenAt=__updateTime;__updateTime+=61000');await I.win.resumeUpdate();eq(I.win.__reloads,2,'自動更新嘗試冷卻後允許重試');
+  I.ev('UI.tab="today";__updateStorage.set(KEY+".update-view",JSON.stringify({version:UPDATE.next,tab:"tank",time:Date.now()-6*60000}));restoreUpdateView()');eq(I.UI.tab,'today','不恢復過期導覽狀態');
+  await I.habit('運動');I.ev('__updateStorage.set(KEY+".update-view",JSON.stringify({version:UPDATE.next,tab:"tank",time:Date.now()}));restoreUpdateView()');ok(I.UI.sheet,'新版已有彈窗時不覆蓋操作');I.check('更新恢復');I.destroy();
+});
 test('導覽備份邀請：可跳過，重開不重複要求登入', async () => {
  resetCloud(); const I=await boot({state:mkState({onb:true,introCompleteNotice:true,logs:[W0,{id:'h1',d:D0,k:'habit',c:15,xp:1}]})});await I.dismiss();
  I.ev("UI.tab='tank';render()");await flush(14);
@@ -543,4 +586,25 @@ test('手機點擊範圍：393×771分頁及餵食按鈕中央與邊緣不被圖
   const checkHit=button=>{const r=button.getBoundingClientRect();for(const [x,y] of [[r.left+r.width/2,r.top+r.height/2],[r.left+4,r.top+r.height/2],[r.right-4,r.top+r.height/2],[r.left+r.width/2,r.top+4],[r.left+r.width/2,r.bottom-4]]){const hit=I.doc.elementFromPoint(x,y);ok(hit===button||button.contains(hit),'按鈕中央與四邊命中自身：'+button.textContent.trim())}};
   for(const tab of ['today','tank','about','shop','log','quest']){await I.tab(tab);for(const button of I.$$('nav button'))checkHit(button);if(tab==='tank'){for(const button of I.$$('.seabar button:not(.sr-only)'))checkHit(button);const canvas=I.$('#tank'),r=canvas.getBoundingClientRect();for(const k of [.25,.5,.75])eq(I.doc.elementFromPoint(r.left+r.width*k,r.top+r.height*.5).id,'tank','水面點擊範圍沒有被透明圖層蓋住')}}
   I.check('手機命中範圍');I.destroy();
+});
+test('版本更新：只恢復導覽位置，有新操作時不搶走捲動', async () => {
+  const I=await updateFixture();I.ev('window.scrollCalls=[];window.scrollTo=(...args)=>scrollCalls.push(args);__updateStorage.set(KEY+".update-view",JSON.stringify({version:UPDATE.current,tab:"log",scroll:245,time:Date.now()}));restoreUpdateView()');await new Promise(r=>setTimeout(r,40));
+  eq(I.UI.tab,'log','恢復原本紀錄分頁');eq(I.ev('scrollCalls'),[[0,245]],'恢復保存的捲動位置');
+  I.ev('__updateStorage.set(KEY+".update-view",JSON.stringify({version:UPDATE.current,tab:"shop",scroll:50,time:Date.now()}));restoreUpdateView()');I.doc.body.dispatchEvent(new I.win.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));await new Promise(r=>setTimeout(r,40));eq(I.ev('scrollCalls.length'),1,'玩家已操作就不強制移動捲動位置');
+  I.ev('UPDATE.next="209901010000";UPDATE.session=()=>{throw new Error("unavailable")};applyUpdate(true)');eq(I.win.__reloads,0,'工作階段儲存不可用時不冒險刷新');ok(I.has('瀏覽器重新整理'),'手動更新失敗有回饋');I.check('恢復導覽');I.destroy();
+});
+test('版本更新：登入後實際前景與bfcache事件不重複更新', async () => {
+  resetCloud();const I=await updateFixture();await loginAs(I);await I.tab('tank');let requests=0;I.win.fetch=async()=>{requests++;return releaseReply('209901010000')};
+  I.doc.addEventListener('visibilitychange',I.win.updateVisibility);I.win.addEventListener('pagehide',I.win.updatePageHide);I.win.addEventListener('pageshow',I.win.updatePageShow);
+  await hide(I,true);I.win.dispatchEvent(new I.win.PageTransitionEvent('pagehide',{persisted:true}));I.ev('__updateTime+=61000;__clock.advance(61000)');await hide(I,false);I.win.dispatchEvent(new I.win.PageTransitionEvent('pageshow',{persisted:true}));await flush(20);
+  eq(requests,1,'visibilitychange與pageshow只發出一次版本請求');eq(I.win.__reloads,1,'已登入且同步完成時仍可安全自動更新');eq(I.UI.tab,'tank','沒有被同步導去其他分頁');I.check('登入前景更新');I.destroy();
+});
+
+test('版本更新：忙碌而未發出請求時，不消耗回前景節流', async () => {
+  const I=await updateFixture();I.ev('UPDATE.busy=true;UPDATE.hiddenAt=__updateTime;__updateTime+=61000');await I.win.resumeUpdate();eq(I.ev('UPDATE.returnChecked'),-Infinity,'版本檢查忙碌不耗掉回前景機會');
+  I.ev('UPDATE.busy=false;UPDATE.hiddenAt=__updateTime;__updateTime+=61000');I.win.fetch=async()=>releaseReply('209901010000');await I.win.resumeUpdate();eq(I.win.__reloads,1,'下次回來仍能檢查並更新');I.check('忙碌節流');I.destroy();
+});
+test('版本更新：鎖屏睡眠暫停單調時鐘，仍以實際離開時間更新', async () => {
+  const I=await updateFixture();I.win.fetch=async()=>releaseReply('209901010000');I.win.updatePageHide();
+  I.ev('__clock.advance(61000)');await I.win.resumeUpdate();eq(I.win.__reloads,1,'睡眠期間performance時鐘沒前進仍可識別離開超過一分鐘');I.check('鎖屏離開時間');I.destroy();
 });
