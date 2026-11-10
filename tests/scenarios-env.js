@@ -608,3 +608,63 @@ test('版本更新：鎖屏睡眠暫停單調時鐘，仍以實際離開時間�
   const I=await updateFixture();I.win.fetch=async()=>releaseReply('209901010000');I.win.updatePageHide();
   I.ev('__clock.advance(61000)');await I.win.resumeUpdate();eq(I.win.__reloads,1,'睡眠期間performance時鐘沒前進仍可識別離開超過一分鐘');I.check('鎖屏離開時間');I.destroy();
 });
+
+function tabTouchEvent(I,button,type,x,y,options={}) {
+  button.dispatchEvent(new I.win.PointerEvent(type,{bubbles:true,cancelable:true,pointerType:'touch',pointerId:7,isPrimary:true,clientX:x,clientY:y,...options}));
+}
+const tabCenter=button=>{const r=button.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2}};
+
+test('手機分頁：沒有合成click也切換，後續click不得重複執行', async () => {
+  const I=await boot({state:mkState(),width:393,height:771});await I.dismiss();I.ev('window.tabRenders=0;const originalRender=render;render=()=>{window.tabRenders++;originalRender()}');
+  const button=I.$('nav [data-v=shop]'),p=tabCenter(button);tabTouchEvent(I,button,'pointerdown',p.x,p.y);I.ev('render();tabRenders=0');ok(button.isConnected,'延後重畫時保留正在按的按鈕');tabTouchEvent(I,button,'pointerup',p.x,p.y);await flush();
+  eq(I.UI.tab,'shop','只靠有效touch-up即可切換');eq(I.win.tabRenders,1,'切換只重畫一次');
+  eq(I.$('nav .sel').dataset.v,'shop','藍色選取線實際切到商店');ok(I.$('#main').textContent.includes('生物寶箱'),'商店畫面實際顯示，不只更新記憶體狀態');
+  const late=new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:p.x,clientY:p.y});I.$('nav [data-v=shop]').dispatchEvent(late);await flush();eq(I.win.tabRenders,1,'瀏覽器晚到的click不再重畫');ok(late.defaultPrevented,'只攔截該次手勢重複click');
+  const next=I.$('nav [data-v=quest]'),q=tabCenter(next);tabTouchEvent(I,next,'pointerdown',q.x,q.y);tabTouchEvent(I,next,'pointerup',q.x,q.y);await flush();eq(I.UI.tab,'quest','快速下一次點擊照常切換');eq(I.win.tabRenders,2,'沒有重複監聽執行');
+  ok(I.win.getComputedStyle(I.$('nav button')).touchAction==='pinch-zoom','頁籤允許縮放而不觸發內容捲動');ok(I.$('nav button').getBoundingClientRect().height>=48,'按鈕高度至少48px');I.check('touch-up切頁');I.destroy();
+});
+
+test('手機分頁：容許小幅手指位移，拖動、取消及跨鍵不切換', async () => {
+  const I=await boot({state:mkState(),width:393,height:771});await I.dismiss();let button=I.$('nav [data-v=shop]'),p=tabCenter(button);
+  tabTouchEvent(I,button,'pointerdown',p.x,p.y);tabTouchEvent(I,button,'pointermove',p.x,p.y-8);tabTouchEvent(I,button,'pointerup',p.x,p.y-8);await flush();eq(I.UI.tab,'shop','8px手指輕微位移仍可操作');
+  for(const mode of ['drag','cancel','other-tab','long-press','medium-drift','multitouch']){
+    await I.tab('today');button=I.$('nav [data-v=shop]');p=tabCenter(button);tabTouchEvent(I,button,'pointerdown',p.x,p.y);
+    let end=p;
+    if(mode==='drag'){tabTouchEvent(I,button,'pointermove',p.x,p.y-25);tabTouchEvent(I,button,'pointermove',p.x,p.y)}
+    if(mode==='cancel')tabTouchEvent(I,button,'pointercancel',p.x,p.y);
+    if(mode==='other-tab'){end=tabCenter(I.$('nav [data-v=log]'))}
+    if(mode==='long-press')I.ev('navTouch.down.at=performance.now()-1000');
+    if(mode==='medium-drift')end={x:p.x,y:p.y-16};
+    if(mode==='multitouch')tabTouchEvent(I,button,'pointerdown',p.x,p.y,{pointerId:8,isPrimary:false});
+    tabTouchEvent(I,button,'pointerup',end.x,end.y);await flush();eq(I.UI.tab,'today','不誤觸：'+mode);
+    button.dispatchEvent(new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:end.x,clientY:end.y}));await flush();eq(I.UI.tab,['long-press','medium-drift'].includes(mode)?'shop':'today','慢按與中度位移保留原生click，明確拖動取消不誤觸：'+mode);
+  }
+  I.check('拖動取消');I.destroy();
+});
+
+test('手機分頁：文字節點、鍵盤與滑鼠仍走正常click路徑', async () => {
+  const I=await boot({state:mkState(),width:393,height:771});await I.dismiss();let button=I.$('nav [data-v=shop]');button.firstChild.dispatchEvent(new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:0}));await flush();eq(I.UI.tab,'shop','點中文字節點也可切換，不會呼叫不存在的closest');
+  await I.click('nav [data-v=log]');eq(I.UI.tab,'log','鍵盤／程式click保留');button=I.$('nav [data-v=quest]');const p=tabCenter(button);button.dispatchEvent(new I.win.PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse',pointerId:3,isPrimary:true,clientX:p.x,clientY:p.y}));button.dispatchEvent(new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:p.x,clientY:p.y}));await flush();eq(I.UI.tab,'quest','滑鼠仍正常切換');I.check('文字與鍵鼠');I.destroy();
+});
+
+test('手機分頁：快速切不同頁，前次晚到click不會切回舊頁', async () => {
+  const I=await boot({state:mkState(),width:393,height:771});await I.dismiss();I.ev('window.tabRenders=0;const originalRender=render;render=()=>{window.tabRenders++;originalRender()}');
+  const shop=I.$('nav [data-v=shop]'),p=tabCenter(shop);tabTouchEvent(I,shop,'pointerdown',p.x,p.y);tabTouchEvent(I,shop,'pointerup',p.x,p.y);await flush();
+  const quest=I.$('nav [data-v=quest]'),q=tabCenter(quest);tabTouchEvent(I,quest,'pointerdown',q.x,q.y);
+  I.$('nav [data-v=shop]').dispatchEvent(new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:p.x,clientY:p.y}));await flush();ok(I.ev('TOUCH_RENDER.held'),'前次晚到click不提早解除下一指的重畫保護');
+  tabTouchEvent(I,quest,'pointerup',q.x,q.y);await flush();I.$('nav [data-v=quest]').dispatchEvent(new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:q.x,clientY:q.y}));await flush();eq(I.UI.tab,'quest','晚到click不覆蓋最新選擇');
+  eq(I.win.tabRenders,2,'兩次有效點擊各切一次');eq(I.$('nav .sel').dataset.v,'quest','實際選取線停在最新頁');I.check('快速切換去重');I.destroy();
+});
+
+test('手機分頁：頁內操作不吃點擊，也不讓前次延遲click重設分頁', async () => {
+  const I=await boot({state:mkState(),width:393,height:771});await I.dismiss();I.ev('window.tabRenders=0;const originalRender=render;render=()=>{window.tabRenders++;originalRender()}');const button=I.$('nav [data-v=shop]'),p=tabCenter(button);
+  tabTouchEvent(I,button,'pointerdown',p.x,p.y);tabTouchEvent(I,button,'pointerup',p.x,p.y);await flush();
+  const probe=I.doc.createElement('button');probe.textContent='測試頁內操作';I.$('#main').append(probe);let clicks=0;probe.addEventListener('click',()=>clicks++);tabTouchEvent(I,probe,'pointerdown',p.x,p.y);tabTouchEvent(I,probe,'pointerup',p.x,p.y);probe.dispatchEvent(new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:p.x,clientY:p.y}));eq(clicks,1,'新頁內操作不被舊分頁位置抑制吞掉');
+  I.$('nav [data-v=shop]').dispatchEvent(new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:p.x,clientY:p.y}));await flush();eq(I.win.tabRenders,1,'前次晚到分頁click仍被去重');I.check('頁內操作去重');I.destroy();
+});
+
+test('手機分頁：工具列位移造成hit-test不符時仍保留原生click', async () => {
+  const I=await boot({state:mkState(),width:393,height:771});await I.dismiss();let button=I.$('nav [data-v=shop]');
+  tabTouchEvent(I,button,'pointerdown',100,100);tabTouchEvent(I,button,'pointerup',100,100);await flush();eq(I.UI.tab,'today','座標對不上時不自行切換');button.dispatchEvent(new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:100,clientY:100}));await flush();eq(I.UI.tab,'shop','瀏覽器仍判定原按鈕的click不被吞掉');
+  await I.tab('today');button=I.$('nav [data-v=shop]');const p=tabCenter(button);tabTouchEvent(I,button,'pointerdown',p.x,p.y);tabTouchEvent(I,button,'pointercancel',p.x,p.y,{pointerId:99});tabTouchEvent(I,button,'pointerup',p.x,p.y);await flush();eq(I.UI.tab,'shop','無關pointer的cancel不取消本次點擊');eq(I.$('nav .sel').dataset.v,'shop','實際選取線更新');I.check('工具列位移fallback');I.destroy();
+});

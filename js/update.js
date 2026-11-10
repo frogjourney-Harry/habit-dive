@@ -93,7 +93,7 @@ function restoreUpdateView() {
   return true;
 }
 for (const event of ['pointerdown', 'click', 'keydown', 'input', 'change', 'wheel', 'scroll']) document.addEventListener(event, () => { UPDATE.interactions++; }, { capture: true, passive: true });
-document.addEventListener('click', event => { if (event.target.closest('[data-update]')) applyUpdate(true); });
+document.addEventListener('click', event => { if (eventElement(event)?.closest('[data-update]')) applyUpdate(true); });
 function updatePageShow(event) { if (event.persisted) return resumeUpdate(true); }
 // Preview/test frames are isolated; their tests explicitly invoke the functions.
 if (window.top === window.self && /^https?:$/.test(location.protocol)) {

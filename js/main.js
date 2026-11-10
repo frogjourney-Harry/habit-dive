@@ -20,8 +20,68 @@ function sheetDay() { return addDays(dayKey(), UI.sheet.day); }
 function finishHabitEntry() {
   UI.sheet = null; UI.tab = 'today'; UI.pday = 0; UI.showRows = 0; UI.swap = null;
 }
+const eventElement = event => event.target?.nodeType === 1 ? event.target : event.target?.parentElement;
+const navTouch = { down: null, suppress: [], fallback: null, firing: false };
+const navTouchButton = event => eventElement(event)?.closest('#nav button[data-act="tab"]');
+function rememberNavTouch(down, x, y) {
+  navTouch.suppress = navTouch.suppress.filter(item => item.until >= performance.now()).slice(-7);
+  navTouch.suppress.push({ key: down.key, x, y, until: performance.now() + 800 });
+}
+// Mobile tabs activate at touch-up; WebKit's later synthetic click is optional.
+// Keep the existing click route for keyboard, mouse and accessibility.
+document.addEventListener('pointerdown', event => {
+  const previous = navTouch.down; navTouch.down = null; navTouch.fallback = null;
+  if (event.pointerType === 'touch' && event.isPrimary === false) {
+    if (previous) rememberNavTouch(previous, previous.x, previous.y);
+    return;
+  }
+  const button = navTouchButton(event);
+  if (!button || event.pointerType !== 'touch' || getComputedStyle(button.parentElement).position !== 'fixed') {
+    navTouch.suppress = event.pointerType === 'touch' ? navTouch.suppress.map(item => ({ ...item, navOnly: true })) : [];
+    return;
+  }
+  navTouch.down = { id: event.pointerId, key: button.dataset.v, x: event.clientX, y: event.clientY, distance: 0, at: performance.now() };
+}, { capture: true, passive: true });
+document.addEventListener('pointermove', event => {
+  const down = navTouch.down; if (!down || event.pointerId !== down.id) return;
+  down.distance = Math.max(down.distance, Math.hypot(event.clientX - down.x, event.clientY - down.y));
+}, { capture: true, passive: true });
+document.addEventListener('pointerup', event => {
+  const down = navTouch.down; if (!down || event.pointerId !== down.id) return;
+  navTouch.down = null;
+  const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest('#nav button[data-act="tab"]');
+  const distance = Math.max(down.distance, Math.hypot(event.clientX - down.x, event.clientY - down.y));
+  if (hit && hit.dataset.v === down.key && !hit.disabled && distance <= 12 && performance.now() - down.at <= 700) {
+    rememberNavTouch(down, event.clientX, event.clientY);
+    navTouch.firing = true; try { hit.click(); } finally { navTouch.firing = false; }
+  } else if ((hit && hit.dataset.v !== down.key) || distance > 24) rememberNavTouch(down, event.clientX, event.clientY);
+  else {
+    navTouch.suppress = navTouch.suppress.filter(item => item.key !== down.key);
+    navTouch.fallback = { key: down.key, until: performance.now() + 800 };
+  }
+}, { capture: true, passive: true });
+document.addEventListener('pointercancel', event => {
+  const down = navTouch.down;
+  if (down && event.pointerId !== down.id) return;
+  if (down) rememberNavTouch(down, event.clientX, event.clientY);
+  navTouch.down = null; navTouch.fallback = null;
+}, { capture: true, passive: true });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { navTouch.down = null; navTouch.suppress = []; navTouch.fallback = null; } });
+window.addEventListener('click', event => {
+  if (navTouch.firing || event.detail === 0) return;
+  navTouch.suppress = navTouch.suppress.filter(item => item.until >= performance.now());
+  const button = navTouchButton(event);
+  if (navTouch.fallback && navTouch.fallback.until >= performance.now() && button?.dataset.v === navTouch.fallback.key) {
+    rememberNavTouch(navTouch.fallback, event.clientX, event.clientY); navTouch.fallback = null; return;
+  }
+  const index = navTouch.suppress.findIndex(item => button?.dataset.v === item.key || (!item.navOnly && Math.hypot(event.clientX - item.x, event.clientY - item.y) <= 24));
+  if (index >= 0) {
+    navTouch.suppress.splice(index, 1); event.preventDefault(); event.stopImmediatePropagation();
+  }
+}, true);
+
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-act]'); if (!b) return;
+  const b = eventElement(e)?.closest('[data-act]'); if (!b) return;
   const v = b.dataset.v, context = dataContext();
   if (UI.renderedState && UI.renderedState !== S && b.closest('#main') && b.dataset.act !== 'tab') {
     render(); toast('資料已更新，請重新操作'); return;
@@ -323,7 +383,7 @@ document.addEventListener('keydown', e => {
 const DRAG = { i: null, y0: 0, moved: false, to: null, until: 0, mids: [] };
 const DRAG_REACH = .3;   // 拖過相鄰那一列的 30% 就換過去（以前要拖過一半以上），不用拖得很剛好
 document.addEventListener('pointerdown', e => {
-  const b = e.target.closest('#six .prow .no'); if (!b || UI.pday < 0) return;
+  const b = eventElement(e)?.closest('#six .prow .no'); if (!b || UI.pday < 0) return;
   const mids = [...document.querySelectorAll('#six .prow')].map(r => { const q = r.getBoundingClientRect(); return q.top + q.height / 2; });   // 還沒移動時每一列的中心
   Object.assign(DRAG, { i: +b.dataset.v, y0: e.clientY, moved: false, to: +b.dataset.v, mids });
   try { b.setPointerCapture(e.pointerId); } catch (_) {}
@@ -351,7 +411,7 @@ document.addEventListener('pointerup', () => {
   reward(() => {}, UI.pday === 0); toast(`移到第 ${to + 1} 件`);
 });
 document.addEventListener('pointercancel', () => { if (DRAG.i == null) return; DRAG.i = null; render(); });   // 系統中斷了手勢：放棄這次拖曳，回到原位
-document.addEventListener('click', e => { if (performance.now() < DRAG.until && e.target.closest('.prow .no')) { DRAG.until = 0; e.stopPropagation(); e.preventDefault(); } }, true);
+document.addEventListener('click', e => { if (performance.now() < DRAG.until && eventElement(e)?.closest('.prow .no')) { DRAG.until = 0; e.stopPropagation(); e.preventDefault(); } }, true);
 // 輸入框只存資料不重畫，避免打字時失去焦點
 document.addEventListener('input', e => {
   const el = e.target, i = el.dataset.i;
