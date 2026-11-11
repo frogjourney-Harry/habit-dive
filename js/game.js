@@ -265,7 +265,7 @@ function openChest() {
   const R = RARITY[cr.r];
   document.getElementById('modal').innerHTML = `${it.direct && S.introFeedPending ? tutorialProgress(3) : ''}${it.direct ? `<h2>${esc(it.title)}</h2>` : ''}
     <div><span class="rar" style="background:${R.color}">${R.name}</span></div>
-    ${stageImg(cr, 1, Math.min(10, Math.floor(160 / stageCanvas(cr, 1).width)), false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
+    ${stageImg(cr, 1, Math.min(10, Math.floor(160 / stageSize(cr, 1).w)), false, 'pop' + (cr.r >= 3 ? ' glow' + cr.r : ''))}
     <h2>${cr.name} <small>幼體</small> ${it.isNew ? '<span class="new">新發現</span>' : ''}</h2>
     <div class="dim" style="font-size:15px">${cr.fact}</div>
     ${it.seaFull ? '<p class="sea-full-note" role="status">大海已滿，這隻生物已留在收藏。可到管理生物替換，成長進度會保留。</p>' : ''}

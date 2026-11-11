@@ -147,16 +147,391 @@ function img(rows, scale, sil = false, cls = '') {
 
 
 // 生物型態共用繪圖：遊戲與圖鑑審查使用同一個入口。
+// 三個完整家族的照片參考像素稿；尺寸/碰撞仍由原邏輯圖格決定。
+const CREATURE_ART = {
+    "mola:1":  {
+                   "rows":  [
+                                "....k...................",
+                                "...ksk..................",
+                                "...ksskk................",
+                                "....kbssk...............",
+                                "....kbbsk...............",
+                                ".....kbbk.kkkkkk........",
+                                ".....ksbskhhhhhhkk......",
+                                ".....kbbbhhhhhhhhhkk....",
+                                "..kkkbbbbhhhhhhhhhhhk...",
+                                ".kbbbbbbbbbbbbbbhhhbbk..",
+                                ".ksbbbbbbbbbbbbbbbbbbk..",
+                                "ksbbbbbbbbbbbbbbbddbbbk.",
+                                "ksbbbbbbbbbbbbbbbbbbbbbk",
+                                "ksbbbbbbbbbbkkbbbbbbbbdk",
+                                "ksbbbbbbbbbbsssbbbbbbbk.",
+                                "ksbbbbbbbbbbkskbbbbbbk..",
+                                "ksssswwwwwwwwwwwwwwwwk..",
+                                ".kswwwwwwwwwwwwwwwwwk...",
+                                ".kswwwwwwwwwwwwwwwwk....",
+                                "..kssswwwwwwwwwwwkk.....",
+                                "..kssssskwwwwwwkkkk.....",
+                                "...kksbbskkkkkk.........",
+                                ".....kbbk...............",
+                                "....kbbsk...............",
+                                "....kbbsk...............",
+                                "...ksskk................",
+                                "...ksk..................",
+                                "....k..................."
+                            ],
+                   "palette":  {
+                                   "k":  "#1a1c2c",
+                                   "b":  "#a9b8c2",
+                                   "s":  "#6f8392",
+                                   "h":  "#d6e0e6",
+                                   "w":  "#eef3f5",
+                                   "d":  "#2a3240"
+                               }
+               },
+    "dolphin:1":  {
+                      "rows":  [
+                                   "...........kk...................",
+                                   "............kkk.................",
+                                   ".............ksk................",
+                                   ".............ksskk..............",
+                                   "k......kkkkkkssssskkkkkkk.......",
+                                   "kkk..kksssssssssssssssssk.......",
+                                   ".kskkssbbbbbbbbbbbbbbbbbbkkk....",
+                                   ".kkssssbbbbbbbbbbbbbbbbbbbbsk...",
+                                   "...kssbbbbbbbbbbbbbbbbbbbbdbbkk.",
+                                   "..ksssbbbbbbbbbbbbbbbbbbbbbbbbkk",
+                                   ".ksskkkwwwwwwwwwwwwwwwwwwwwwwk..",
+                                   "kssk...kkkkkwwwwwwwwwwwwwwwkk...",
+                                   "kkk.........kkkkkwwwwkkkkkk.....",
+                                   ".................kssk...........",
+                                   "................kkkk............",
+                                   "...............kk..............."
+                               ],
+                      "palette":  {
+                                      "k":  "#1a1c2c",
+                                      "b":  "#8c98a8",
+                                      "s":  "#5d6878",
+                                      "w":  "#eef1f4",
+                                      "d":  "#15171f"
+                                  }
+                  },
+    "whaleshark:1":  {
+                         "rows":  [
+                                      "kk......................kk.......................",
+                                      "kssk....................kssk.....................",
+                                      ".ksssk..................ksssk....................",
+                                      ".kssssk.................kssssk...................",
+                                      "..kssssk................ksssssk..................",
+                                      "...kssssk..............ksssssssskkkkkkkk.........",
+                                      "....kssssk.....kk.kkkkkssssssssssssssskkkk.......",
+                                      ".....kssssk...ksskssssbbbbbwbbbbbbbwbbbbbbbkk....",
+                                      "......ksssk..kssssbbbbwbbbbbbbbwbbbbbbbwbbbbbkk..",
+                                      ".......ksskkkkssssbbbbbbbbwbbbbbbbwbbbbbbbbbbbbk.",
+                                      "........kssssssbbbbbwbbbbbbbbwbbbbbbbdbdbdbbdbbk.",
+                                      ".......ksssssssbbbbbbbbbwbbbbbbbbwbbbdbdbdbbbbbk.",
+                                      "......ksssssssbbbbwbbbbbbbbwbbbbbbbbdbdbdbddddk..",
+                                      ".....kssssskkkkkbbbbbbbhhhhhhhhhhhhhhhdhdhdhhhhhk",
+                                      ".....ksssk.....bbbbbbhhhhhhhhhhhhhhhhhhhhhhhhhhk.",
+                                      "....ksssk......kkkkbbhhhhhhhhhhhhhhhhhhhhhhhhkk..",
+                                      "....kssk...........kkkhhhhhhhhhhksssskhhhhkkk....",
+                                      "...kssk...............kkkkkkkkkkssssskkkkkk......",
+                                      "...kk.........................kssssk.............",
+                                      "............................ksssk................",
+                                      "...........................kkk..................."
+                                  ],
+                         "palette":  {
+                                         "k":  "#1a1c2c",
+                                         "b":  "#3d5a78",
+                                         "s":  "#2a3f57",
+                                         "h":  "#dfe6ea",
+                                         "w":  "#eef4f7",
+                                         "d":  "#121a24"
+                                     }
+                     },
+    "whaleshark:2":  {
+                         "rows":  [
+                                      "kk................................kk.............................",
+                                      "kssk..............................kssk...........................",
+                                      ".ksssk............................ksssk..........................",
+                                      ".kssssk...........................kssssk.........................",
+                                      "..kssssk..........................ksssssk........................",
+                                      "..ksssssk.........................kssssssk.......................",
+                                      "...ksssssk........................ksssssssk......................",
+                                      "...kssssssk......................ksssssssskkkkkkkk...............",
+                                      "....kssssssk........kk.......kkkkssssssssssssssssssskkkkk........",
+                                      ".....kssssssk......kssk.kkkkkssssssssssssssssssssssssssskkk......",
+                                      "......kssssssk....ksssssssssbbwbbbbbbbwbbbbbbbwbbbbbbbbssskk.....",
+                                      ".......kssssskkkkkssssssbbbwbbbbbbbwbbbbbbbwbbbbbbbwbbbbbbbbbkk..",
+                                      "........ksssssssssbbbbwbbbbbbbwbbbbbbbwbbbbbbbwbbbbbbbbbbbbbbbbk.",
+                                      ".........kssssssssbbbbbbbbwbbbbbbbwbbbbbbbwbbbbbbbbdbdbdbbbdbbbk.",
+                                      "........ksssssssssbbbbwbbbbbbbwbbbbbbbwbbbbbbbwbbbbdbdbdbbbbbbbk.",
+                                      ".......kssssssssssbbbbbbbbbwbbbbbbbwbbbbbbbwbbbbbbbdbdbdbbbbbbbk.",
+                                      "......kssssssskkkkkkbbbbbbbbbbbbbwbbbbbbbwbbbbbbbbbbdbdbdbbdddddk",
+                                      ".....kssssssk......bbbbbbbbbbbhhhhhhhhhhhhhhhhhhhhhdhdhdhhhhhhhk.",
+                                      ".....ksssssk.......kkkkkbbbbbbhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhkk..",
+                                      "....ksssssk.............bbbbbhhhhhhhhhhhhhhhhhhhhhhhhhhhhhkkk....",
+                                      "....kssssk..............kkkkkkhhhhhhhhhhhhhksssssk.kkkkkkkk......",
+                                      "...kssssk.....................kkkkkkkkkkkkksssssskk..............",
+                                      "...ksssk................................kssssk...................",
+                                      "...kssk...............................kssssk.....................",
+                                      "...kkk..............................kssssk.......................",
+                                      "...................................kssk..........................",
+                                      "..................................kkk............................"
+                                  ],
+                         "palette":  {
+                                         "k":  "#1a1c2c",
+                                         "b":  "#3d5a78",
+                                         "s":  "#2a3f57",
+                                         "h":  "#dfe6ea",
+                                         "w":  "#eef4f7",
+                                         "d":  "#121a24"
+                                     }
+                     },
+    "whaleshark:3":  {
+                         "rows":  [
+                                      "kk................................kk.............................",
+                                      "kssk..............................kssk...........................",
+                                      ".ksssk............................ksssk..........................",
+                                      ".kssssk...........................kssssk.........................",
+                                      "..kssssk..........................ksssssk........................",
+                                      "..ksssssk.........................kssssssk.......................",
+                                      "...ksssssk........................ksssssssk......................",
+                                      "...kssssssk......................ksssssssskkkkkkkk...............",
+                                      "....kssssssk........kk.......kkkkssssssssssssssssssskkkkk........",
+                                      ".....kssssssk......kssk.kkkkkssssssssssssssssssssssssssskkk......",
+                                      "......kssssssk....ksssssssssbbwbbbbbbbwbbbbbbbwbbbbbbbbssskk.....",
+                                      ".......kssssskkkkkssssssbbbwbbbbbbbwbbbbbbbwbbbbbbbwbbbbbbbbbkk..",
+                                      "........ksssssssssbbbbwbbbbbbbwbbbbbbbwbbbbbbbwbbbbbbbbbbbbbbbbk.",
+                                      ".........kssssssssbbbbbbbbwbbbbbbbwbbbbbbbwbbbbbbbbdbdbdbbbdbbbk.",
+                                      "........ksssssssssbbbbwbbbbbbbwbbbbbbbwbbbbbbbwbbbbdbdbdbbbbbbbk.",
+                                      ".......kssssssssssbbbbbbbbbwbbbbbbbwbbbbbbbwbbbbbbbdbdbdbbbbbbbk.",
+                                      "......kssssssskkkkkkbbbbbbbbbbbbbwbbbbbbbwbbbbbbbbbbdbdbdbbdddddk",
+                                      ".....kssssssk......bbbbbbbbbbbhhhhhhhhhhhhhhhhhhhhhdhdhdhhhhhhhk.",
+                                      ".....ksssssk.......kkkkkbbbbbbhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhkk..",
+                                      "....ksssssk.............bbbbbhhhhhhhhhhhhhhhhhhhhhhhhhhhhhkkk....",
+                                      "....kssssk..............kkkkkkhhhhhhhhhhhhhksssssk.kkkkkkkk......",
+                                      "...kssssk.....................kkkkkkkkkkkkksssssskk..............",
+                                      "...ksssk................................kssssk...................",
+                                      "...kssk...............................kssssk.....................",
+                                      "...kkk..............................kssssk.......................",
+                                      "...................................kssk..........................",
+                                      "..................................kkk............................"
+                                  ],
+                         "palette":  {
+                                         "k":  "#1a1c2c",
+                                         "b":  "#c2cbd3",
+                                         "s":  "#a3aeb8",
+                                         "h":  "#eef1f4",
+                                         "w":  "#ffffff",
+                                         "d":  "#2a303a"
+                                     }
+                     },
+    "mola:2":  {
+                   "rows":  [
+                                ".....kk.............................",
+                                "....kssk............................",
+                                "....ksssk...........................",
+                                "....kshssk..........................",
+                                ".....kshbssk........................",
+                                ".....kshbbssk.......................",
+                                "......kshbbssk......................",
+                                "......kshbbbsk......................",
+                                ".......kshbbskkkkkkkkkkk............",
+                                ".......kshbbbkhhhhhhhhhhkk..........",
+                                "......ksbbbbbhhhhhhhhhhhhkk.........",
+                                "...kkksbbbbbbbhhhhhhhhhhhhhkk.......",
+                                "..ksbbbbbbbbbbhhhhhhhhhhhhhbbk......",
+                                ".kssbbbbbbbbbbbbbbbbbbbbbhhhhbbbbk..",
+                                "kssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbk.",
+                                "kssbbbbbbbbbbbbbbbbbbbbbbbbdwbbbbbk.",
+                                "kssbbbbbbbbbbbbbbbbbbbbbbbbddbbbbbk.",
+                                "kssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbk",
+                                "kssbbbbbbbbbbbbbbbbkkbbbbbbbbbbbbbdk",
+                                "kssbbbbbbbbbbbbbbbksssbbbbbbbbbbbbk.",
+                                "kssbbbbbbbbbbbbbbbksskbbbbbbbbbbbbk.",
+                                "kssbbbbbbbbbbbbbbbbkkbbbbbbbbbbbbk..",
+                                "kssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbk..",
+                                "ksssssswwwwwwwwwwwwwwwwwwwwwwwwk....",
+                                ".ksssswwwwwwwwwwwwwwwwwwwwwwwwk.....",
+                                ".kssswwwwwwwwwwwwwwwwwwwwwwwwwk.....",
+                                "..ksssswwwwwwwwwwwwwwwwwwwwwwk......",
+                                "..ksssssswwwwwwwwwwwwwwwwwwkk.......",
+                                "...kssssssskkwwwwwwwwwwwwkkk........",
+                                "....kkksbbskkkkkkkkkkkkk............",
+                                "......ksbbsk........................",
+                                "......kshbsk........................",
+                                "......ksbbsk........................",
+                                ".....ksbbsk.........................",
+                                ".....ksbbsk.........................",
+                                "....ksbssk..........................",
+                                "....ksssk...........................",
+                                "....kssk............................",
+                                ".....kk............................."
+                            ],
+                   "palette":  {
+                                   "k":  "#1a1c2c",
+                                   "b":  "#9fb0bc",
+                                   "s":  "#687d8c",
+                                   "h":  "#d0dbe2",
+                                   "w":  "#eaf0f3",
+                                   "d":  "#2a3240"
+                               }
+               },
+    "mola:3":  {
+                   "rows":  [
+                                "...kk.....................................",
+                                "...kssk...................................",
+                                "....kssk..................................",
+                                "....kshsk.................................",
+                                ".....kshsk................................",
+                                ".....kshbsk...............................",
+                                "......kshbskkkkkkkkkkkkkkkkk..............",
+                                "......kshbbkhhhhhhhhhhhhhhhhhhkk..........",
+                                "....kkksbbbbhhhhhhhhhhhhhhhhhhhhhhkk......",
+                                "..kssbbbbbbbhhhhhhhhhhhhhhhhhhhhhhhhbbk...",
+                                ".kssbbbbbbbbbbbbbbbbbbbbbbbbbbbbhhhhbbbk..",
+                                "kssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbdwbbbbk.",
+                                "kssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbddbbbbk.",
+                                "kssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbdk",
+                                "kssbbbbbbbbbbbbbbbbbbbbkkbbbbbbbbbbbbbbbk.",
+                                "kssbbbbbbbbbbbbbbbbbbbksssbbbbbbbbbbbbbbk.",
+                                "kssbbbbbbbbbbbbbbbbbbbbkkbbbbbbbbbbbbbbk..",
+                                "ksssswwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk....",
+                                "ksssswwwwwwwwwwwwwwwwwwwdwwwdwwwk.........",
+                                ".kssssswwwwwwwwwwwwwwwwwwwwdwwwdwk........",
+                                ".ksssssswwwwwwwwwwwwwwwwwwwwwwkk..........",
+                                "..ksssssskkwwwwwwwwwwwwkkk................",
+                                "...kkksbbskkkkkkkkkkkk....................",
+                                ".....ksbbsk...............................",
+                                ".....kshbsk...............................",
+                                "....ksbbsk................................",
+                                "....ksbsk.................................",
+                                "...ksssk..................................",
+                                "...kssk...................................",
+                                "...kk....................................."
+                            ],
+                   "palette":  {
+                                   "k":  "#1a1c2c",
+                                   "b":  "#b7c4cc",
+                                   "s":  "#7d8c99",
+                                   "h":  "#e6eef2",
+                                   "w":  "#f5f8fa",
+                                   "d":  "#2a3240"
+                               }
+               },
+    "dolphin:2":  {
+                      "rows":  [
+                                   "......................kk.....................................",
+                                   "......................ksk....................................",
+                                   ".......................kssk..................................",
+                                   "........................ksssk................................",
+                                   ".........................kssssk..............................",
+                                   "..........................ksssssk............................",
+                                   "..........................kssssssk...........................",
+                                   "..............kkkkkkkkkkkksssssssssskkkkkkkkkk...............",
+                                   "kk..........kkksssssssssssssssssssssssssssssssssskkk.........",
+                                   "kssk......kksssssssssssssssssssssssssssssssssssssssskk.......",
+                                   "ksssk...kksssssssssssssssssssssssssssssssssssssssssssk.......",
+                                   ".kssssskksssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbsk.......",
+                                   "..ksssssssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbsk.....",
+                                   "...ksssssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbk....",
+                                   "....kssssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbdbbbbbbbbk....",
+                                   "...ksssssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbkkk..",
+                                   "..kssssssbbbbbwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwbbbbbbk",
+                                   ".ksssssskkkwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddk.",
+                                   "ksssssk....kkkkwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk......",
+                                   "kssk..........kkkkkwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk...........",
+                                   "kk..................kkkkkkkkkkbssssskkkkkkkkkkkk.............",
+                                   "...............................kbsssk........................",
+                                   "..............................kbssk..........................",
+                                   "............................kbssk............................",
+                                   "...........................ksssk.............................",
+                                   "..........................kssk...............................",
+                                   "..........................kk................................."
+                               ],
+                      "palette":  {
+                                      "k":  "#1a1c2c",
+                                      "b":  "#8c98a8",
+                                      "s":  "#5d6878",
+                                      "w":  "#eef1f4",
+                                      "d":  "#15171f"
+                                  }
+                  },
+    "dolphin:3":  {
+                      "rows":  [
+                                   "........................kkk..................................",
+                                   ".....................kksssskk................................",
+                                   "...................kkssssssssskk.............................",
+                                   "................kkksssssssssssssskkk.........................",
+                                   ".............kkkksssssssssssssssssssskkkkkk..................",
+                                   "kk..........kkksssssssssssssssssssssssssssssssssskkk.........",
+                                   "kssk......kkssssssssssssssssssshhhhssssssssssssssssskk.......",
+                                   "ksssk...kksssssssssssssssssssssssssssssssssssssssssssk.......",
+                                   ".kssssskksssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbsk.......",
+                                   "..ksssssssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbsk.........",
+                                   "...ksssssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbk.......",
+                                   "....kssssbbbbbbbbbbbbbhhhbbbbbbbbbbbbbbbbbbbbdbbbbbbbk.......",
+                                   "...ksssssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbkk.....",
+                                   "..kssssssbbbbbwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwbbbbbbbk",
+                                   ".ksssssskkkwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddddk.",
+                                   "ksssssk....kkkkwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk.......",
+                                   "kssk..........kkkkkwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk...........",
+                                   "kk..................kkkkkkkkkkbssssskkkkkkkkkkkk.............",
+                                   "...............................kbsssk........................",
+                                   "..............................kbssk..........................",
+                                   "............................kbssk............................",
+                                   "...........................ksssk.............................",
+                                   "..........................kssk...............................",
+                                   "..........................kk................................."
+                               ],
+                      "palette":  {
+                                      "k":  "#1a1c2c",
+                                      "b":  "#e8c4c4",
+                                      "s":  "#b99aa3",
+                                      "h":  "#9aa0a8",
+                                      "w":  "#f7ecec",
+                                      "d":  "#15171f"
+                                  }
+                  }
+};
 const stageCv = {};
+function stageSize(c, s) {
+  const rows = s === 1 ? JUV[c.id] : s === 3 && MORPH[c.id].px ? MORPH[c.id].px : c.px;
+  return { w: Math.max(...rows.map(r => r.length)), h: rows.length };
+}
 function stageCanvas(c, s) {
   const key = c.id + s; if (stageCv[key]) return stageCv[key];
-  const rows = s === 1 ? JUV[c.id] : s === 3 && MORPH[c.id].px ? MORPH[c.id].px : c.px;
-  const map = { ...(SPECIES_PAL[c.id] || {}), ...(s === 3 ? MORPH[c.id].map : {}) };
+  const art = CREATURE_ART[c.id + ':' + s];
+  const rows = art ? art.rows : s === 1 ? JUV[c.id] : s === 3 && MORPH[c.id].px ? MORPH[c.id].px : c.px;
+  const map = art ? art.palette : { ...PAL, ...(SPECIES_PAL[c.id] || {}), ...(s === 3 ? MORPH[c.id].map : {}) };
   const cv = document.createElement('canvas'); cv.width = Math.max(...rows.map(r => r.length)); cv.height = rows.length;
   const x = cv.getContext('2d');
   rows.forEach((r, j) => [...r].forEach((ch, i) => {
-    if (ch === '.' || !PAL[ch]) return;
-    x.fillStyle = map[ch] || PAL[ch]; x.fillRect(i, j, 1, 1);
+    if (ch === '.' || !(art ? map[ch] : PAL[ch])) return;
+    x.fillStyle = map[ch]; x.fillRect(i, j, 1, 1);
   }));
   return stageCv[key] = cv;
+}
+
+// 小尺寸UI使用由同一張稿整理的縮圖，重建一格外框並保留眼嘴深色點，避免瀏覽器直接丟列。
+const stageThumbs = {};
+function stageThumbnail(c, s, maxW, maxH) {
+  const src = stageCanvas(c, s), art = CREATURE_ART[c.id + ':' + s];
+  if (!art || (src.width <= maxW && src.height <= maxH)) return src;
+  const fit = Math.min(maxW / src.width, maxH / src.height), w = Math.max(1, Math.floor(src.width * fit)), h = Math.max(1, Math.floor(src.height * fit));
+  const key = c.id + ':' + s + ':' + w + 'x' + h;
+  if (stageThumbs[key]) return stageThumbs[key];
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const x = cv.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(src, 0, 0, w, h);
+  const pixels = x.getImageData(0, 0, w, h).data, inside = (i, j) => i >= 0 && j >= 0 && i < w && j < h && pixels[(j * w + i) * 4 + 3] > 0;
+  x.fillStyle = art.palette.k;
+  for (let y = 0; y < h; y++) for (let i = 0; i < w; i++) if (inside(i, y) && [[0,1],[0,-1],[1,0],[-1,0]].some(([dx,dy]) => !inside(i+dx,y+dy))) x.fillRect(i, y, 1, 1);
+  x.fillStyle = art.palette.d;
+  art.rows.forEach((r, y) => [...r].forEach((ch, i) => {
+    if (ch !== 'd') return;
+    const px = Math.min(w - 1, Math.floor((i + .5) * w / src.width)), py = Math.min(h - 1, Math.floor((y + .5) * h / src.height));
+    if ([[0,0],[0,1],[0,-1],[1,0],[-1,0]].every(([dx,dy]) => inside(px+dx,py+dy))) x.fillRect(px, py, 1, 1);
+  }));
+  return stageThumbs[key] = cv;
 }

@@ -483,15 +483,17 @@ const seenStage = sp => Math.max(1, (S.seen && S.seen[sp]) || 1, ...pets(sp).map
 // 三種外觀：幼體用各自的幼體圖（JUV）、成體是原圖、特殊型態換成各自的稀有配色（MORPH）
 const stageUrl = {};
 function stageImg(c, s, scale, sil = false, cls = '') {
-  const key = c.id + s + sil;
+  const logical = stageSize(c, s), dpr = Math.max(1, window.devicePixelRatio || 1);
+  const source = stageThumbnail(c, s, Math.floor(logical.w * scale * dpr), Math.floor(logical.h * scale * dpr));
+  const key = c.id + s + sil + ':' + source.width + 'x' + source.height;
   if (!stageUrl[key]) {
-    const src = stageCanvas(c, s), cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
+    const src = source, cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
     const x = cv.getContext('2d'); x.drawImage(src, 0, 0);
     if (sil) { x.globalCompositeOperation = 'source-in'; x.fillStyle = '#1b3a60'; x.fillRect(0, 0, cv.width, cv.height); }
-    stageUrl[key] = { src: cv.toDataURL(), w: cv.width, h: cv.height };
+    stageUrl[key] = { src: cv.toDataURL(), w: stageSize(c, s).w, h: stageSize(c, s).h };
   }
   const u = stageUrl[key];
-  return `<img class="sprite ${cls}" src="${u.src}" width="${u.w * scale}" height="${u.h * scale}" alt="">`;
+  return `<img class="sprite ${cls}" style="object-fit:contain" src="${u.src}" width="${u.w * scale}" height="${u.h * scale}" alt="">`;
 }
 
 function seaPageHeader(title, meta, actions) {
@@ -501,8 +503,8 @@ function dex(D) {
   return `<section class="px sea-collection">${seaPageHeader('水下生物圖鑑', `<div class="sea-page-meta">${Object.keys(D.col).length} / ${CREATURES.length} 種</div>`, '<button class="ghost" data-act="tankview" data-v="">返回大海</button>')}
     ${RARITY.map((R, r) => `<div class="grp row"><span class="rar" style="background:${R.color}">${R.name}</span></div>
       <div class="dex">${CREATURES.filter(c => c.r === r).map(c => D.col[c.id]
-        ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${stageImg(c, seenStage(c.id), Math.min(5, Math.floor(100 / stageCanvas(c, seenStage(c.id)).width)))}<div class="nm">${c.name}</div><small>${pets(c.id).length} 隻</small></div>`
-        : `<div class="cell no">${img(c.px, Math.min(5, Math.floor(100 / Math.max(...c.px.map(r => r.length)))), true)}<div class="nm dim">？？？</div><small>&nbsp;</small></div>`).join('')}</div>`).join('')}</section>`;
+        ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${stageImg(c, seenStage(c.id), Math.min(5, Math.floor(100 / stageSize(c, seenStage(c.id)).w)))}<div class="nm">${c.name}</div><small>${pets(c.id).length} 隻</small></div>`
+        : `<div class="cell no">${stageImg(c, 2, Math.min(5, Math.floor(100 / stageSize(c, 2).w)), true)}<div class="nm dim">？？？</div><small>&nbsp;</small></div>`).join('')}</div>`).join('')}</section>`;
 }
 
 /* ========= 水族箱小遊戲 ========= */
@@ -631,7 +633,7 @@ function tankEditor(D) {
       const P = pets(c.id), numbers = new Map(S.logs.filter(l => l.drop === c.id).map((l, i) => [l.id, i + 1]));
       return `<div class="tset"><div class="row"><b class="sp">${c.name}</b></div>
         ${P.map(p => `<div class="entry" data-pet="${esc(p.id)}" data-species="${c.id}" data-location="${shown.has(p.id) ? 'shown' : 'stored'}" data-growth="${p.fed < GROW[2] ? 'growing' : 'complete'}"><label class="row sp tank-choice"><input type="checkbox" data-act="intank" data-v="${esc(p.id)}" ${draft.has(p.id) ? 'checked' : ''} ${!draft.has(p.id) && draft.size >= TANK_LIMIT ? 'disabled' : ''}>
-          ${stageImg(c, stageOf(p.fed), 3)}<small><b>${esc(petName(p.id) || c.name + ' ' + numbers.get(p.id) + ' 號')}</b><span class="tank-pet-meta" title="吃了 ${p.fed} 顆">${stageName(c, stageOf(p.fed))}<span class="tank-pet-status">・${shown.has(p.id) ? '海中' : '收藏'}${draft.has(p.id) !== shown.has(p.id) ? draft.has(p.id) ? ' → 海中' : ' → 收藏' : ''}</span></span><span class="tank-pet-growth">${growthText(p.fed)}</span></small></label>
+          ${stageImg(c, stageOf(p.fed), Math.min(3, 54 / stageSize(c, stageOf(p.fed)).w))}<small><b>${esc(petName(p.id) || c.name + ' ' + numbers.get(p.id) + ' 號')}</b><span class="tank-pet-meta" title="吃了 ${p.fed} 顆">${stageName(c, stageOf(p.fed))}<span class="tank-pet-status">・${shown.has(p.id) ? '海中' : '收藏'}${draft.has(p.id) !== shown.has(p.id) ? draft.has(p.id) ? ' → 海中' : ' → 收藏' : ''}</span></span><span class="tank-pet-growth">${growthText(p.fed)}</span></small></label>
           <div class="tank-pet-actions"><button class="ghost" data-act="petname" data-v="${esc(p.id)}">${petName(p.id) ? '改名' : '取名'}</button><button class="ghost" data-act="release" data-v="${esc(p.id)}">放走</button></div>
           ${UI.nameEdit === p.id ? `<div class="pname"><input data-nf="${esc(p.id)}" value="${esc(petName(p.id))}" maxlength="${PET_NAME_MAX}" placeholder="名字自動儲存" aria-label="${esc(c.name)}的名字"><button class="pri" data-act="petnamedone">完成</button></div>` : ''}</div>`).join('')}</div>`;
     }).join('') || '<div class="dim">還沒有生物，到商店買寶箱吧。</div>'}</section>`;
@@ -747,7 +749,11 @@ function tankStart() {
     const sc = TANK_SPECIES[f.c.id][0] * STAGE_SCALE[st - 1];
     // 與尺寸預覽一致：保留原本的物種、型態大小，再將手機版寬高各縮小 20%。
     const sizeScale = cv.clientWidth <= 600 ? .8 : 1;
-    f.w = Math.round(f.s.width * sc) * sizeScale; f.h = Math.round(f.s.height * sc) * sizeScale;
+    const logical = stageSize(f.c, st);
+    f.w = Math.round(logical.w * sc) * sizeScale; f.h = Math.round(logical.h * sc) * sizeScale;
+    f.art = !!CREATURE_ART[f.c.id + ':' + st];
+    const fit = Math.min(f.w / f.s.width, f.h / f.s.height);
+    f.drawW = f.art ? f.s.width * fit : f.w; f.drawH = f.art ? f.s.height * fit : f.h;
   };
   TANK.fish = [];
   const residents = new Set(tankResidents().map(l => l.id));
@@ -864,7 +870,11 @@ function tankStart() {
     // 仍依原本大小順序繪圖，小魚留在前景。
     for (const f of TANK.fish) {
       x.save();
-      if (f.vx < 0) { x.translate(rp(f.x + f.w), rp(f.y)); x.scale(-1, 1); x.drawImage(f.s, 0, 0, f.w, f.h); }
+      if (f.vx < 0) {
+        x.translate(rp(f.x + f.w), rp(f.y)); x.scale(-1, 1);
+        if (f.art) x.drawImage(f.s, rp((f.w - f.drawW) / 2), rp((f.h - f.drawH) / 2), rp(f.drawW), rp(f.drawH));
+        else x.drawImage(f.s, 0, 0, f.w, f.h);
+      } else if (f.art) x.drawImage(f.s, rp(f.x + (f.w - f.drawW) / 2), rp(f.y + (f.h - f.drawH) / 2), rp(f.drawW), rp(f.drawH));
       else x.drawImage(f.s, rp(f.x), rp(f.y), f.w, f.h);
       x.restore();
     }

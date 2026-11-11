@@ -892,3 +892,21 @@ test('海鰻：各型態貼海底、重建維持位置，只吃接近沙底的�
     I.ev('window.requestAnimationFrame=window.__realRAF;save()');I.check('海鰻海底');I.destroy();
   }
 });
+
+test('生物新稿：三家族完整型態共用圖，保留手機桌面佔位與吃食框', async () => {
+  const expected={mola:[[16,14],[29,29],[32,32]],dolphin:[[17,7],[30,14],[33,16]],whaleshark:[[31,13],[47,23],[51,26]]};
+  for(const width of [393,1100]){
+    const I=await boot({state:base(...drops(['mola','dolphin','whaleshark','clown'])),width,height:771});await I.dismiss();await I.tab('tank');
+    for(const fed of [0,10,30]){
+      const result=I.ev(`(()=>{S.fed=S.fed||{};for(const f of TANK.fish)S.fed[f.key]=${fed};save();tankStart();cancelAnimationFrame(TANK.raf);return TANK.fish.filter(f=>['mola','dolphin','whaleshark'].includes(f.c.id)).map(f=>({id:f.c.id,stage:f.st,w:f.w,h:f.h,dw:f.drawW,dh:f.drawH,sw:f.s.width,sh:f.s.height,fit:f.drawW/f.drawH,raw:f.s.width/f.s.height}))})()`);
+      eq(result.length,3,'三家族都展示');ok(I.ev("document.getElementById('tank').getContext('2d').imageSmoothingEnabled===false"),'海中關閉像素平滑');
+      for(const f of result){const scale=width<=600?.8:1,box=expected[f.id][f.stage-1];eq(f.w,box[0]*scale,f.id+'保留原本吃食寬');eq(f.h,box[1]*scale,f.id+'保留原本吃食高');ok(f.dw<=f.w+1e-8&&f.dh<=f.h+1e-8,'新圖完整在原框內');ok(Math.abs(f.fit-f.raw)<1e-8,'新輪廓不壓扁');ok(f.dw*3>=f.sw-1e-8&&f.dh*3>=f.sh-1e-8,'DPR1新圖不縮小丟失像素');}
+    }
+    const art=I.ev(`(()=>{const results=[];for(const id of ['mola','dolphin','whaleshark'])for(const stage of [1,2,3]){const c=CR[id],cv=stageCanvas(c,stage),a=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;let count=0;for(let i=3;i<a.length;i+=4)if(a[i])count++;const v=CREATURE_ART[id+':'+stage],declared=v.rows.join('').split('').filter(ch=>ch!=='.').length,el=document.createElement('div');el.innerHTML=stageImg(c,stage,3);const im=el.firstElementChild;results.push({count,declared,src:im.getAttribute('src')===stageThumbnail(c,stage,Math.floor(stageSize(c,stage).w*3*devicePixelRatio),Math.floor(stageSize(c,stage).h*3*devicePixelRatio)).toDataURL(),fit:im.style.objectFit,w:im.width,expected:stageSize(c,stage).w*3});}return results})()`);
+    for(const a of art){eq(a.count,a.declared,'所有像素色碼都有畫出');ok(a.src,'UI與海中共用同一貼圖');eq(a.fit,'contain','UI不扭曲');eq(a.w,a.expected,'UI不因解析度放大');}
+    ok(I.ev(`Object.values(CREATURE_ART).every(v=>v.rows.every(r=>r.length===v.rows[0].length)&&v.rows[0].includes('k')&&v.rows[v.rows.length-1].includes('k')&&v.rows.some(r=>r[0]!=='.')&&v.rows.some(r=>r[r.length-1]!=='.'))`),'新圖列寬一致且四邊無透明外列');
+    ok(I.ev(`(()=>{for(const c of CREATURES.filter(c=>!['mola','dolphin','whaleshark'].includes(c.id)))for(const st of [1,2,3]){const rows=st===1?JUV[c.id]:st===3&&MORPH[c.id].px?MORPH[c.id].px:c.px,cv=document.createElement('canvas');cv.width=Math.max(...rows.map(r=>r.length));cv.height=rows.length;const x=cv.getContext('2d'),map={...SPECIES_PAL[c.id],...(st===3?MORPH[c.id].map:{})};rows.forEach((r,y)=>[...r].forEach((ch,i)=>{if(ch==='.'||!PAL[ch])return;x.fillStyle=map[ch]||PAL[ch];x.fillRect(i,y,1,1);}));if(cv.toDataURL()!==stageCanvas(c,st).toDataURL())return false;}return true;})()`),'其餘17種51型態像素與舊繪法完全一致');
+    ok(I.ev(`(()=>{for(const c of [CR.mola,CR.dolphin,CR.whaleshark])for(const st of [1,2,3])for(const scale of [2,3,5,10,Math.min(3,54/stageSize(c,st).w)]){const box=stageSize(c,st),cv=stageThumbnail(c,st,Math.floor(box.w*scale),Math.floor(box.h*scale));if(cv.width>box.w*scale+1e-8||cv.height>box.h*scale+1e-8)return false;}return true;})()`),'DPR1所有實際UI倍率含54px管理圖不會再被瀏覽器縮小');
+    I.check('高解析度生物整合');I.destroy();
+  }
+});
