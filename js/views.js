@@ -755,8 +755,11 @@ function tankStart() {
         const chaseScale = [1, .85, .75][stageOf(fedOf(f.key)) - 1];
         const dx = food.x - (f.x + f.w / 2), sp = Math.max(.12, sp0 * 1.8) * chaseScale;
         f.tx = null; f.rest = 0;   // 吃完再重新找地方游
-        const dy = food.y - (f.y + f.h / 2), ease = Math.min(1, Math.hypot(dx, dy) / 10);
-        steer(f, Math.sign(dx) * sp * ease, f.ground ? 0 : Math.sign(dy) * sp * .8 * ease, dt, !f.ground);
+        const dy = food.y - (f.y + f.h / 2);
+        // 各軸接近對齊時漸減推力，避免越過中線反覆掉頭；遠處保留原本斜向追食速度。
+        const ease = Math.min(1, Math.hypot(dx, dy) / 10);
+        const sx = dx / Math.max(4, Math.abs(dx)), sy = dy / Math.max(4, Math.abs(dy));
+        steer(f, sx * sp * ease, f.ground ? 0 : sy * sp * .8 * ease, dt, !f.ground);
         if (f.ground) f.vx = Math.abs(dx) > .5 ? Math.sign(dx) * sp0 : f.vx;
         if (eats(f, food)) {
           TANK.food.splice(TANK.food.indexOf(food), 1); SFX.eat();

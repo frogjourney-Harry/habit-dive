@@ -706,3 +706,57 @@ test('生物篩選：同步重載保留篩選、失效物種與最後放走項�
   ok(I.$('.tank-filters').hidden && I.has('還沒有生物'), '收藏全空時收起篩選並保留空收藏提示');
   I.check('篩選資料重載'); I.destroy();
 });
+
+test('追食方向：上下對齊不左右抽動，斜向與海底仍能吃到', async () => {
+  const I=await boot({state:base(...drops(['clown','star'])),width:393,height:771}); await I.dismiss(); await I.tab('tank');
+  I.ev(`cancelAnimationFrame(TANK.raf); window.__realRAF=requestAnimationFrame; window.requestAnimationFrame=cb=>{window.__step=cb;return 0}; tankStart(); window.__realSteer=steer; window.__want=[]; steer=(...a)=>{window.__want.push({key:a[0].key,x:a[1],y:a[2]});return window.__realSteer(...a)};`);
+  const trace=I.ev(`(()=>{
+    TANK.fish=TANK.fish.filter(f=>f.c.id==='clown'); const f=TANK.fish[0];
+    f.x=40;f.y=f.baseY=100;f.vx=.4;f.mx=.08;f.my=0;
+    const targetX=f.x+f.w/2+.001, start=performance.now(), positions=[];let flips=0,lastSign=1;
+    for(let i=1;i<=360;i++){
+      TANK.food=[{x:targetX,y:f.y+f.h/2-60,vy:0,age:0}];
+      window.__step(start+i*16.7);
+      if(i===240)lastSign=Math.sign(f.vx);
+      if(i>240){positions.push(f.x+f.w/2);const sign=Math.sign(f.vx);if(sign!==lastSign)flips++;lastSign=sign;}
+    }
+    return {want:window.__want[0],span:Math.max(...positions)-Math.min(...positions),flips};
+  })()`);
+  ok(Math.abs(trace.want.x)<.001 && trace.want.y<0, '水平差極小時主要垂直追食，不以滿速左右衝');
+  ok(trace.span<.1, '後段水平漂移小於0.3個螢幕像素，範圍='+trace.span);
+  eq(trace.flips,0,'上下對齊後不反覆翻轉朝向');
+  // 真實幀向斜下方落點靠攏，最終碰撞仍吃到，不只讓水平速度變成零。
+  const ate=I.ev(`(()=>{
+    const f=TANK.fish[0];f.x=20;f.y=f.baseY=20;f.mx=f.my=0;f.vx=.4;
+    const before=fedOf(f.key);TANK.food=[{x:60,y:80,vy:0,age:0}];const start=performance.now()+7000;
+    for(let i=1;i<=800 && TANK.food.length;i++)window.__step(start+i*16.7);
+    return fedOf(f.key)>before;
+  })()`); ok(ate,'斜向追食仍能吃到');
+  I.ev(`steer=window.__realSteer; tankStart(); TANK.fish=TANK.fish.filter(f=>f.ground); const f=TANK.fish[0];f.x=20;f.y=f.baseY=TANK.floorY-f.h+2;f.vx=.1;f.mx=f.my=0;TANK.food=[{x:55,y:TANK.floorY-2,vy:0,age:0}];window.__groundBefore=fedOf(f.key);const start=performance.now()+22000;for(let i=1;i<=1000&&TANK.food.length;i++)window.__step(start+i*16.7);`);
+  ok(I.ev('fedOf(TANK.fish[0].key)>window.__groundBefore'),'海底生物仍沿水平方向吃到沉底飼料');
+  I.ev('window.requestAnimationFrame=window.__realRAF; save();'); I.check('追食穩定'); I.destroy();
+});
+
+test('追食落點：水母與魚上下對齊仍能吃到下沉飼料，遠處斜向保留原速', async () => {
+  for (const species of ['clown','jelly']) {
+    const I=await boot({state:base(...drops([species])),width:393,height:771}); await I.dismiss(); await I.tab('tank');
+    const result=I.ev(`(()=>{
+      cancelAnimationFrame(TANK.raf);const raf=requestAnimationFrame;window.requestAnimationFrame=cb=>{window.__step=cb;return 0};tankStart();
+      const f=TANK.fish[0];f.x=40;f.y=f.baseY=90;f.vx=.4;f.mx=f.my=0;
+      const before=fedOf(f.key), x=f.x+f.w/2;TANK.food=[{x:x+.001,y:20,vy:.25,age:0}];const start=performance.now();let flips=0,last=Math.sign(f.vx);
+      for(let i=1;i<=600&&TANK.food.length;i++){window.__step(start+i*16.7);if(last!==Math.sign(f.vx))flips++;last=Math.sign(f.vx);}
+      const eaten=fedOf(f.key)>before;
+      const afterEating=Math.abs(f.vx);TANK.food=[];
+      for(let i=601;i<=660;i++)window.__step(start+i*16.7);
+      const afterWander=Math.abs(f.vx);
+      const realSteer=steer;let want;steer=(...a)=>{want=[a[1],a[2]];return realSteer(...a)};
+      f.x=10;f.y=f.baseY=20;f.vx=.4;f.mx=f.my=0;TANK.food=[{x:100,y:100,vy:0,age:0}];window.__step(start+12000);
+      steer=realSteer;window.requestAnimationFrame=raf;
+      return {eaten,flips,want,afterEating,afterWander};
+    })()`);
+    ok(result.eaten, species+'能吃到實際下沉的飼料'); eq(result.flips,0,species+'到吃到為止不反覆水平翻轉');
+    ok(Math.abs(result.afterEating-.4)<1e-8 && Math.abs(result.afterWander-.4)<1e-8, '吃完再巡游不降低原本基準速度');
+    ok(Math.abs(result.want[0]-.72)<1e-8 && Math.abs(result.want[1]-.576)<1e-8,'遠處斜向維持原本各軸速度');
+    I.ev('save()'); I.check('實際下沉追食'); I.destroy();
+  }
+});
