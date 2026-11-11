@@ -35,6 +35,7 @@ function render() {
   document.getElementById('main').innerHTML = ({ today, quest: quests, tank, shop, log, about })[UI.tab](D);
   document.body.classList.toggle('sea-on', seaOn()); document.documentElement.classList.toggle('sea-on', seaOn());
   if (UI.tab === 'tank') { tankStart(); if (UI.tankEdit) applyTankFilters(); }
+  if (UI.sheet?.tankFilter) renderSheet();
   for (const i of document.querySelectorAll('#main textarea, #main input:not([type]), #main input[type=text], #sheet input:not([type]), #sheet input[type=text]')) { i.setAttribute('autocomplete', 'off'); i.setAttribute('autocapitalize', 'off'); i.setAttribute('spellcheck', 'false'); }
   // 不是按鈕的可點元素（圖鑑格子、寶箱名稱、任務名稱…）：讓鍵盤和螢幕閱讀器也用得到
   for (const e of document.querySelectorAll('#main [data-act]')) if (!e.matches('button, input, select, a, [tabindex]')) { e.setAttribute('role', 'button'); e.setAttribute('tabindex', '0'); }
@@ -334,8 +335,33 @@ function exText(e) {
 }
 function renderSheet() {
   const ov = document.getElementById('sheetov'), el = document.getElementById('sheet');
+  const filter = UI.sheet?.tankFilter;
+  if (!filter) { delete el.dataset.filterSignature; ov.removeAttribute('aria-labelledby'); }
+  ov.classList.toggle('filter-picker', Boolean(filter));
+  for (const button of document.querySelectorAll('[data-tank-filter]')) button.setAttribute('aria-expanded', String(button.dataset.tankFilter === filter));
   if (!UI.sheet) { ov.classList.add('hidden'); return; }
   ov.classList.remove('hidden');
+  if (filter) {
+    if (!UI.tankEdit || !TANK_FILTER_LABELS[filter] || !tankOwned().length) { UI.sheet = null; renderSheet(); return; }
+    const selected = UI.tankFilters?.[filter] || '';
+    const options = tankFilterOptions(filter);
+    const signature = JSON.stringify([filter, selected, options.map(([value, label]) => [value, label, filter === 'species' && value ? seenStage(value) : 0])]);
+    if (el.dataset.filterSignature === signature) return; // 背景重畫不重建相同選項，保留焦點與捲動。
+    const previous = el.dataset.filterSignature, active = document.activeElement;
+    const focusedValue = active?.dataset.act === 'tankfilterpick' ? active.dataset.v : null;
+    const closeFocused = active?.dataset.act === 'sheetclose';
+    const scroll = el.querySelector('.filter-options')?.scrollTop || 0;
+    el.style.textAlign = '';
+    el.innerHTML = `<div class="filter-picker-head"><h2 id="tankFilterTitle">選擇${TANK_FILTER_LABELS[filter]}</h2><button class="ghost" data-act="sheetclose" aria-label="關閉篩選選單">✕</button></div>
+      <div class="filter-options" role="group" aria-label="${TANK_FILTER_LABELS[filter]}（單選）">${options.map(([value, label]) => `<button class="filter-option" data-act="tankfilterpick" data-v="${esc(value)}" aria-pressed="${value === selected}">${filter === 'species' ? `<span class="filter-option-icon">${value ? tankFilterIcon(value) : '▦'}</span>` : ''}<span class="sp">${esc(label)}</span><span class="filter-option-check" aria-hidden="true">${value === selected ? '✓' : ''}</span></button>`).join('')}</div>`;
+    el.dataset.filterSignature = signature;
+    ov.setAttribute('aria-labelledby', 'tankFilterTitle');
+    syncDialogFocus();
+    const retained = previous && (closeFocused ? el.querySelector('[data-act=sheetclose]') : [...el.querySelectorAll('[data-act=tankfilterpick]')].find(button => button.dataset.v === focusedValue));
+    if (retained) { retained.focus({ preventScroll: true }); el.querySelector('.filter-options').scrollTop = scroll; }
+    else el.querySelector('[aria-pressed="true"]')?.focus();
+    return;
+  }
   if (UI.sheet.creature) {   // 圖鑑放大：介紹、三種成長外觀、擁有幾隻
     const c = CR[UI.sheet.creature], R = RARITY[c.r], P = pets(c.id), seen = seenStage(c.id);
     const big = Math.max(3, Math.min(8, Math.floor(110 / Math.max(...c.px.map(r => r.length)))));
@@ -569,6 +595,18 @@ function tankFeedHTML() {
   const f = freeLeft(), b = S.feed || 0;
   return `${img(SHRIMP, 2, false, 'feedic')}<span class="fpills"><span class="fpill free${f ? '' : ' out'}" title="今天免費的飼料，每天 ${FEED.free} 顆">今日免費 ${f}/${FEED.free}</span><span class="fpill paid" title="用金幣買的飼料">已購 ${b}</span></span>`;
 }
+const TANK_FILTER_LABELS = { location: '位置', growth: '成長', species: '物種' };
+function tankFilterOptions(key) {
+  if (key === 'location') return [['', '全部位置'], ['shown', '展示中'], ['stored', '收藏中']];
+  if (key === 'growth') return [['', '全部成長'], ['growing', '成長中'], ['complete', '成長完成']];
+  if (key === 'species') return [['', '全部物種'], ...CREATURES.filter(c => pets(c.id).length).map(c => [c.id, c.name])];
+  return [];
+}
+function tankFilterIcon(id) {
+  const c = CR[id], stage = seenStage(id), sprite = stageCanvas(c, stage);
+  const scale = Math.max(1, Math.min(3, Math.floor(36 / Math.max(sprite.width, sprite.height))));
+  return stageImg(c, stage, scale);
+}
 function tankEditor(D) {
   const owned = CREATURES.filter(c => pets(c.id).length), draft = new Set(tankSelectionDraft());
   const shown = new Set(tankResidents().map(l => l.id));
@@ -576,9 +614,7 @@ function tankEditor(D) {
     <p class="mini tank-draft-hint">${draft.size >= TANK_LIMIT ? '已選滿，先取消一隻再替換。' : '勾選生物，按完成儲存。'}</p>
     ${UI.tankDraftNotice ? `<div class="warn" role="status">${UI.tankDraftNotice}</div>` : ''}
     <div class="tank-filters" role="group" aria-label="篩選生物">
-      <select data-tank-filter="location" aria-label="位置"><option value="">位置：全部</option><option value="shown">展示中</option><option value="stored">收藏中</option></select>
-      <select data-tank-filter="growth" aria-label="成長"><option value="">成長：全部</option><option value="growing">成長中</option><option value="complete">成長完成</option></select>
-      <select data-tank-filter="species" aria-label="物種"><option value="">物種：全部</option>${owned.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select>
+      ${Object.entries(TANK_FILTER_LABELS).map(([key, label]) => `<button type="button" data-tank-filter="${key}" data-act="tankfilteropen" data-v="${key}" aria-label="${label}：全部" aria-haspopup="dialog" aria-expanded="false" aria-controls="sheetov"><span class="filter-value">${label}：全部</span></button>`).join('')}
     </div>
     <div class="tank-filter-result"><span role="status" aria-live="polite"></span><button class="ghost" data-act="tankfilterclear" hidden>清除篩選</button></div>
     ${owned.map(c => {
@@ -593,11 +629,13 @@ function tankEditor(D) {
 function applyTankFilters() {
   const root = document.querySelector('.tank-manager'); if (!root) return;
   const filters = UI.tankFilters || (UI.tankFilters = { location: '', growth: '', species: '' });
-  for (const select of root.querySelectorAll('[data-tank-filter]')) {
-    const key = select.dataset.tankFilter;
-    if (![...select.options].some(o => o.value === filters[key])) filters[key] = '';
-    select.value = filters[key];
-    select.classList.toggle('filtered', Boolean(filters[key]));
+  for (const button of root.querySelectorAll('[data-tank-filter]')) {
+    const key = button.dataset.tankFilter, options = tankFilterOptions(key);
+    if (!options.some(([value]) => value === filters[key])) filters[key] = '';
+    const label = `${TANK_FILTER_LABELS[key]}：${filters[key] ? options.find(([value]) => value === filters[key])[1] : '全部'}`;
+    button.value = filters[key]; button.querySelector('.filter-value').textContent = label;
+    button.setAttribute('aria-label', label);
+    button.classList.toggle('filtered', Boolean(filters[key]));
   }
   const rows = [...root.querySelectorAll('[data-pet]')]; let count = 0;
   for (const row of rows) {

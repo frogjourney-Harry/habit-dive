@@ -242,6 +242,14 @@ document.addEventListener('click', async e => {
     case 'predrop': cloudDropPre(); break;
     case 'tankedit': beginTankSelection(); render(); break;
     case 'tankfilterclear': UI.tankFilters = { location: '', growth: '', species: '' }; applyTankFilters(); document.querySelector('[data-tank-filter]')?.focus(); break;
+    case 'tankfilteropen':
+      if (UI.tankEdit && TANK_FILTER_LABELS[v]) { b.focus(); UI.sheet = { tankFilter: v }; renderSheet(); }
+      break;
+    case 'tankfilterpick': {
+      const key = UI.sheet?.tankFilter;
+      if (!UI.tankEdit || !key || !tankFilterOptions(key).some(([value]) => value === v)) break;
+      UI.tankFilters[key] = v; applyTankFilters(); UI.sheet = null; renderSheet(); break;
+    }
     case 'seamanage': UI.opened = false; UI.tab = 'tank'; UI.tankView = ''; beginTankSelection(); render(); nextChest(); break;
     case 'tankview': UI.tankView = v; render(); window.scrollTo(0, 0); break;
     // 任務頁點未完成的任務：跳到「今日」頁對應的區塊（六件事、習慣、番茄鐘）
@@ -413,12 +421,12 @@ document.addEventListener('pointerup', () => {
 });
 document.addEventListener('pointercancel', () => { if (DRAG.i == null) return; DRAG.i = null; render(); });   // 系統中斷了手勢：放棄這次拖曳，回到原位
 document.addEventListener('click', e => { if (performance.now() < DRAG.until && eventElement(e)?.closest('.prow .no')) { DRAG.until = 0; e.stopPropagation(); e.preventDefault(); } }, true);
-// 篩選只切換可見性，保留輸入與全部展示草稿。
-document.addEventListener('change', e => {
-  const key = e.target.dataset.tankFilter;
-  if (!UI.tankEdit || !['location', 'growth', 'species'].includes(key)) return;
-  (UI.tankFilters || (UI.tankFilters = {}))[key] = e.target.value;
-  applyTankFilters();
+// 篩選選項用方向鍵移動焦點，Enter／空白確認；Escape沿用既有彈窗關閉。
+document.addEventListener('keydown', e => {
+  if (!UI.sheet?.tankFilter || !e.target.matches('.filter-option')) return;
+  const options = [...document.querySelectorAll('#sheet .filter-option')], index = options.indexOf(e.target);
+  const next = e.key === 'Home' ? 0 : e.key === 'End' ? options.length - 1 : ['ArrowDown','ArrowRight'].includes(e.key) ? (index + 1) % options.length : ['ArrowUp','ArrowLeft'].includes(e.key) ? (index + options.length - 1) % options.length : -1;
+  if (next >= 0) { e.preventDefault(); options[next].focus(); }
 });
 // 輸入框只存資料不重畫，避免打字時失去焦點
 document.addEventListener('input', e => {
