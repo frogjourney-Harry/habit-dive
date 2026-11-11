@@ -243,12 +243,12 @@ document.addEventListener('click', async e => {
     case 'tankedit': beginTankSelection(); render(); break;
     case 'tankfilterclear': UI.tankFilters = { location: '', growth: '', species: '' }; applyTankFilters(); document.querySelector('[data-tank-filter]')?.focus(); break;
     case 'tankfilteropen':
-      if (UI.tankEdit && TANK_FILTER_LABELS[v]) { b.focus(); UI.sheet = { tankFilter: v }; renderSheet(); }
+      if (UI.tankEdit && TANK_FILTER_LABELS[v]) { b.focus(); openTankFilter(v); }
       break;
     case 'tankfilterpick': {
-      const key = UI.sheet?.tankFilter;
+      const key = b.dataset.key;
       if (!UI.tankEdit || !key || !tankFilterOptions(key).some(([value]) => value === v)) break;
-      UI.tankFilters[key] = v; applyTankFilters(); UI.sheet = null; renderSheet(); break;
+      UI.tankFilters[key] = v; applyTankFilters(); closeTankFilter(true); break;
     }
     case 'seamanage': UI.opened = false; UI.tab = 'tank'; UI.tankView = ''; beginTankSelection(); render(); nextChest(); break;
     case 'tankview': UI.tankView = v; render(); window.scrollTo(0, 0); break;
@@ -421,13 +421,23 @@ document.addEventListener('pointerup', () => {
 });
 document.addEventListener('pointercancel', () => { if (DRAG.i == null) return; DRAG.i = null; render(); });   // 系統中斷了手勢：放棄這次拖曳，回到原位
 document.addEventListener('click', e => { if (performance.now() < DRAG.until && eventElement(e)?.closest('.prow .no')) { DRAG.until = 0; e.stopPropagation(); e.preventDefault(); } }, true);
-// 篩選選項用方向鍵移動焦點，Enter／空白確認；Escape沿用既有彈窗關閉。
+// 基本下拉清單：不開彈窗，方向鍵移焦點，Escape／Tab收起。
 document.addEventListener('keydown', e => {
-  if (!UI.sheet?.tankFilter || !e.target.matches('.filter-option')) return;
-  const options = [...document.querySelectorAll('#sheet .filter-option')], index = options.indexOf(e.target);
+  const target = eventElement(e), trigger = target?.closest('[data-tank-filter]');
+  if (trigger && ['ArrowDown','ArrowUp'].includes(e.key)) {
+    e.preventDefault(); if (UI.tankFilterOpen !== trigger.dataset.tankFilter) openTankFilter(trigger.dataset.tankFilter);
+    const options = [...document.querySelectorAll(`[data-filter-menu="${UI.tankFilterOpen}"] button`)];
+    (e.key === 'ArrowUp' ? options.at(-1) : options[0])?.focus(); return;
+  }
+  if (!UI.tankFilterOpen) return;
+  if (e.key === 'Escape' || e.key === 'Tab') { if (e.key === 'Escape') e.preventDefault(); closeTankFilter(true); return; }
+  if (!target?.closest('.filter-menu')) return;
+  const options = [...document.querySelectorAll(`[data-filter-menu="${UI.tankFilterOpen}"] button`)], index = options.indexOf(target.closest('button'));
   const next = e.key === 'Home' ? 0 : e.key === 'End' ? options.length - 1 : ['ArrowDown','ArrowRight'].includes(e.key) ? (index + 1) % options.length : ['ArrowUp','ArrowLeft'].includes(e.key) ? (index + options.length - 1) % options.length : -1;
   if (next >= 0) { e.preventDefault(); options[next].focus(); }
 });
+document.addEventListener('click', e => { if (UI.tankFilterOpen && !eventElement(e)?.closest('.tank-filter-control')) closeTankFilter(); });
+document.addEventListener('focusin', e => { if (UI.tankFilterOpen && !eventElement(e)?.closest('.tank-filter-control')) closeTankFilter(); });
 // 輸入框只存資料不重畫，避免打字時失去焦點
 document.addEventListener('input', e => {
   const el = e.target, i = el.dataset.i;

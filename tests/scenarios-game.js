@@ -6,7 +6,7 @@ const coinLog = n => ({ id: 'coin' + n, t: 2, d: '2026-10-02', k: 'bonus', c: n,
 function stubRandom(I, seq, rest = 0.5) { const orig = I.win.Math.random; I.win.Math.random = () => seq.length ? seq.shift() : rest; return () => { I.win.Math.random = orig; }; }
 async function chooseTankFilter(I, key, value) {
   await I.click(`[data-tank-filter="${key}"]`);
-  await I.click(`#sheet [data-act=tankfilterpick][data-v="${value}"]`);
+  await I.click(`[data-filter-menu="${key}"] [data-act=tankfilterpick][data-v="${value}"]`);
 }
 
 test('番茄鐘：開始→專注畫面蓋住遊戲→25 分鐘拿獎勵→第二次沒有', async () => {
@@ -765,36 +765,38 @@ test('追食落點：水母與魚上下對齊仍能吃到下沉飼料，遠處�
   }
 });
 
-test('生物篩選面板：展開樣式、選取、Escape與焦點返回', async () => {
+test('生物基本下拉：錨定展開、選取、鍵盤與點外收起', async () => {
   const I=await boot({state:base(...drops(['clown','star'])),width:393,height:771});await I.dismiss();await I.tab('tank');await I.click('[data-act=tankedit]');
-  const trigger=I.$('[data-tank-filter=location]');await I.click(trigger);
-  ok(!I.$('#sheetov').classList.contains('hidden') && I.$('#sheetov').classList.contains('filter-picker'),'開啟遊戲內自訂面板');
-  eq(trigger.getAttribute('aria-expanded'),'true','觸發按鈕展開狀態');
-  eq(I.$('#sheet [aria-pressed=true]'),I.doc.activeElement,'焦點在已選項目');
-  I.doc.activeElement.dispatchEvent(new I.win.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));
-  eq(I.doc.activeElement.dataset.v,'shown','方向鍵只移動焦點'); eq(I.UI.tankFilters.location,'','尚未確認不改條件');
-  I.doc.activeElement.dispatchEvent(new I.win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await flush();
-  ok(I.$('#sheetov').classList.contains('hidden'),'Escape關閉不套用');eq(I.doc.activeElement,trigger,'關閉回原入口');eq(trigger.getAttribute('aria-expanded'),'false','關閉狀態更新');
-  await chooseTankFilter(I,'location','shown');eq(trigger.value,'shown','選取立刻套用');eq(I.doc.activeElement,trigger,'選取後也回入口');
-  await chooseTankFilter(I,'location','');eq(I.UI.tankFilters.location,'','面板內可選回全部');ok(trigger.textContent.includes('位置：全部'),'入口文案回全部');eq(I.doc.activeElement,trigger,'選全部後回入口');
-  await I.click('[data-tank-filter=species]');
-  eq(I.$$('#sheet .filter-option').length,3,'物種面板只有已擁有物種及全部');ok(I.$('#sheet .filter-option-icon img'),'物種選項帶像素圖');
-  eq(I.$$('#sheet [aria-pressed=true]').length,1,'只有一個已選標記');
-  ok(I.doc.documentElement.scrollWidth<=393,'展開時沒有水平溢出');
-  await I.click('#sheetov',{force:true});ok(I.$('#sheetov').classList.contains('hidden'),'點遮罩可取消');eq(I.UI.tankFilters.species,'','取消未改物種');
-  I.check('篩選面板');I.destroy();
+  const trigger=I.$('[data-tank-filter=location]');await I.click(trigger);const menu=I.$('[data-filter-menu=location]');
+  ok(!menu.hidden && !I.UI.sheet && I.$('#sheetov').classList.contains('hidden'),'只展開下拉，不開彈出面板');eq(trigger.getAttribute('aria-expanded'),'true','展開狀態');
+  ok(menu.getBoundingClientRect().top>=trigger.getBoundingClientRect().bottom,'清單在按鈕下方');
+  eq(menu.querySelector('[aria-checked=true]'),I.doc.activeElement,'焦點在目前選項');
+  I.doc.activeElement.dispatchEvent(new I.win.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));eq(I.doc.activeElement.dataset.v,'shown','方向鍵移動選項');eq(I.UI.tankFilters.location,'','移焦點不直接改條件');
+  I.doc.activeElement.dispatchEvent(new I.win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await flush();ok(menu.hidden,'Escape收起');eq(I.doc.activeElement,trigger,'焦點回入口');
+  await chooseTankFilter(I,'location','shown');eq(trigger.value,'shown','選取套用且關閉');ok(menu.hidden,'選完收起');
+  await chooseTankFilter(I,'location','');eq(trigger.value,'','可選回全部');
+  await I.click('[data-tank-filter=species]');eq(I.$$('[data-filter-menu=species] button').length,3,'只有全部和擁有物種');
+  ok(!I.$('[data-filter-menu=species] img'),'基本清單不加生物圖');await I.click('.tank-summary');ok(I.$('[data-filter-menu=species]').hidden,'點外收起');
+  I.check('基本下拉');I.destroy();
 });
 
-test('生物篩選面板：同步重畫保留選項焦點與捲動，關閉回新入口', async () => {
-  const I=await boot({state:base(...drops(['clown','star','hermit','lion','puffer','cuttle','manta','jelly','urchin','nudi'])),width:393,height:771});await I.dismiss();await I.tab('tank');await I.click('[data-act=tankedit]');
+test('生物基本下拉：資料更新收起舊清單，焦點回新入口', async () => {
+  const I=await boot({state:base(...drops(['clown','star']))});await I.dismiss();await I.tab('tank');await I.click('[data-act=tankedit]');
   await I.click('[data-tank-filter=location]');I.doc.activeElement.dispatchEvent(new I.win.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));
-  const option=I.doc.activeElement;I.ev("CLOUD.user={uid:'mock-owner'};adopt({...S,names:{dr0clown:'同步名字'}})");await flush();
-  eq(I.doc.activeElement,option,'未改選項時同步重畫不重建或搶焦點');eq(I.doc.activeElement.dataset.v,'shown','保留尚未確認的方向鍵焦點');
-  I.doc.activeElement.dispatchEvent(new I.win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await flush();eq(I.doc.activeElement,I.$('[data-tank-filter=location]'),'關閉回重新建立的入口');
-  await I.click('[data-tank-filter=species]'); const list=I.$('.filter-options');list.scrollTop=100; const before=list.scrollTop;
-  I.ev('render()');await flush();eq(I.$('.filter-options'),list,'重畫不重建清單');eq(list.scrollTop,before,'清單維持捲動位置');
-  I.ev("adopt({...S,released:{dr9nudi:true}})");await flush();ok(!I.$('#sheet [data-act=tankfilterpick][data-v=nudi]'),'選項內容真的改變時刷新');
-  eq(I.$('#sheetov').getAttribute('aria-labelledby'),'tankFilterTitle','面板標題對應可及名稱');
-  await I.click('#sheet [data-act=sheetclose]');eq(I.doc.activeElement,I.$('[data-tank-filter=species]'),'清單刷新後仍回正確入口');
-  I.check('篩選面板重畫');I.destroy();
+  I.ev("CLOUD.user={uid:'mock-owner'};adopt({...S,names:{dr0clown:'同步名字'}})");await flush();
+  ok(!I.UI.tankFilterOpen && I.$('[data-filter-menu=location]').hidden,'同步後收起舊清單');eq(I.doc.activeElement,I.$('[data-tank-filter=location]'),'回重新建立的入口');
+  await chooseTankFilter(I,'species','clown');await I.click('[data-tank-filter=species]');
+  I.ev("adopt({...S,released:{dr0clown:true}})");await flush();eq(I.$('[data-tank-filter=species]').value,'','失效物種回全部');
+  await I.click('[data-tank-filter=species]');ok(!I.$('[data-filter-menu=species] [data-v=clown]'),'重開使用最新物種');
+  I.doc.activeElement.dispatchEvent(new I.win.KeyboardEvent('keydown',{key:'Tab',bubbles:true}));ok(I.$('[data-filter-menu=species]').hidden,'Tab收起且不困住焦點');
+  I.check('下拉資料更新');I.destroy();
+});
+test('生物基本下拉：觸控排隊重畫不收掉剛開啟的選單', async () => {
+  const I=await boot({state:base(...drops(['clown']))});await I.dismiss();await I.tab('tank');await I.click('[data-act=tankedit]');
+  const trigger=I.$('[data-tank-filter=location]');trigger.dispatchEvent(new I.win.PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',pointerId:1}));
+  I.ev('render()');ok(I.ev('TOUCH_RENDER.queued'),'一般背景重畫已排隊');
+  trigger.dispatchEvent(new I.win.PointerEvent('pointerup',{bubbles:true,pointerType:'touch',pointerId:1}));trigger.click();await new Promise(r=>setTimeout(r,40));await flush();
+  ok(!I.$('[data-filter-menu=location]').hidden && I.UI.tankFilterOpen==='location','排隊重畫後清單仍展開');
+  I.doc.dispatchEvent(new I.win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await flush();ok(I.$('[data-filter-menu=location]').hidden,'document鍵盤事件可安全收起');
+  I.check('下拉觸控排隊');I.destroy();
 });
