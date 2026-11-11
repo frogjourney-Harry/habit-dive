@@ -234,7 +234,7 @@ nav .badge{display:inline-block;min-width:18px;height:18px;margin-left:5px;paddi
 body.sea-on .foot{display:none}
 body.sea-on .toast{bottom:72px}   /* 提示訊息放在海底工具列上面 */
 body.sea-on .wrap{padding-bottom:0}
-body.sea-on .brand,body.sea-on #banner{position:relative;z-index:3}
+body.sea-on .brand,body.sea-on #banner,body.sea-on #updateNotice{position:relative;z-index:3}
 @media (min-width:601px){ body.sea-on nav{position:relative;z-index:3} }   /* 手機的分頁列本來就固定在最上層 */
 
 /* 商店 */

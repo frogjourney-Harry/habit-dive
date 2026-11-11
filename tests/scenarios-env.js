@@ -690,3 +690,13 @@ test('登入恢復提示：SDK已載入不代表登入已確認，確認訪客�
   ok(I.ev('CLOUD.ready && !CLOUD.authKnown'),'SDK準備好但首次Auth回呼尚未返回');ok(!I.has('想在其他裝置接著玩'),'正在確認登入不顯示訪客邀請');await I.win.__fb.resolveAuth();await flush(12);
   ok(I.ev('CLOUD.loading && CLOUD.authKnown'),'確認訪客後已知登入狀態，SDK Promise仍保留');ok(I.has('想在其他裝置接著玩'),'不因保留loading Promise而永遠隱藏訪客入口');I.check('SDK與Auth狀態分開');I.destroy();
 });
+
+test('更新按鈕：大海畫面桌面與手機都能實際點擊，不被畫布攔截', async () => {
+  for(const width of [1000,393]){
+    const I=await updateFixture();I.resize(width,771);await I.tab('tank');I.ev("UPDATE.next='209901010000';showUpdate()");await flush();
+    const button=I.$('[data-update]'),r=button.getBoundingClientRect(),hit=I.doc.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+    ok(hit===button||button.contains(hit),width+'更新按鈕實際位於命中測試最上層，命中='+(hit?.id||hit?.tagName));
+    ok(await I.tryClick('[data-update]'),width+'能以真實點擊操作更新');eq(I.win.__reloads,1,width+'點擊後執行一次reload');
+    eq(I.S.tossed||0,0,'點更新沒有被當成撒飼料');I.check('更新按鈕層級');I.destroy();
+  }
+});
