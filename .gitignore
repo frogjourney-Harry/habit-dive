@@ -15,3 +15,6 @@
 /reviews/*.scope.json
 /reviews/*.review.md
 /docs/prepublish-source-context.md
+
+# Local-only simulated previews
+/size-preview/
