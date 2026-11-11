@@ -36,9 +36,10 @@ function render() {
   const pendN = dailyTasks(D).filter(t => t.pend.length).length;
   document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? `<i class="badge">${pendN}</i>` : ''}</button>`).join('');
   document.getElementById('main').innerHTML = ({ today, quest: quests, tank, shop, log, about })[UI.tab](D);
+  enhanceDropdowns(document.getElementById('main'));
   document.body.classList.toggle('sea-on', seaOn()); document.documentElement.classList.toggle('sea-on', seaOn());
   if (UI.tab === 'tank') { tankStart(); if (UI.tankEdit) applyTankFilters(); }
-  if (reopenFilter && UI.tab === 'tank' && UI.tankEdit && tankOwned().length) {
+  if (reopenFilter && document.querySelector(`[data-tank-filter="${reopenFilter.key}"]`)?.getClientRects().length) {
     openTankFilter(reopenFilter.key);
     const menu = document.querySelector(`[data-filter-menu="${reopenFilter.key}"]`);
     [...menu.querySelectorAll('button')].find(button => button.dataset.v === reopenFilter.value)?.focus({ preventScroll: true });
@@ -344,6 +345,8 @@ function exText(e) {
 }
 function renderSheet() {
   const ov = document.getElementById('sheetov'), el = document.getElementById('sheet');
+  const dropdownReturn = UI.tankFilterOpen?.startsWith('native-') ? UI.tankFilterOpen : null;
+  if (dropdownReturn) closeTankFilter();
   if (!UI.sheet) { ov.classList.add('hidden'); return; }
   ov.classList.remove('hidden');
   if (UI.sheet.creature) {   // 圖鑑放大：介紹、三種成長外觀、擁有幾隻
@@ -371,7 +374,7 @@ function renderSheet() {
     body = `
       ${list.map((e, i) => `<div class="entry"><span class="sp">${esc(exText(e) || '運動')}</span><button class="ghost" data-act="chkdel" data-v="${i}" data-entry="${esc(JSON.stringify(e))}">✕</button></div>`).join('')}
       <div class="form">
-        <label class="ex-type"><span>運動類型</span><select id="exType">${ETAGS.map(t => `<option ${t === type ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+        <div class="ex-type"><span>運動類型</span><select id="exType" aria-label="運動類型">${ETAGS.map(t => `<option ${t === type ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
         ${EX_FIELDS[type].map(([k, label, unit]) => `<label class="ex-field${EX_FIELDS[type].length === 1 ? ' full' : ''}"><span>${label}（${unit}）<small>選填</small></span><input id="ex_${k}" type="text" inputmode="decimal" maxlength="12" aria-label="${label}（${unit}）" aria-describedby="exError" value="${esc(k === 'min' ? draft.min : draft.specific[type]?.[k] || '')}" placeholder="例如：${k === 'dist' ? '3' : k === 'm' ? '500' : '30'}"></label>`).join('')}
         <span class="dim" id="exPace" style="align-self:center">${paceText({type,min:+draft.min,dist:+draft.specific[type]?.dist,m:+draft.specific[type]?.m})}</span>
         <label class="ex-field full"><span>備註<small>選填</small></span><input id="ex_note" maxlength="200" value="${esc(draft.note)}" placeholder="例如：公園健走、上肢訓練"></label>
@@ -393,6 +396,8 @@ function renderSheet() {
     <div class="row" style="margin-top:10px"><span class="seg-switch">${[[0, '今天'], [-1, '昨天']].map(([o, n]) => `<button class="${day === o ? 'sel' : ''}" data-act="shday" data-v="${o}">${n}</button>`).join('')}</span>
       <small class="dim">${day < 0 ? '補登只算連勝，沒有獎勵' : ''}</small></div>
     ${body}`;
+  enhanceDropdowns(el);
+  if (dropdownReturn) el.querySelector(`[data-tank-filter="${dropdownReturn}"]`)?.focus();
 }
 
 /* ========= 其他頁面 ========= */
@@ -510,13 +515,27 @@ const TANK_SPECIES = {
   dolphin: [1.2, .9], whaleshark: [2.6, .2],
 };
 const SWIM = .5;   // 游動速度倍率（水族箱每格 3 像素，原本的速度看起來太快）
+const FOOD_RANGE = { notice: 1 / 3, abandon: 1 / 2, groundGap: 3 };
+function findFishFood(f, foods, width, floor, tutorialId = null) {
+  const distance = p => Math.hypot(p.x - (f.x + f.w / 2), p.y - (f.y + f.h / 2));
+  const reachable = p => !f.ground || p.y >= floor - FOOD_RANGE.groundGap;
+  const guided = tutorialId && f.key === tutorialId;
+  let food = f.foodTarget;
+  if (food && (!foods.includes(food) || !reachable(food) || (!guided && distance(food) > width * FOOD_RANGE.abandon))) food = null;
+  if (!food) {
+    let best = guided ? Infinity : width * FOOD_RANGE.notice;
+    for (const p of foods) { const d = distance(p); if (reachable(p) && d <= best) { best = d; food = p; } }
+  }
+  f.foodTarget = food || null;
+  return f.foodTarget;
+}
 const STAGE_SCALE = [1, 1, 1.1];   // 幼體圖本身就比較小
 const FEED = { free: 10, pack: 10, price: 30 };           // 每天免費 10 顆；商店 30 金幣買 10 顆
 // 水族箱設定：哪幾隻放進去記在 S.outTank
 const freeLeft = () => S.feedDay && S.feedDay.d === dayKey() ? Math.max(0, FEED.free - S.feedDay.used) : FEED.free;
 const feedLeft = () => freeLeft() + (S.feed || 0);
 // 新手提示：撒滿這麼多顆飼料以前，海中間會有一句說明（S.tossed＝總共撒過幾顆）
-const FEED_TIP_UNTIL = 3, FEED_TIP = '點水裡撒飼料，魚吃到一定數量會長大';
+const FEED_TIP_UNTIL = 3, FEED_TIP = '點生物附近撒飼料，吃到一定數量會長大';
 const needFeedTip = () => {
   if (S.introFeedPending) {
     const pet = S.logs.find(l => l.k === 'welcome' && l.drop === 'clown');
@@ -580,6 +599,17 @@ function tankFeedHTML() {
   return `${img(SHRIMP, 2, false, 'feedic')}<span class="fpills"><span class="fpill free${f ? '' : ' out'}" title="今天免費的飼料，每天 ${FEED.free} 顆">今日免費 ${f}/${FEED.free}</span><span class="fpill paid" title="用金幣買的飼料">已購 ${b}</span></span>`;
 }
 const TANK_FILTER_LABELS = { location: '位置', growth: '成長', species: '物種' };
+// 原生select保留資料與既有input/change事件；共用同一種錨定下拉呈現。
+function enhanceDropdowns(root) {
+  for (const select of root.querySelectorAll('select#exType,select[data-hf=weeks],select[data-hf=target]')) {
+    if (select.closest('.native-dropdown')) continue;
+    if (!select.id) select.id = `habit-${select.dataset.hf}-${select.dataset.hi}`;
+    const key = `native-${select.id}`, label = select.getAttribute('aria-label') || (select.dataset.hf === 'weeks' ? '頻率' : '目標次數');
+    const wrapper = document.createElement('div'); wrapper.className = 'tank-filter-control native-dropdown'; wrapper.dataset.field = select.dataset.hf || 'exercise';
+    wrapper.innerHTML = `<button type="button" data-act="selectopen" data-v="${key}" data-tank-filter="${key}" aria-label="${esc(label + '：' + (select.selectedOptions[0]?.textContent || ''))}" aria-haspopup="menu" aria-expanded="false" aria-controls="${key}-menu" ${select.disabled ? 'disabled' : ''}><span class="filter-value">${esc(select.selectedOptions[0]?.textContent || '')}</span></button><div id="${key}-menu" class="filter-menu" data-filter-menu="${key}" role="menu" aria-label="${esc(label)}" hidden>${[...select.options].map(option => `<button type="button" role="menuitemradio" data-act="selectpick" data-select-id="${select.id}" data-v="${esc(option.value)}" aria-checked="${option.selected}" ${option.disabled ? 'disabled' : ''}><span class="sp">${esc(option.textContent)}</span><span class="filter-check" aria-hidden="true">${option.selected ? '✓' : ''}</span></button>`).join('')}</div>`;
+    select.after(wrapper); select.hidden = true; select.dataset.dropdownKey = key; wrapper.prepend(select);
+  }
+}
 function tankFilterOptions(key) {
   if (key === 'location') return [['', '全部位置'], ['shown', '展示中'], ['stored', '收藏中']];
   if (key === 'growth') return [['', '全部成長'], ['growing', '成長中'], ['complete', '成長完成']];
@@ -644,8 +674,9 @@ function openTankFilter(key) {
   if (!button || !menu) return;
   UI.tankFilterOpen = key; UI.tankFilterState = S; button.setAttribute('aria-expanded', 'true'); menu.hidden = false;
   const rect = button.getBoundingClientRect(), nav = document.getElementById('nav');
-  const bottom = getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect().top : innerHeight;
-  const below = bottom - rect.bottom - 8, above = rect.top - 14, up = below < Math.min(240, menu.scrollHeight) && above > below;
+  const boundary = button.closest('.modal')?.getBoundingClientRect();
+  const bottom = Math.min(getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect().top : innerHeight, boundary ? boundary.bottom - 6 : innerHeight);
+  const below = bottom - rect.bottom - 8, above = rect.top - (boundary ? boundary.top + 8 : 14), up = below < Math.min(240, menu.scrollHeight) && above > below;
   menu.classList.toggle('up', up); menu.style.maxHeight = `${Math.max(44, Math.min(240, up ? above : below))}px`;
   menu.querySelector('[aria-checked=true]')?.focus();
 }
@@ -728,7 +759,7 @@ function tankStart() {
         vx: speed * SWIM * (.8 + Math.random() * .4) * (Math.random() < .5 ? -1 : 1) };
       look(f);
       const q = prev.get(f.key);
-      if (q) { f.vx = q.vx; f.ph = q.ph; f.rest = q.rest; f.mx = q.mx || 0; f.my = q.my || 0; f.x = Math.min(q.x, Math.max(0, W - f.w)); f.baseY = ground ? floorY - f.h + 2 : Math.min(q.baseY, floorY - f.h + 2); f.y = ground ? f.baseY : q.y; }
+      if (q) { f.foodTarget = q.foodTarget; f.vx = q.vx; f.ph = q.ph; f.rest = q.rest; f.mx = q.mx || 0; f.my = q.my || 0; f.x = Math.min(q.x, Math.max(0, W - f.w)); f.baseY = ground ? floorY - f.h + 2 : Math.min(q.baseY, floorY - f.h + 2); f.y = ground ? f.baseY : q.y; }
       else { f.x = Math.random() * Math.max(1, W - f.w); f.y = f.baseY = ground ? floorY - f.h + 2 : 6 + Math.random() * Math.max(1, floorY - f.h - 24); }
       TANK.fish.push(f);
     });
@@ -772,7 +803,10 @@ function tankStart() {
     TANK.bub = TANK.bub.filter(b => (b.y -= .5 * dt) > 0);
     x.fillStyle = 'rgba(180,240,255,.55)'; TANK.bub.forEach(b => x.fillRect(rp(b.x), rp(b.y), b.s, b.s));
     TANK.food.forEach(f => { if (f.y < floorY - 2) f.y += f.vy * dt; f.age = (f.age || 0) + dt; });
-    TANK.food = TANK.food.filter(f => f.age < 1800);
+    const tutorialId = S.introFeedPending ? S.logs.find(l => l.k === 'welcome' && l.drop === 'clown')?.id : null;
+    const guiding = tutorialId && fedOf(tutorialId) < GROW[1] && TANK.fish.some(f => f.key === tutorialId);
+    // 教學只有10顆免費飼料：引導小丑魚仍可追遠處，且等待中的飼料不因教學耗時消失。
+    TANK.food = TANK.food.filter(f => f.age < 1800 || guiding);
     x.fillStyle = '#ef7d57'; TANK.food.forEach(f => x.fillRect(rp(f.x), rp(f.y), 2, 2));
     // 生物：飼料碰到身體就算吃到；吃到的那一隻會長大
     const eats = (f, p) => p.x >= f.x - 2 && p.x <= f.x + f.w + 2 && p.y >= f.y - 2 && p.y <= f.y + f.h + 2;
@@ -784,11 +818,9 @@ function tankStart() {
     }
     for (const f of feedingOrder) {
       const sp0 = Math.abs(f.vx);
-      let food = null, best = 1e9;
-      for (const p of TANK.food) {
-        if (f.ground && p.y < floorY - 3) continue;   // 海底生物只吃掉到地上的
-        const dd = Math.hypot(p.x - (f.x + f.w / 2), p.y - (f.y + f.h / 2)); if (dd < best) { best = dd; food = p; }
-      }
+      // 追逐目標保持穩定，但飼料已碰到身體仍可順路吃掉，不必先追完另一顆。
+      const touching = TANK.food.find(p => (!f.ground || p.y >= floorY - FOOD_RANGE.groundGap) && eats(f, p));
+      const food = touching || findFishFood(f, TANK.food, W, floorY, guiding ? tutorialId : null);
       if (food) {
         // 成長後只降低追食加速，平常游速不變；由原速即時計算，不累乘或寫回存檔。
         const chaseScale = [1, .85, .75][stageOf(fedOf(f.key)) - 1];
@@ -802,6 +834,7 @@ function tankStart() {
         if (f.ground) f.vx = Math.abs(dx) > .5 ? Math.sign(dx) * sp0 : f.vx;
         if (eats(f, food)) {
           TANK.food.splice(TANK.food.indexOf(food), 1); SFX.eat();
+          if (f.foodTarget === food) f.foodTarget = null;
           const before = stageOf(fedOf(f.key));
           S.fed = S.fed || {}; S.fed[f.key] = fedOf(f.key) + 1;
           updateFeedTipProgress();

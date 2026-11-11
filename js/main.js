@@ -242,6 +242,21 @@ document.addEventListener('click', async e => {
     case 'predrop': cloudDropPre(); break;
     case 'tankedit': beginTankSelection(); render(); break;
     case 'tankfilterclear': UI.tankFilters = { location: '', growth: '', species: '' }; applyTankFilters(); document.querySelector('[data-tank-filter]')?.focus(); break;
+    case 'selectopen': openTankFilter(v); break;
+    case 'selectpick': {
+      const select = document.getElementById(b.dataset.selectId);
+      if (!select || select.disabled || ![...select.options].some(option => option.value === v && !option.disabled)) break;
+      closeTankFilter(); select.value = v;
+      select.dispatchEvent(new Event('input', { bubbles: true })); select.dispatchEvent(new Event('change', { bubbles: true }));
+      const current = document.getElementById(select.id), wrapper = current?.closest('.native-dropdown');
+      if (wrapper) {
+        const trigger = wrapper.querySelector('[data-tank-filter]'), text = current.selectedOptions[0]?.textContent || '';
+        trigger.querySelector('.filter-value').textContent = text; trigger.setAttribute('aria-label', trigger.getAttribute('aria-label').split('：')[0] + '：' + text);
+        for (const option of wrapper.querySelectorAll('[data-act=selectpick]')) { const selected = option.dataset.v === current.value; option.setAttribute('aria-checked', String(selected)); option.querySelector('.filter-check').textContent = selected ? '✓' : ''; }
+        trigger.focus();
+      }
+      break;
+    }
     case 'tankfilteropen':
       if (UI.tankEdit && TANK_FILTER_LABELS[v]) { b.focus(); openTankFilter(v); }
       break;
@@ -382,6 +397,7 @@ document.addEventListener('keydown', e => {
 // 點彈窗外面的暗色區域就關閉面板
 document.getElementById('sheetov').addEventListener('click', e => { if (e.target.id === 'sheetov') { UI.sheet = null; renderSheet(); } });
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && UI.tankFilterOpen) { e.preventDefault(); closeTankFilter(true); return; }
   if ((e.key === 'Enter' || e.key === 'Escape') && e.target.dataset && e.target.dataset.nf) { e.preventDefault(); UI.nameEdit = null; render(); return; }
   if (!document.getElementById('askov').classList.contains('hidden') && ask.res) {
     if (e.key === 'Enter') { e.preventDefault(); ask.res(true); }

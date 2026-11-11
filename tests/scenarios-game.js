@@ -171,7 +171,7 @@ test('水族箱：撒飼料、成長、設定、放生、圖鑑', async () => {
   // 撒飼料：先用每天免費的 10 顆，再用買的，再沒有
   const cv = I.$('#tank'); const r = cv.getBoundingClientRect();
   const drop = async () => { cv.dispatchEvent(new I.win.MouseEvent('click', { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + 20 })); await flush(); };
-  ok(I.$('.seacoach') && I.has('點水裡撒飼料，魚吃到一定數量會長大'), '新手：海中間有撒飼料的提示');
+  ok(I.$('.seacoach') && I.has('點生物附近撒飼料，吃到一定數量會長大'), '新手：海中間有撒飼料的提示');
   eq(I.$('.fpill.free').textContent, '今日免費 10/10', '免費標籤 10/10'); eq(I.$('.fpill.paid').textContent, '已購 0', '買的標籤 0');
   await drop(); await drop(); ok(I.$('.seacoach'), '撒了 2 顆提示還在'); eq(I.$('.fpill.free').textContent, '今日免費 8/10', '免費剩 8/10');
   await drop(); ok(!I.$('.seacoach'), '撒滿 3 顆提示就消失'); eq(I.S.tossed, 3, '記下撒過 3 顆');
@@ -684,10 +684,10 @@ test('餵食公平性：所有型態可吃、順序不固定偏袒大魚、跨�
   result = once({dr0whaleshark:30,dr1clown:30}, .999);
   eq(result.fed.dr0whaleshark, 31, '全部滿階仍可進食');
   // 攔下steer觀察真實幀要求的速度，避免繪圖浮沉影響比較。
-  I.ev(`window.__realSteer = steer; window.__speeds=[]; steer = (...a) => { window.__speeds.push({key:a[0].key,x:Math.abs(a[1])}); return window.__realSteer(...a); };`);
+  I.ev(`TANK.fish=TANK.fish.filter(f=>f.c.id==='clown'); window.__realSteer = steer; window.__speeds=[]; steer = (...a) => { window.__speeds.push({key:a[0].key,x:Math.abs(a[1])}); return window.__realSteer(...a); };`);
   const speeds=[];
   for (const fed of [0,10,30,30]) {
-    I.ev(`S.fed={dr0whaleshark:${fed},dr1clown:${fed}}; TANK.food=[{x:TANK.W-5,y:20,vy:0}]; for(const f of TANK.fish){f.x=1;f.y=f.baseY=20;f.vx=.4;f.mx=f.my=0;} window.__speeds=[]; window.__tankStep(performance.now()+16.7);`);
+    I.ev(`S.fed={dr0whaleshark:${fed},dr1clown:${fed}}; TANK.food=[{x:32,y:20,vy:0}]; for(const f of TANK.fish){f.x=1;f.y=f.baseY=20;f.vx=.4;f.mx=f.my=0;} window.__speeds=[]; window.__tankStep(performance.now()+16.7);`);
     speeds.push(I.ev("window.__speeds.find(s=>s.key==='dr1clown').x"));
   }
   ok(Math.abs(speeds[1]/speeds[0]-.85)<1e-8 && Math.abs(speeds[2]/speeds[0]-.75)<1e-8, '追食依目前fed套用85%與75%');
@@ -719,7 +719,7 @@ test('追食方向：上下對齊不左右抽動，斜向與海底仍能吃到',
     f.x=40;f.y=f.baseY=100;f.vx=.4;f.mx=.08;f.my=0;
     const targetX=f.x+f.w/2+.001, start=performance.now(), positions=[];let flips=0,lastSign=1;
     for(let i=1;i<=360;i++){
-      TANK.food=[{x:targetX,y:f.y+f.h/2-60,vy:0,age:0}];
+      TANK.food=[{x:targetX,y:f.y+f.h/2-30,vy:0,age:0}];
       window.__step(start+i*16.7);
       if(i===240)lastSign=Math.sign(f.vx);
       if(i>240){positions.push(f.x+f.w/2);const sign=Math.sign(f.vx);if(sign!==lastSign)flips++;lastSign=sign;}
@@ -732,7 +732,7 @@ test('追食方向：上下對齊不左右抽動，斜向與海底仍能吃到',
   // 真實幀向斜下方落點靠攏，最終碰撞仍吃到，不只讓水平速度變成零。
   const ate=I.ev(`(()=>{
     const f=TANK.fish[0];f.x=20;f.y=f.baseY=20;f.mx=f.my=0;f.vx=.4;
-    const before=fedOf(f.key);TANK.food=[{x:60,y:80,vy:0,age:0}];const start=performance.now()+7000;
+    const before=fedOf(f.key);TANK.food=[{x:f.x+f.w/2+20,y:f.y+f.h/2+20,vy:0,age:0}];const start=performance.now()+7000;
     for(let i=1;i<=800 && TANK.food.length;i++)window.__step(start+i*16.7);
     return fedOf(f.key)>before;
   })()`); ok(ate,'斜向追食仍能吃到');
@@ -746,7 +746,7 @@ test('追食落點：水母與魚上下對齊仍能吃到下沉飼料，遠處�
     const I=await boot({state:base(...drops([species])),width:393,height:771}); await I.dismiss(); await I.tab('tank');
     const result=I.ev(`(()=>{
       cancelAnimationFrame(TANK.raf);const raf=requestAnimationFrame;window.requestAnimationFrame=cb=>{window.__step=cb;return 0};tankStart();
-      const f=TANK.fish[0];f.x=40;f.y=f.baseY=90;f.vx=.4;f.mx=f.my=0;
+      const f=TANK.fish[0];f.x=40;f.y=f.baseY=50;f.vx=.4;f.mx=f.my=0;
       const before=fedOf(f.key), x=f.x+f.w/2;TANK.food=[{x:x+.001,y:20,vy:.25,age:0}];const start=performance.now();let flips=0,last=Math.sign(f.vx);
       for(let i=1;i<=600&&TANK.food.length;i++){window.__step(start+i*16.7);if(last!==Math.sign(f.vx))flips++;last=Math.sign(f.vx);}
       const eaten=fedOf(f.key)>before;
@@ -754,7 +754,7 @@ test('追食落點：水母與魚上下對齊仍能吃到下沉飼料，遠處�
       for(let i=601;i<=660;i++)window.__step(start+i*16.7);
       const afterWander=Math.abs(f.vx);
       const realSteer=steer;let want;steer=(...a)=>{want=[a[1],a[2]];return realSteer(...a)};
-      f.x=10;f.y=f.baseY=20;f.vx=.4;f.mx=f.my=0;TANK.food=[{x:100,y:100,vy:0,age:0}];window.__step(start+12000);
+      f.x=10;f.y=f.baseY=20;f.vx=.4;f.mx=f.my=0;TANK.food=[{x:f.x+f.w/2+20,y:f.y+f.h/2+20,vy:0,age:0}];window.__step(start+12000);
       steer=realSteer;window.requestAnimationFrame=raf;
       return {eaten,flips,want,afterEating,afterWander};
     })()`);
@@ -799,4 +799,78 @@ test('生物基本下拉：觸控排隊重畫不收掉剛開啟的選單', async
   ok(!I.$('[data-filter-menu=location]').hidden && I.UI.tankFilterOpen==='location','排隊重畫後清單仍展開');
   I.doc.dispatchEvent(new I.win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await flush();ok(I.$('[data-filter-menu=location]').hidden,'document鍵盤事件可安全收起');
   I.check('下拉觸控排隊');I.destroy();
+});
+
+test('追食範圍：附近發現、已追保留、移除與海底落點', async () => {
+  const I=await boot({state:base(...drops(['clown']))});await I.dismiss();
+  for(const width of [131,300]) {
+    const result=I.ev(`(()=>{
+      const width=${width},r=width/3,limit=width/2,f={x:0,y:0,w:10,h:10,ground:false},p={x:5+r+1,y:5};
+      const far=findFishFood(f,[p],width,200)===null;p.x=5+r-1;const near=findFishFood(f,[p],width,200)===p;
+      p.x=5+r+2;const patience=findFishFood(f,[p],width,200)===p;
+      const closer={x:10,y:5};const stable=findFishFood(f,[p,closer],width,200)===p;
+      p.x=5+limit+1;const abandon=findFishFood(f,[p],width,200)===null;
+      p.x=10;findFishFood(f,[p],width,200);const removed=findFishFood(f,[],width,200)===null;
+      const ground={x:0,y:186,w:10,h:10,ground:true},q={x:5,y:196};const high=findFishFood(ground,[q],width,200)===null;
+      q.y=197;const landed=findFishFood(ground,[q],width,200)===q;
+      return {far,near,patience,stable,abandon,removed,high,landed};
+    })()`);
+    for(const [key,value]of Object.entries(result))ok(value,width+'範圍規則 '+key);
+  }
+  await I.tab('tank');I.ev(`cancelAnimationFrame(TANK.raf);const f=TANK.fish[0];window.__food={x:f.x+f.w/2,y:f.y+f.h/2};TANK.food=[window.__food];f.foodTarget=window.__food;tankStart();`);
+  ok(I.ev('TANK.fish[0].foodTarget===window.__food'),'重建畫布保留正在追的同一顆飼料');
+  I.check('追食範圍');I.destroy();
+});
+
+test('統一下拉：運動、生物篩選與習慣頻率共用字級及選項風格', async () => {
+  const I=await boot({state:base(...drops(['clown']))});await I.dismiss();await I.tab('tank');await I.click('[data-act=tankedit]');await I.click('[data-tank-filter=location]');
+  const option=I.$('[data-filter-menu=location] button'),size=I.win.getComputedStyle(option).fontSize,weight=I.win.getComputedStyle(option).fontWeight;
+  eq(size,'16px','沿用原運動選單16px');eq(weight,'400','不再用較粗字重');
+  await I.click('[data-act=tankcancel]');await I.habit('運動');
+  ok(I.$('#exType').hidden && I.$('[data-tank-filter=native-exType]'),'運動改用相同的基本下拉');
+  await I.click('[data-tank-filter=native-exType]');const exerciseOption=I.$('[data-filter-menu=native-exType] button');
+  const menuRect=I.$('[data-filter-menu=native-exType]').getBoundingClientRect(),sheetRect=I.$('#sheet').getBoundingClientRect();
+  ok(menuRect.top>=sheetRect.top && menuRect.bottom<=sheetRect.bottom,'展開清單位於運動表單可見範圍內');
+  eq(I.win.getComputedStyle(exerciseOption).fontSize,size,'運動與篩選展開字級相同');eq(I.win.getComputedStyle(exerciseOption).fontWeight,weight,'展開字重相同');
+  I.doc.activeElement.dispatchEvent(new I.win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await flush();
+  ok(I.UI.sheet && !I.$('#sheetov').classList.contains('hidden'),'選項焦點按Escape只收下拉，不關掉運動表單');
+  await I.click('[data-tank-filter=native-exType]');I.ev('renderSheet()');await flush();
+  eq(I.doc.activeElement,I.$('[data-tank-filter=native-exType]'),'運動表單重畫後焦點回新入口');
+  await I.type('#exType','走路');eq(I.$('#exType').value,'走路','共用下拉仍觸發原運動表單切換');ok(I.$('[data-tank-filter=native-exType]').textContent.includes('走路'),'入口更新');
+  await I.click('[data-act=sheetclose]');await I.click('#habits [data-act=habedit]');
+  ok(I.$('.native-dropdown select[data-hf=weeks]'),'習慣頻率也套用相同元件');
+  ok(I.doc.documentElement.scrollWidth<=I.win.innerWidth,'習慣編輯窄版沒有橫向溢出');
+  const targetSelect=I.$('.native-dropdown select[data-hf=target]');
+  await I.click(`[data-tank-filter="${targetSelect.dataset.dropdownKey}"]`);ok(I.doc.documentElement.scrollWidth<=I.win.innerWidth,'次數選單展開也不溢出');
+  I.check('共用下拉');I.destroy();
+});
+
+test('追食範圍教學：遠處飼料保留並能吃到，普通玩法仍保留距離限制', async () => {
+  for(const width of [393,1100]){
+    const I=await boot({state:mkState({introFeedPending:true,onb:true}),width,height:771});await I.dismiss();await I.tab('tank');
+    const result=I.ev(`(()=>{
+      cancelAnimationFrame(TANK.raf);const raf=requestAnimationFrame;window.requestAnimationFrame=cb=>{window.__step=cb;return 0};tankStart();const f=TANK.fish[0];
+      f.x=1;f.y=f.baseY=20;f.vx=.4;f.mx=f.my=0;const before=fedOf(f.key),start=performance.now();
+      const p={x:TANK.W-5,y:f.y+f.h/2,vy:0,age:1799};TANK.food=[p];window.__step(start+16.7);
+      const held=TANK.food.includes(p),target=f.foodTarget===p;
+      for(let i=2;i<=3000&&TANK.food.length;i++)window.__step(start+i*16.7);
+      const eaten=fedOf(f.key)>before;
+      S.introFeedPending=false;f.x=1;f.y=f.baseY=20;f.mx=f.my=0;f.foodTarget=null;
+      TANK.food=[{x:TANK.W-5,y:f.y+f.h/2,vy:0,age:1799}];window.__step(start+60000);
+      const normalExpired=TANK.food.length===0;window.requestAnimationFrame=raf;save();return{held,target,eaten,normalExpired};
+    })()`);
+    ok(result.held && result.target,width+'教學遠處飼料不過期且仍被追逐');ok(result.eaten,width+'遠處教學飼料最終吃到');ok(result.normalExpired,width+'普通玩法遠處未吃食物仍按原時間消失');
+    I.check('教學追食保障');I.destroy();
+  }
+});
+
+test('追食目標：路過碰到飼料可吃，仍保留原追逐目標', async () => {
+  const I=await boot({state:base(...drops(['clown']))});await I.dismiss();await I.tab('tank');
+  const result=I.ev(`(()=>{
+    cancelAnimationFrame(TANK.raf);const raf=requestAnimationFrame;window.requestAnimationFrame=cb=>{window.__step=cb;return 0};tankStart();const f=TANK.fish[0];
+    f.x=20;f.y=f.baseY=20;f.mx=f.my=0;f.vx=.4;const before=fedOf(f.key),target={x:f.x+f.w/2+25,y:f.y+f.h/2,vy:0,age:0},touching={x:f.x+f.w/2,y:f.y+f.h/2,vy:0,age:0};
+    f.foodTarget=target;TANK.food=[target,touching];window.__step(performance.now()+16.7);window.requestAnimationFrame=raf;
+    return{ate:fedOf(f.key)===before+1,kept:f.foodTarget===target,removed:!TANK.food.includes(touching)};
+  })()`);
+  ok(result.ate&&result.removed,'碰到身體即吃到，不會忽略近處投餵');ok(result.kept,'不因順路吃掉另一顆而忘記原追逐目標');I.check('順路吃食');I.destroy();
 });

@@ -174,7 +174,15 @@ function mkInst(frame, storeId, opts) {
     },
     async tryClick(t) { try { await I.click(t); return true; } catch (e) { return false; } },
     async type(t, text) {
-      const el = I.el(t); if (!el) throw new Error('找不到輸入框：' + t);
+      const raw = typeof t === 'string' ? I.$(t) : null;
+      const el = raw?.tagName === 'SELECT' ? raw : I.el(t); if (!el) throw new Error('找不到輸入框：' + t);
+      if (el.tagName === 'SELECT' && el.dataset.dropdownKey) {
+        const key = el.dataset.dropdownKey;
+        await I.click(`[data-tank-filter="${key}"]`);
+        const option = I.$$(`[data-filter-menu="${key}"] [data-act=selectpick]`).find(button => button.dataset.v === String(text));
+        if (!option) throw new Error('找不到下拉選項：' + text);
+        await I.click(option); return el;
+      }
       el.focus();
       const set = Object.getOwnPropertyDescriptor(win[el.tagName === 'SELECT' ? 'HTMLSelectElement' : el.tagName === 'TEXTAREA' ? 'HTMLTextAreaElement' : 'HTMLInputElement'].prototype, 'value').set;
       set.call(el, text); el.dispatchEvent(new win.Event('input', { bubbles: true })); el.dispatchEvent(new win.Event('change', { bubbles: true }));

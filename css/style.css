@@ -1,5 +1,6 @@
 /* 習慣深潛：所有樣式。數值一律來自 DESIGN.md 的 tokens；手機版（≤600px）的覆寫放在最後面。 */
 :root{
+  --dropdown-font-size:16px;
   /* 頁首與大海 */
   --hero-top:#3290c6; --hero-mid:#2079b4; --hero-bottom:#17639a; --sea-deep:#0f4672; --on-hero:#fff; --on-hero-muted:rgba(255,255,255,.72);
   --hero:linear-gradient(180deg,var(--hero-top),var(--hero-mid) 60%,var(--hero-bottom));
@@ -271,14 +272,20 @@ body.sea-on .brand,body.sea-on #banner{position:relative;z-index:3}
 .tank-pet-growth{display:block;color:var(--ink-muted);font-size:12px}
 .tank-filters{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
 .tank-filter-control{position:relative;flex:1 1 7.9em;min-width:0;font-size:16px}
-.tank-filter-control>button{display:flex;align-items:center;text-align:left;width:100%;min-height:44px;margin:0;padding:10px 27px 10px 10px;border:1px solid transparent;border-radius:var(--r-md);font-size:16px;font-weight:500;line-height:1.4;background-color:var(--fill);background-image:linear-gradient(45deg,transparent 50%,var(--ink-muted) 50%),linear-gradient(135deg,var(--ink-muted) 50%,transparent 50%);background-size:5px 5px;background-position:calc(100% - 16px) 52%,calc(100% - 11px) 52%;background-repeat:no-repeat}
+.tank-filter-control>button{display:flex;align-items:center;text-align:left;width:100%;min-height:44px;margin:0;padding:10px 27px 10px 10px;border:1px solid transparent;border-radius:var(--r-md);font-size:var(--dropdown-font-size);font-weight:400;line-height:1.4;background-color:var(--fill);background-image:linear-gradient(45deg,transparent 50%,var(--ink-muted) 50%),linear-gradient(135deg,var(--ink-muted) 50%,transparent 50%);background-size:5px 5px;background-position:calc(100% - 16px) 52%,calc(100% - 11px) 52%;background-repeat:no-repeat}
 .tank-filter-control>button.filtered{color:var(--primary);border-color:var(--primary);background-color:rgba(11,107,203,.07)}
 .tank-filter-control>button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .filter-value{min-width:0;overflow-wrap:anywhere}
+.native-dropdown>select[hidden]{display:none!important}
+.ex-type .native-dropdown{flex:1}
+.erow .native-dropdown{flex:0 1 104px;max-width:100%}
+.erow .native-dropdown[data-field=target]{flex-basis:64px}
+.native-dropdown .filter-menu{min-width:100px}
+.native-dropdown[data-field=target] .filter-menu{min-width:76px;left:auto;right:0}
 .filter-menu{position:absolute;z-index:6;top:calc(100% + 5px);left:0;right:0;padding:4px;background:var(--surface);border:1px solid var(--hairline-strong);border-radius:var(--r-sm);box-shadow:0 6px 18px rgba(8,20,35,.14);max-height:240px;overflow:auto;overscroll-behavior:contain}
 .filter-menu.up{top:auto;bottom:calc(100% + 5px)}
-.filter-menu button{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:0;padding:8px;border-radius:5px;background:transparent;font-size:16px;text-align:left;color:var(--ink)}
-.filter-menu button[aria-checked=true]{background:var(--fill);color:var(--primary);font-weight:600}
+.filter-menu button{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:0;padding:8px;border-radius:5px;background:transparent;font-size:var(--dropdown-font-size);font-weight:400;text-align:left;color:var(--ink)}
+.filter-menu button[aria-checked=true]{background:var(--fill);color:var(--primary);font-weight:400}
 .filter-menu button:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
 .filter-check{flex:none;width:18px;text-align:center;color:var(--primary)}
 @media(hover:hover){.filter-menu button:hover{background:var(--fill)}}
