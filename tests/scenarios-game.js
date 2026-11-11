@@ -874,3 +874,21 @@ test('追食目標：路過碰到飼料可吃，仍保留原追逐目標', async
   })()`);
   ok(result.ate&&result.removed,'碰到身體即吃到，不會忽略近處投餵');ok(result.kept,'不因順路吃掉另一顆而忘記原追逐目標');I.check('順路吃食');I.destroy();
 });
+
+test('海鰻：各型態貼海底、重建維持位置，只吃接近沙底的飼料', async () => {
+  for(const width of [393,1100]){
+    const I=await boot({state:base(...drops(['moray','clown'])),width,height:771});await I.dismiss();await I.tab('tank');
+    I.ev(`cancelAnimationFrame(TANK.raf);window.__realRAF=requestAnimationFrame;window.requestAnimationFrame=cb=>{window.__step=cb;return 0};`);
+    for(const fed of [0,10,30]){
+      const result=I.ev(`(()=>{S.fed={dr0moray:${fed}};save();tankStart();const f=TANK.fish.find(f=>f.c.id==='moray'),start=performance.now();for(let i=1;i<=90;i++)window.__step(start+i*16.7);return{stage:f.st,ground:f.ground,bottom:f.y+f.h,floor:TANK.floorY,base:f.baseY,y:f.y,clownGround:TANK.fish.find(f=>f.c.id==='clown').ground}})()`);
+      eq(result.stage,[0,10,30].indexOf(fed)+1,'確實涵蓋三個不同成長型態');ok(result.ground,width+'px '+fed+'顆海鰻屬海底生物');ok(Math.abs(result.bottom-result.floor-2)<1e-8,width+'px各型態移動後仍貼海底');eq(result.base,result.y,'沒有中層魚的上下浮動');ok(!result.clownGround,'小丑魚仍在水中游動');
+    }
+    I.ev(`tankStart();window.__moray=TANK.fish.find(f=>f.c.id==='moray');TANK.fish=[window.__moray];TANK.food=[];`);
+    ok(I.ev(`findFishFood(window.__moray,[{x:window.__moray.x+window.__moray.w/2,y:TANK.floorY-10}],TANK.W,TANK.floorY)===null`),'不追仍懸在水中的食物');
+    for(const fed of [9,29]){
+      const result=I.ev(`(()=>{S.fed.dr0moray=${fed};save();tankStart();TANK.fish=TANK.fish.filter(f=>f.c.id==='moray');const f=TANK.fish[0];TANK.food=[{x:f.x+f.w/2,y:TANK.floorY-2,vy:0,age:0}];window.__step(performance.now()+16.7);return{fed:fedOf(f.key),bottom:f.y+f.h,floor:TANK.floorY}})()`);
+      eq(result.fed,fed+1,'海鰻吃到沉底飼料並成長');ok(Math.abs(result.bottom-result.floor-2)<1e-8,'升階改變體型後仍貼海底');
+    }
+    I.ev('window.requestAnimationFrame=window.__realRAF;save()');I.check('海鰻海底');I.destroy();
+  }
+});
