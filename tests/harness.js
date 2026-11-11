@@ -87,7 +87,7 @@ function SHIM(o, P) {
   }
   const authObj = {
     get currentUser() { return cur; },
-    onAuthStateChanged(cb) { authCb = cb; Promise.resolve().then(() => cb(cur)); return () => {}; },
+    onAuthStateChanged(cb) { authCb = cb; if (!o.deferAuth) Promise.resolve().then(() => cb(cur)); return () => {}; },
     async signInWithPopup() { if (DB.popupBlocked) { const e = new Error('blocked'); e.code = 'auth/popup-blocked'; throw e; } cur = mkUser(DB.nextUser || { uid: 'u1' }); authCb && authCb(cur); },
     async signInWithRedirect() { DB.redirected = true; },
     async signOut() { cur = null; authCb && authCb(null); },
@@ -97,7 +97,7 @@ function SHIM(o, P) {
     auth: Object.assign(() => authObj, { GoogleAuthProvider: function () {} }),
     firestore: Object.assign(() => ({ collection: () => ({ doc }), runTransaction }), { FieldValue: { serverTimestamp: () => R.now() + ck.off } }),
   };
-  window.__fb = { signIn(u) { cur = mkUser(u); authCb && authCb(cur); } };
+  window.__fb = { signIn(u) { cur = mkUser(u); authCb && authCb(cur); }, resolveAuth() { return authCb && authCb(cur); } };
   const hd = document.head, apd = Node.prototype.appendChild;
   hd.appendChild = function (el) { if (el.tagName === 'SCRIPT' && /gstatic|firebase/i.test(el.src || '')) { Promise.resolve().then(() => el.onload && el.onload()); return el; } return apd.call(this, el); };
 }
@@ -112,7 +112,7 @@ async function boot(o = {}) {
     if (o.state) m.set('habitdive.v1', typeof o.state === 'string' ? o.state : JSON.stringify(o.state));
     window.__stores[storeId] = m;
   }
-  const opts = { now: o.now == null ? T0 + (Date.now() - SIM0) : o.now, storeId, storage: o.storage, noAudio: o.noAudio, noAnimate: o.noAnimate, ua: o.ua, cloudUser: o.cloudUser, noShare: o.noShare, skew: o.skew, onb: o.onb };
+  const opts = { now: o.now == null ? T0 + (Date.now() - SIM0) : o.now, storeId, storage: o.storage, noAudio: o.noAudio, noAnimate: o.noAnimate, ua: o.ua, cloudUser: o.cloudUser, deferAuth: o.deferAuth, noShare: o.noShare, skew: o.skew, onb: o.onb };
   const html = boot.html.replace('<head>', `<head><base href="${base}"><script>(${SHIM.toString()})(${JSON.stringify(opts)}, window.parent)<\/script>`);
   const frame = document.createElement('iframe');
   const w = o.width || 375, h = o.height || 812;

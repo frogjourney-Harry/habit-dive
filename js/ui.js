@@ -7,7 +7,7 @@ function introTasks() {
     <button class="pri wide" data-act="meetfish" ${introTasksReady() ? '' : 'disabled'}>領取小丑魚</button>`;
 }
 function backupNudge() {
-  if (!FIREBASE_CONFIG || CLOUD.user || S.backupNudgeDismissed || S.introPending || !S.logs.some(l => ['check','habit','pomo'].includes(l.k) && !l.pend)) return '';
+  if (!FIREBASE_CONFIG || CLOUD.user || S.cloudUid || (CLOUD.loading && !CLOUD.authKnown) || S.backupNudgeDismissed || S.introPending || !S.logs.some(l => ['check','habit','pomo'].includes(l.k) && !l.pend)) return '';
   return `<section class="px"><b>想在其他裝置接著玩？</b><p class="mini">可用 Google 備份紀錄。未備份時，清除瀏覽資料可能讓紀錄消失。</p><button data-act="backupinvite">登入備份</button><button class="ghost" data-act="backuplater">稍後</button></section>`;
 }
 function settlePastRewards() {

@@ -2,7 +2,7 @@
 // 沒看到登入畫面的人不會載入任何外部程式；看到登入畫面時先載入登入程式（不送出紀錄）；登入過的裝置下次打開會自動恢復登入。
 // 資料放在 Firestore 的 users/{uid}，整份紀錄存成一個 JSON 字串；以 S.mtime（最後修改時間）決定哪一份比較新。
 const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
-const CLOUD = { ready: false, loading: null, user: null, last: 0, timer: 0, pending: false, error: '', session: 0, writes: new Set(), suspended: false };
+const CLOUD = { ready: false, loading: null, authKnown: false, user: null, last: 0, timer: 0, pending: false, error: '', session: 0, writes: new Set(), suspended: false };
 
 // 帳號歸屬獨立存在本機，不因登出或雲端存檔內容而遺失。
 const OWNER_KEY = KEY + '.owner';
@@ -64,11 +64,13 @@ function loadScript(src) {
 function cloudInit() {
   if (!FIREBASE_CONFIG) return Promise.resolve(false);
   if (CLOUD.loading) return CLOUD.loading;
+  CLOUD.authKnown = false;
   return CLOUD.loading = (async () => {
     for (const f of ['firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-firestore-compat.js']) await loadScript(FIREBASE_SDK + f);
     firebase.initializeApp(FIREBASE_CONFIG);
     CLOUD.ready = true;
     firebase.auth().onAuthStateChanged(async u => {
+      CLOUD.authKnown = true;
       const request = CLOUD.trialSaveRequested, previousSession = CLOUD.session;
       CLOUD.trialSaveRequested = null; CLOUD.saveTrialFor = null;
       const session = ++CLOUD.session;

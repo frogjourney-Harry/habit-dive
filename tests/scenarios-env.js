@@ -668,3 +668,25 @@ test('手機分頁：工具列位移造成hit-test不符時仍保留原生click'
   tabTouchEvent(I,button,'pointerdown',100,100);tabTouchEvent(I,button,'pointerup',100,100);await flush();eq(I.UI.tab,'today','座標對不上時不自行切換');button.dispatchEvent(new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:100,clientY:100}));await flush();eq(I.UI.tab,'shop','瀏覽器仍判定原按鈕的click不被吞掉');
   await I.tab('today');button=I.$('nav [data-v=shop]');const p=tabCenter(button);tabTouchEvent(I,button,'pointerdown',p.x,p.y);tabTouchEvent(I,button,'pointercancel',p.x,p.y,{pointerId:99});tabTouchEvent(I,button,'pointerup',p.x,p.y);await flush();eq(I.UI.tab,'shop','無關pointer的cancel不取消本次點擊');eq(I.$('nav .sel').dataset.v,'shop','實際選取線更新');I.check('工具列位移fallback');I.destroy();
 });
+
+test('登入恢復提示：首次確認完成前不閃出訪客備份邀請', async () => {
+  resetCloud();const state=mkState({cloudUid:'restore-user',onb:true});state.logs.push({id:'completed',d:D0,k:'habit',c:15,xp:1});
+  const I=await boot({state,cloudUser:{uid:'restore-user'},deferAuth:true});await I.dismiss();
+  ok(!I.ev('CLOUD.user'),'刻意延後Firebase首次登入狀態回呼');ok(!I.has('想在其他裝置接著玩'),'讀取已登入存檔時沒有訪客提示');
+  I.ev('render()');ok(!I.has('想在其他裝置接著玩'),'等待期間其他重畫也不會閃出提示');await I.win.__fb.resolveAuth();await flush(16);
+  eq(I.ev('CLOUD.user.uid'),'restore-user','登入狀態恢復成功');ok(!I.has('想在其他裝置接著玩'),'恢復後維持正確已登入畫面');I.check('登入恢復不閃爍');I.destroy();
+});
+
+test('登入恢復提示：確認已登出或真正訪客仍可看到備份入口', async () => {
+  resetCloud();const state=mkState({cloudUid:'expired-user',onb:true});state.logs.push({id:'completed',d:D0,k:'habit',c:15,xp:1});
+  const I=await boot({state,deferAuth:true});await I.dismiss();ok(!I.has('想在其他裝置接著玩'),'尚未確定會話失效前不先邀請登入');await I.win.__fb.resolveAuth();await flush(12);
+  ok(!I.S.cloudUid&&!I.ev('CLOUD.user'),'確認會話已登出');ok(I.has('想在其他裝置接著玩'),'確認未登入後才顯示備份入口');I.check('確認登出');I.destroy();
+  const guest=mkState({onb:true});guest.logs.push({id:'guest-done',d:D0,k:'habit',c:15,xp:1});const J=await boot({state:guest});await J.dismiss();ok(J.has('想在其他裝置接著玩'),'真正訪客不必載入Google程式就能看到備份入口');ok(!J.ev('CLOUD.loading'),'沒有為了消除閃爍而讓所有訪客連線Firebase');J.check('訪客提示');J.destroy();
+});
+
+test('登入恢復提示：SDK已載入不代表登入已確認，確認訪客後仍恢復邀請', async () => {
+  resetCloud();const state=mkState({onb:true});state.logs.push({id:'guest-completed',d:D0,k:'habit',c:15,xp:1});
+  const I=await boot({state,deferAuth:true});await I.dismiss();ok(I.has('想在其他裝置接著玩'),'尚未啟動登入服務的訪客正常顯示邀請');await I.tab('about');await flush(8);await I.tab('today');
+  ok(I.ev('CLOUD.ready && !CLOUD.authKnown'),'SDK準備好但首次Auth回呼尚未返回');ok(!I.has('想在其他裝置接著玩'),'正在確認登入不顯示訪客邀請');await I.win.__fb.resolveAuth();await flush(12);
+  ok(I.ev('CLOUD.loading && CLOUD.authKnown'),'確認訪客後已知登入狀態，SDK Promise仍保留');ok(I.has('想在其他裝置接著玩'),'不因保留loading Promise而永遠隱藏訪客入口');I.check('SDK與Auth狀態分開');I.destroy();
+});
