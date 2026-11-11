@@ -621,3 +621,88 @@ test('各頁頂端列的位置一樣（大海頁不會捲動也不能左右跳�
     I.destroy();
   }
 });
+
+test('生物進度與篩選：交集、展示草稿、取消及改名保留', async () => {
+  const state = base(...drops(['clown','lion','star','clown']));
+  state.fed = { dr0clown: 7, dr1lion: 18, dr2star: 35 }; state.outTank = { dr3clown: true };
+  const I = await boot({ state, width:393, height:771 }); await I.dismiss(); await I.tab('tank'); await I.click('[data-act=tankedit]');
+  const visible = () => I.$$('[data-pet]').filter(e => !e.hidden).map(e => e.dataset.pet);
+  ok(I.has('已吃 7 顆・再 3 顆長大') && I.has('已吃 18 顆・再 12 顆變特殊型態') && I.has('成長完成'), '三種個體進度直接可見');
+  await I.type('[data-tank-filter=location]', 'shown'); eq(visible().length, 3, '展示中依已套用名單');
+  await I.click('[data-act=intank][data-v=dr0clown]');
+  ok(visible().includes('dr0clown'), '取消勾選不突然移出篩選結果'); eq(I.UI.tankDraft.length, 2, '草稿更新');
+  await I.type('[data-tank-filter=growth]', 'growing'); eq(visible().length, 2, '位置與成長交集');
+  await I.type('[data-tank-filter=species]', 'clown'); eq(visible(), ['dr0clown'], '三種條件交集');
+  ok(I.$('.tank-summary').textContent.includes('2／12'), '總勾選不因篩選改變');
+  await I.click('[data-act=petname][data-v=dr0clown]'); await I.type('[data-nf=dr0clown]', '十個字的名字測試看看');
+  const input = I.$('[data-nf=dr0clown]');
+  await I.type('[data-tank-filter=location]', 'stored'); eq(visible(), ['dr3clown'], '收藏中的生物');
+  ok(I.$('[data-nf=dr0clown]') === input && I.S.names.dr0clown, '切篩選不重建輸入或丟失已儲存名字');
+  await I.type('[data-tank-filter=growth]', 'complete'); eq(visible().length, 0, '無符合項目');
+  ok(I.$('.tank-filter-result').textContent.includes('沒有符合'), '空狀態可見'); await I.click('[data-act=tankfilterclear]');
+  eq(visible().length, 4, '清除篩選'); eq(I.UI.tankDraft.length, 2, '切換篩選保留全部草稿');
+  await I.click('[data-act=tankcancel]'); ok(I.ev("inTank('dr0clown')"), '取消不套用勾選'); ok(I.S.names.dr0clown, '取名仍保留');
+  await I.click('[data-act=tankedit]'); eq(I.$('[data-tank-filter=location]').value, '', '重新開啟重置篩選');
+  I.check('進度篩選'); I.destroy();
+});
+
+test('生物篩選：滿額隱藏勾選、完成及窄版不溢出', async () => {
+  const state = base(...drops(['clown','lion','hermit','puffer','cuttle','star','clown','lion','hermit','puffer','cuttle','star','clown']));
+  const I = await boot({ state, width:393, height:771 }); await I.dismiss(); await I.tab('tank'); await I.click('[data-act=tankedit]');
+  await I.type('[data-tank-filter=location]', 'stored'); ok(I.$('[data-act=intank][data-v=dr12clown]').disabled, '滿額時收藏不可加選');
+  await I.type('[data-tank-filter=location]', 'shown'); await I.click('[data-act=intank][data-v=dr0clown]');
+  await I.type('[data-tank-filter=location]', 'stored'); ok(!I.$('[data-act=intank][data-v=dr12clown]').disabled, '隱藏列同樣更新disabled');
+  await I.click('[data-act=intank][data-v=dr12clown]');
+  ok(I.doc.documentElement.scrollWidth <= 393, '393寬無水平溢出');
+  I.ev("const largeType=document.createElement('style'); largeType.textContent='.tank-manager select,.tank-manager button,.tank-choice small,.tank-pet-meta,.tank-pet-growth{font-size:20px!important}'; document.head.append(largeType)"); ok(I.doc.documentElement.scrollWidth <= 393, '實際放大文字至20px仍無水平溢出');
+  await I.click('[data-act=tankdone]'); ok(I.ev("inTank('dr12clown') && !inTank('dr0clown')"), '完成套用包含隱藏列的完整草稿');
+  I.check('滿額篩選'); I.destroy();
+});
+
+test('餵食公平性：所有型態可吃、順序不固定偏袒大魚、跨階追食減速', async () => {
+  const I = await boot({ state:base(...drops(['whaleshark','clown'])) }); await I.dismiss(); await I.tab('tank');
+  I.ev(`cancelAnimationFrame(TANK.raf); window.__realRAF = window.requestAnimationFrame; window.requestAnimationFrame = cb => { window.__tankStep = cb; return 0; }; tankStart();`);
+  // 固定位置、速度與亂數，只走一幀真實動畫／吃食，避免靠牆或物種速度掩蓋順序。
+  const once = (fed, random, feed = true) => I.ev(`(() => {
+    S.fed = ${JSON.stringify(fed)};
+    const r = Math.random; Math.random = () => ${random};
+    for (const f of TANK.fish) { f.x=10; f.y=f.baseY=20; f.vx=.4; f.mx=f.my=0; f.rest=0; f.tx=null; }
+    TANK.food = ${feed ? '[{x:12,y:22,vy:0,age:0}]' : '[]'};
+    window.__tankStep(performance.now()+16.7); Math.random=r;
+    return {fed:{...S.fed}, order:TANK.fish.map(f=>f.key)};
+  })()`);
+  let result = once({dr0whaleshark:7,dr1clown:7}, .999);
+  eq(result.fed.dr0whaleshark, 8, '此亂數順序讓大魚吃到');
+  result = once({dr0whaleshark:7,dr1clown:7}, 0);
+  eq(result.fed.dr1clown, 8, '另一順序讓同位置小魚吃到'); eq(result.order[0], 'dr0whaleshark', '繪圖順序始終保留大魚在後');
+  result = once({dr0whaleshark:30,dr1clown:7}, .999);
+  eq(result.fed.dr0whaleshark, 31, '海中有幼體時滿階仍可進食');
+  result = once({dr0whaleshark:30,dr1clown:30}, .999);
+  eq(result.fed.dr0whaleshark, 31, '全部滿階仍可進食');
+  // 攔下steer觀察真實幀要求的速度，避免繪圖浮沉影響比較。
+  I.ev(`window.__realSteer = steer; window.__speeds=[]; steer = (...a) => { window.__speeds.push({key:a[0].key,x:Math.abs(a[1])}); return window.__realSteer(...a); };`);
+  const speeds=[];
+  for (const fed of [0,10,30,30]) {
+    I.ev(`S.fed={dr0whaleshark:${fed},dr1clown:${fed}}; TANK.food=[{x:TANK.W-5,y:20,vy:0}]; for(const f of TANK.fish){f.x=1;f.y=f.baseY=20;f.vx=.4;f.mx=f.my=0;} window.__speeds=[]; window.__tankStep(performance.now()+16.7);`);
+    speeds.push(I.ev("window.__speeds.find(s=>s.key==='dr1clown').x"));
+  }
+  ok(Math.abs(speeds[1]/speeds[0]-.85)<1e-8 && Math.abs(speeds[2]/speeds[0]-.75)<1e-8, '追食依目前fed套用85%與75%');
+  ok(Math.abs(speeds[3]-speeds[2])<1e-8, '下一幀不重複累乘');
+  I.ev('steer=window.__realSteer; window.requestAnimationFrame=window.__realRAF; save();');
+  I.check('餵食公平性'); I.destroy();
+});
+
+test('生物篩選：同步重載保留篩選、失效物種與最後放走項目', async () => {
+  const I=await boot({state:base(...drops(['clown','star']))}); await I.dismiss(); await I.tab('tank'); await I.click('[data-act=tankedit]');
+  await I.type('[data-tank-filter=location]', 'shown'); await I.type('[data-tank-filter=growth]', 'growing'); await I.type('[data-tank-filter=species]', 'clown');
+  I.ev("CLOUD.user={uid:'mock-owner'};adopt({...S,names:{dr0clown:'同步名字'}})");
+  eq(I.$('[data-tank-filter=species]').value, 'clown', '資料替換後仍保留有效物種'); eq(I.$('[data-tank-filter=location]').value, 'shown', '保留位置篩選');
+  await I.click('[data-act=release][data-v=dr0clown]'); await I.click('#askyes');
+  eq(I.$('[data-tank-filter=species]').value, '', '放走最後一隻後物種回全部'); ok(!I.$('[data-tank-filter=species] option[value=clown]'), '只列仍擁有的物種');
+  eq(I.$('.tank-summary').textContent, '已選 1／12 隻', '放走後全域勾選同步更新');
+  await I.type('[data-tank-filter=location]', 'stored'); ok(I.$('.tank-filter-result').textContent.includes('沒有符合'), '沒有收藏時正確顯示空狀態');
+  ok(I.$('.tank-filter-result [role=status]').textContent.includes('沒有符合'), '持續存在的朗讀區包含空結果');
+  await I.type('[data-tank-filter=location]', 'shown'); await I.click('[data-act=release][data-v=dr1star]'); await I.click('#askyes');
+  ok(I.$('.tank-filters').hidden && I.has('還沒有生物'), '收藏全空時收起篩選並保留空收藏提示');
+  I.check('篩選資料重載'); I.destroy();
+});

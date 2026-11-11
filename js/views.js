@@ -34,7 +34,7 @@ function render() {
   document.getElementById('nav').innerHTML = tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'sel' : ''}" data-act="tab" data-v="${k}">${n}${k === 'quest' && pendN ? `<i class="badge">${pendN}</i>` : ''}</button>`).join('');
   document.getElementById('main').innerHTML = ({ today, quest: quests, tank, shop, log, about })[UI.tab](D);
   document.body.classList.toggle('sea-on', seaOn()); document.documentElement.classList.toggle('sea-on', seaOn());
-  if (UI.tab === 'tank') tankStart();
+  if (UI.tab === 'tank') { tankStart(); if (UI.tankEdit) applyTankFilters(); }
   for (const i of document.querySelectorAll('#main textarea, #main input:not([type]), #main input[type=text], #sheet input:not([type]), #sheet input[type=text]')) { i.setAttribute('autocomplete', 'off'); i.setAttribute('autocapitalize', 'off'); i.setAttribute('spellcheck', 'false'); }
   // 不是按鈕的可點元素（圖鑑格子、寶箱名稱、任務名稱…）：讓鍵盤和螢幕閱讀器也用得到
   for (const e of document.querySelectorAll('#main [data-act]')) if (!e.matches('button, input, select, a, [tabindex]')) { e.setAttribute('role', 'button'); e.setAttribute('tabindex', '0'); }
@@ -404,6 +404,11 @@ const MAX_PETS = 5;
 const GROW = [0, 10, 30];                                  // 吃到幾顆：幼體 → 成體 → 特殊型態
 const fedOf = key => (S.fed && S.fed[key]) || 0;
 const stageOf = n => GROW.filter(t => n >= t).length;
+function growthText(fed) {
+  if (fed >= GROW[2]) return '成長完成';
+  const next = fed < GROW[1] ? GROW[1] : GROW[2];
+  return `已吃 ${fed} 顆・再 ${next - fed} 顆${next === GROW[1] ? '長大' : '變特殊型態'}`;
+}
 const TANK_LIMIT = 12;
 const tankOwned = () => S.logs.filter(l => CR[l.drop] && !(S.released && S.released[l.id]));
 const tankResidents = () => tankOwned().filter(l => !(S.outTank && S.outTank[l.id])).slice(0, TANK_LIMIT);
@@ -417,14 +422,15 @@ function setTankSelection(ids) {
   S.outTank = out;
   return true;
 }
-function beginTankSelection() {
+function beginTankSelection(preserveFilters = false) {
+  if (!preserveFilters) UI.tankFilters = { location: '', growth: '', species: '' };
   UI.tankEdit = true; UI.tankDraft = tankResidents().map(l => l.id); UI.tankDraftState = S;
   UI.tankDraftNotice = ''; UI.nameEdit = null;
 }
 function tankSelectionDraft() {
   if (!UI.tankDraft || UI.tankDraftState !== S) {
     const changed = !!UI.tankDraft;
-    beginTankSelection();
+    beginTankSelection(true);
     if (changed) UI.tankDraftNotice = '資料已更新，展示選擇已重新載入，請確認後再完成。';
   }
   const owned = new Set(tankOwned().map(l => l.id));
@@ -569,14 +575,39 @@ function tankEditor(D) {
   return `<section class="px tank-manager">${seaPageHeader('管理生物', `<div class="tank-summary sea-page-meta" role="status" aria-live="polite">已選 ${draft.size}／${TANK_LIMIT} 隻</div>`, '<button class="ghost" data-act="tankcancel">取消</button><button class="pri" data-act="tankdone">完成</button>')}
     <p class="mini tank-draft-hint">${draft.size >= TANK_LIMIT ? '已選滿，先取消一隻再替換。' : '勾選生物，按完成儲存。'}</p>
     ${UI.tankDraftNotice ? `<div class="warn" role="status">${UI.tankDraftNotice}</div>` : ''}
+    <div class="tank-filters" role="group" aria-label="篩選生物">
+      <select data-tank-filter="location" aria-label="位置"><option value="">位置：全部</option><option value="shown">展示中</option><option value="stored">收藏中</option></select>
+      <select data-tank-filter="growth" aria-label="成長"><option value="">成長：全部</option><option value="growing">成長中</option><option value="complete">成長完成</option></select>
+      <select data-tank-filter="species" aria-label="物種"><option value="">物種：全部</option>${owned.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select>
+    </div>
+    <div class="tank-filter-result"><span role="status" aria-live="polite"></span><button class="ghost" data-act="tankfilterclear" hidden>清除篩選</button></div>
     ${owned.map(c => {
       const P = pets(c.id), numbers = new Map(S.logs.filter(l => l.drop === c.id).map((l, i) => [l.id, i + 1]));
       return `<div class="tset"><div class="row"><b class="sp">${c.name}</b></div>
-        ${P.map(p => `<div class="entry"><label class="row sp tank-choice"><input type="checkbox" data-act="intank" data-v="${esc(p.id)}" ${draft.has(p.id) ? 'checked' : ''} ${!draft.has(p.id) && draft.size >= TANK_LIMIT ? 'disabled' : ''}>
-          ${stageImg(c, stageOf(p.fed), 3)}<small><b>${esc(petName(p.id) || c.name + ' ' + numbers.get(p.id) + ' 號')}</b><span class="tank-pet-meta" title="吃了 ${p.fed} 顆">${stageName(c, stageOf(p.fed))}<span class="tank-pet-status">・${shown.has(p.id) ? '海中' : '收藏'}${draft.has(p.id) !== shown.has(p.id) ? draft.has(p.id) ? ' → 海中' : ' → 收藏' : ''}</span></span></small></label>
+        ${P.map(p => `<div class="entry" data-pet="${esc(p.id)}" data-species="${c.id}" data-location="${shown.has(p.id) ? 'shown' : 'stored'}" data-growth="${p.fed < GROW[2] ? 'growing' : 'complete'}"><label class="row sp tank-choice"><input type="checkbox" data-act="intank" data-v="${esc(p.id)}" ${draft.has(p.id) ? 'checked' : ''} ${!draft.has(p.id) && draft.size >= TANK_LIMIT ? 'disabled' : ''}>
+          ${stageImg(c, stageOf(p.fed), 3)}<small><b>${esc(petName(p.id) || c.name + ' ' + numbers.get(p.id) + ' 號')}</b><span class="tank-pet-meta" title="吃了 ${p.fed} 顆">${stageName(c, stageOf(p.fed))}<span class="tank-pet-status">・${shown.has(p.id) ? '海中' : '收藏'}${draft.has(p.id) !== shown.has(p.id) ? draft.has(p.id) ? ' → 海中' : ' → 收藏' : ''}</span></span><span class="tank-pet-growth">${growthText(p.fed)}</span></small></label>
           <div class="tank-pet-actions"><button class="ghost" data-act="petname" data-v="${esc(p.id)}">${petName(p.id) ? '改名' : '取名'}</button><button class="ghost" data-act="release" data-v="${esc(p.id)}">放走</button></div>
           ${UI.nameEdit === p.id ? `<div class="pname"><input data-nf="${esc(p.id)}" value="${esc(petName(p.id))}" maxlength="${PET_NAME_MAX}" placeholder="名字自動儲存" aria-label="${esc(c.name)}的名字"><button class="pri" data-act="petnamedone">完成</button></div>` : ''}</div>`).join('')}</div>`;
     }).join('') || '<div class="dim">還沒有生物，到商店買寶箱吧。</div>'}</section>`;
+}
+function applyTankFilters() {
+  const root = document.querySelector('.tank-manager'); if (!root) return;
+  const filters = UI.tankFilters || (UI.tankFilters = { location: '', growth: '', species: '' });
+  for (const select of root.querySelectorAll('[data-tank-filter]')) {
+    const key = select.dataset.tankFilter;
+    if (![...select.options].some(o => o.value === filters[key])) filters[key] = '';
+    select.value = filters[key];
+  }
+  const rows = [...root.querySelectorAll('[data-pet]')]; let count = 0;
+  for (const row of rows) {
+    row.hidden = Object.entries(filters).some(([key, value]) => value && row.dataset[key] !== value);
+    if (!row.hidden) count++;
+  }
+  for (const group of root.querySelectorAll('.tset')) group.hidden = ![...group.querySelectorAll('[data-pet]')].some(row => !row.hidden);
+  root.querySelector('.tank-filters').hidden = rows.length === 0;
+  const filtered = rows.length > 0 && Object.values(filters).some(Boolean), result = root.querySelector('.tank-filter-result');
+  result.querySelector('button').hidden = !filtered;
+  result.querySelector('[role=status]').textContent = filtered ? `顯示 ${count}／${rows.length} 隻${count === 0 ? '・沒有符合的生物' : ''}` : '';
 }
 function refreshTankSelection() {
   const draft = new Set(tankSelectionDraft()), shown = new Set(tankResidents().map(l => l.id));
@@ -705,7 +736,13 @@ function tankStart() {
     x.fillStyle = '#ef7d57'; TANK.food.forEach(f => x.fillRect(rp(f.x), rp(f.y), 2, 2));
     // 生物：飼料碰到身體就算吃到；吃到的那一隻會長大
     const eats = (f, p) => p.x >= f.x - 2 && p.x <= f.x + f.w + 2 && p.y >= f.y - 2 && p.y <= f.y + f.h + 2;
-    for (const f of TANK.fish) {
+    // 更新／吃食順序與繪圖分離，每幀洗牌，避免大體型固定先拿走同一顆飼料。
+    const feedingOrder = TANK.fish.slice();
+    for (let i = feedingOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [feedingOrder[i], feedingOrder[j]] = [feedingOrder[j], feedingOrder[i]];
+    }
+    for (const f of feedingOrder) {
       const sp0 = Math.abs(f.vx);
       let food = null, best = 1e9;
       for (const p of TANK.food) {
@@ -713,7 +750,9 @@ function tankStart() {
         const dd = Math.hypot(p.x - (f.x + f.w / 2), p.y - (f.y + f.h / 2)); if (dd < best) { best = dd; food = p; }
       }
       if (food) {
-        const dx = food.x - (f.x + f.w / 2), sp = Math.max(.12, sp0 * 1.8);   // 看到飼料會加速，但慢的還是慢
+        // 成長後只降低追食加速，平常游速不變；由原速即時計算，不累乘或寫回存檔。
+        const chaseScale = [1, .85, .75][stageOf(fedOf(f.key)) - 1];
+        const dx = food.x - (f.x + f.w / 2), sp = Math.max(.12, sp0 * 1.8) * chaseScale;
         f.tx = null; f.rest = 0;   // 吃完再重新找地方游
         const dy = food.y - (f.y + f.h / 2), ease = Math.min(1, Math.hypot(dx, dy) / 10);
         steer(f, Math.sign(dx) * sp * ease, f.ground ? 0 : Math.sign(dy) * sp * .8 * ease, dt, !f.ground);
@@ -745,6 +784,9 @@ function tankStart() {
         f.y = f.baseY + Math.sin(now / (f.c.id === 'jelly' ? 1600 : 900) + f.ph) * (f.c.id === 'jelly' ? 8 : 3);
       }
       if (f.x < 0) { f.x = 0; f.vx = Math.abs(f.vx); f.mx = Math.max(0, f.mx || 0); } else if (f.x > W - f.w) { f.x = W - f.w; f.vx = -Math.abs(f.vx); f.mx = Math.min(0, f.mx || 0); }
+    }
+    // 仍依原本大小順序繪圖，小魚留在前景。
+    for (const f of TANK.fish) {
       x.save();
       if (f.vx < 0) { x.translate(rp(f.x + f.w), rp(f.y)); x.scale(-1, 1); x.drawImage(f.s, 0, 0, f.w, f.h); }
       else x.drawImage(f.s, rp(f.x), rp(f.y), f.w, f.h);

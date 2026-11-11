@@ -241,6 +241,7 @@ document.addEventListener('click', async e => {
     case 'prerestore': cloudRestorePre(); break;
     case 'predrop': cloudDropPre(); break;
     case 'tankedit': beginTankSelection(); render(); break;
+    case 'tankfilterclear': UI.tankFilters = { location: '', growth: '', species: '' }; applyTankFilters(); document.querySelector('[data-tank-filter]')?.focus(); break;
     case 'seamanage': UI.opened = false; UI.tab = 'tank'; UI.tankView = ''; beginTankSelection(); render(); nextChest(); break;
     case 'tankview': UI.tankView = v; render(); window.scrollTo(0, 0); break;
     // 任務頁點未完成的任務：跳到「今日」頁對應的區塊（六件事、習慣、番茄鐘）
@@ -412,6 +413,13 @@ document.addEventListener('pointerup', () => {
 });
 document.addEventListener('pointercancel', () => { if (DRAG.i == null) return; DRAG.i = null; render(); });   // 系統中斷了手勢：放棄這次拖曳，回到原位
 document.addEventListener('click', e => { if (performance.now() < DRAG.until && eventElement(e)?.closest('.prow .no')) { DRAG.until = 0; e.stopPropagation(); e.preventDefault(); } }, true);
+// 篩選只切換可見性，保留輸入與全部展示草稿。
+document.addEventListener('change', e => {
+  const key = e.target.dataset.tankFilter;
+  if (!UI.tankEdit || !['location', 'growth', 'species'].includes(key)) return;
+  (UI.tankFilters || (UI.tankFilters = {}))[key] = e.target.value;
+  applyTankFilters();
+});
 // 輸入框只存資料不重畫，避免打字時失去焦點
 document.addEventListener('input', e => {
   const el = e.target, i = el.dataset.i;
