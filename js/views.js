@@ -597,6 +597,7 @@ function applyTankFilters() {
     const key = select.dataset.tankFilter;
     if (![...select.options].some(o => o.value === filters[key])) filters[key] = '';
     select.value = filters[key];
+    select.classList.toggle('filtered', Boolean(filters[key]));
   }
   const rows = [...root.querySelectorAll('[data-pet]')]; let count = 0;
   for (const row of rows) {
