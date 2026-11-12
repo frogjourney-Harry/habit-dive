@@ -663,10 +663,61 @@ test('手機分頁：頁內操作不吃點擊，也不讓前次延遲click重設
   I.$('nav [data-v=shop]').dispatchEvent(new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:p.x,clientY:p.y}));await flush();eq(I.win.tabRenders,1,'前次晚到分頁click仍被去重');I.check('頁內操作去重');I.destroy();
 });
 
-test('手機分頁：工具列位移造成hit-test不符時仍保留原生click', async () => {
-  const I=await boot({state:mkState(),width:393,height:771});await I.dismiss();let button=I.$('nav [data-v=shop]');
-  tabTouchEvent(I,button,'pointerdown',100,100);tabTouchEvent(I,button,'pointerup',100,100);await flush();eq(I.UI.tab,'today','座標對不上時不自行切換');button.dispatchEvent(new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:100,clientY:100}));await flush();eq(I.UI.tab,'shop','瀏覽器仍判定原按鈕的click不被吞掉');
+test('手機分頁：工具列位移造成hit-test不符時，不等原生click也切換', async () => {
+  const I=await boot({state:mkState(),width:393,height:771});await I.dismiss();I.ev('window.tabRenders=0;const originalRender=render;render=()=>{window.tabRenders++;originalRender()}');let button=I.$('nav [data-v=shop]');
+  ok(!I.doc.elementFromPoint(100,100)?.closest('#nav'),'測試座標確實不在分頁列上');
+  tabTouchEvent(I,button,'pointerdown',100,100);tabTouchEvent(I,button,'pointerup',100,100);await flush();eq(I.UI.tab,'shop','放開位置的hit-test對不上，仍以按下時判定的分頁切換');eq(I.$('nav .sel').dataset.v,'shop','選取線實際更新');ok(I.$('#main').textContent.includes('生物寶箱'),'商店畫面實際顯示');
+  const late=new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:100,clientY:100});I.$('nav [data-v=shop]').dispatchEvent(late);await flush();eq(I.win.tabRenders,1,'之後才到的原生click不重複切換');
+  for(const tab of ['quest','tank','log','about','today']){button=I.$(`nav [data-v=${tab}]`);const c=tabCenter(button);tabTouchEvent(I,button,'pointerdown',c.x,c.y-48);tabTouchEvent(I,button,'pointerup',c.x,c.y-48);await flush();eq(I.UI.tab,tab,'位移一個分頁列高度時連續點擊都切換：'+tab)}
   await I.tab('today');button=I.$('nav [data-v=shop]');const p=tabCenter(button);tabTouchEvent(I,button,'pointerdown',p.x,p.y);tabTouchEvent(I,button,'pointercancel',p.x,p.y,{pointerId:99});tabTouchEvent(I,button,'pointerup',p.x,p.y);await flush();eq(I.UI.tab,'shop','無關pointer的cancel不取消本次點擊');eq(I.$('nav .sel').dataset.v,'shop','實際選取線更新');I.check('工具列位移fallback');I.destroy();
+});
+
+const fixedTouch=(I,el,x,y)=>{tabTouchEvent(I,el,'pointerdown',x,y);tabTouchEvent(I,el,'pointerup',x,y)};
+const lateClick=(I,el,x,y)=>{const e=new I.win.MouseEvent('click',{bubbles:true,cancelable:true,detail:1,clientX:x,clientY:y});el.dispatchEvent(e);return e};
+
+test('手機固定元件：大海水面與工具列不等原生click也有反應，晚到click不重複', async () => {
+  const I=await boot({state:mkState(),width:393,height:771});await I.dismiss();await I.tab('tank');
+  const cv=I.$('#tank'),r=cv.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height*.3,food=()=>I.ev('TANK.food.length'),n0=food();
+  fixedTouch(I,cv,x,y);eq(food(),n0+1,'點水面，放開時就撒一顆');
+  const drop=I.ev('TANK.food[TANK.food.length-1]');ok(Math.abs(drop.x-(x-r.left)*I.ev('TANK.W')/r.width)<1.5,'飼料落在手指位置');
+  ok(lateClick(I,cv,x,y).defaultPrevented,'同一次手勢晚到的原生click被去重');eq(food(),n0+1,'不會多撒一顆');
+  fixedTouch(I,cv,x,y);fixedTouch(I,cv,x+40,y);lateClick(I,cv,x,y);lateClick(I,cv,x+40,y);eq(food(),n0+3,'連點兩下各撒一顆，兩個晚到click都不重複');
+  tabTouchEvent(I,cv,'pointerdown',x,y);tabTouchEvent(I,cv,'pointermove',x,y-30);tabTouchEvent(I,cv,'pointerup',x,y-30);eq(food(),n0+3,'拖動不撒飼料');
+  I.ev('navTouch.suppress=[]');
+  const n1=food();tabTouchEvent(I,cv,'pointerdown',x,y);I.ev('navTouch.down.at=performance.now()-1000');tabTouchEvent(I,cv,'pointerup',x,y);eq(food(),n1,'慢按不自行觸發');
+  ok(!lateClick(I,cv,x,y).defaultPrevented,'慢按交回原生click，不被吞掉');eq(food(),n1+1,'原生click照常撒一顆');
+  const dex=I.$('.seabar [data-act=tankview]'),c=tabCenter(dex);fixedTouch(I,dex,c.x,c.y-48);await flush();eq(I.ev('UI.tankView'),'dex','hit-test位移時圖鑑按鈕仍可開啟');
+  ok(lateClick(I,I.doc.body,c.x,c.y-48).defaultPrevented,'畫面換掉後，晚到click不會點到底下的東西');eq(I.ev('UI.tankView'),'dex','圖鑑保持開啟');
+  await I.tab('tank');I.ev('navTouch.suppress=[];navTouchScrollAt=-1e9');{const cv2=I.$('#tank'),m=food();tabTouchEvent(I,cv2,'pointerdown',x,y);I.ev('ask("蓋上來的彈窗","好")');await flush();tabTouchEvent(I,cv2,'pointerup',x,y);eq(food(),m,'按住水面時彈窗蓋上來，不在彈窗底下撒飼料');
+   const tabButton=I.$('nav [data-v=shop]'),t=tabCenter(tabButton);tabTouchEvent(I,tabButton,'pointerdown',100,300);tabTouchEvent(I,tabButton,'pointerup',100,300);await flush();eq(I.UI.tab,'tank','放開點被彈窗蓋住時不在底下切換分頁');
+   const no=I.$('#askno'),q=tabCenter(no);I.ev('navTouch.suppress=[]');fixedTouch(I,no,q.x,q.y);await flush();ok(I.$('#askov').classList.contains('hidden'),'彈窗本身的按鈕仍可直接操作');}
+  I.check('大海固定元件');I.destroy();
+});
+
+test('手機固定元件：彈窗按鈕直接觸發且不穿透，需要瀏覽器手勢的按鈕與輸入框維持原生click', async () => {
+  const I=await boot({state:mkState(),width:393,height:771});await I.dismiss();
+  I.ev('window.__ans="none";ask("測試確認","好").then(v=>{window.__ans=v})');await flush();
+  const yes=I.$('#askyes'),c=tabCenter(yes);fixedTouch(I,yes,c.x,c.y+40);await flush();eq(I.win.__ans,true,'確認鍵在hit-test位移時仍生效');
+  ok(I.$('#askov').classList.contains('hidden'),'彈窗已關閉');ok(lateClick(I,I.doc.body,c.x,c.y+40).defaultPrevented,'彈窗關閉後，晚到click不穿透到底下');
+  I.ev('navTouch.suppress=[]');
+  I.ev('window.__ans="none";ask("再一次","好").then(v=>{window.__ans=v})');await flush();
+  const modal=I.$('#askov .modal'),count={plain:0,login:0,field:0};
+  const add=(html,key)=>{modal.insertAdjacentHTML('beforeend',html);const el=modal.lastElementChild;el.addEventListener('click',e=>{count[key]++;e.stopPropagation()});return el};
+  const plain=add('<button>一般按鈕</button>','plain'),login=add('<button data-act="login">登入</button>','login'),field=add('<input value="x">','field');
+  let p=tabCenter(plain);fixedTouch(I,plain,p.x,p.y);eq(count.plain,1,'一般彈窗按鈕放開即觸發');ok(lateClick(I,plain,p.x,p.y).defaultPrevented,'晚到click去重');eq(count.plain,1,'只觸發一次');
+  p=tabCenter(login);fixedTouch(I,login,p.x,p.y);eq(count.login,0,'登入這類需要使用者手勢的按鈕不提前觸發');ok(!lateClick(I,login,p.x,p.y).defaultPrevented,'原生click照常送達');eq(count.login,1,'由原生click觸發一次');
+  p=tabCenter(field);fixedTouch(I,field,p.x,p.y);eq(count.field,0,'輸入框不提前觸發');ok(!lateClick(I,field,p.x,p.y).defaultPrevented,'輸入框的原生click不被吞掉');
+  I.ev('navTouch.suppress=[]');p=tabCenter(plain);
+  I.doc.dispatchEvent(new I.win.Event('scroll'));fixedTouch(I,plain,p.x,p.y);eq(count.plain,1,'剛捲動完的點按（停住慣性捲動）不提前觸發');ok(!lateClick(I,plain,p.x,p.y).defaultPrevented,'捲動後交回原生click');eq(count.plain,2,'原生click照常一次');
+  I.ev('navTouchScrollAt=-1e9;navTouch.suppress=[]');tabTouchEvent(I,plain,'pointerdown',p.x,p.y);I.doc.dispatchEvent(new I.win.Event('scroll'));tabTouchEvent(I,plain,'pointerup',p.x,p.y);eq(count.plain,2,'按住期間發生捲動不觸發');
+  I.ev('navTouchScrollAt=-1e9;navTouch.suppress=[]');tabTouchEvent(I,plain,'pointerdown',p.x,p.y);tabTouchEvent(I,plain,'pointercancel',p.x,p.y);tabTouchEvent(I,plain,'pointerup',p.x,p.y);eq(count.plain,2,'系統取消手勢後不觸發');
+  tabTouchEvent(I,plain,'pointerdown',p.x,p.y);tabTouchEvent(I,plain,'pointerdown',p.x+30,p.y,{pointerId:8,isPrimary:false});tabTouchEvent(I,plain,'pointerup',p.x,p.y);eq(count.plain,2,'多指不觸發');
+  tabTouchEvent(I,plain,'pointerdown',p.x,p.y);tabTouchEvent(I,plain,'pointermove',p.x,p.y-18);tabTouchEvent(I,plain,'pointerup',p.x,p.y-18);eq(count.plain,2,'中度位移不提前觸發');
+  {const no=I.$('#askno'),yes=I.$('#askyes'),a=no.getBoundingClientRect(),b=yes.getBoundingClientRect(),y=a.top+a.height/2,x0=a.right-2,x1=b.left+2;
+   ok(Math.abs(x1-x0)<=12&&I.doc.elementFromPoint(x1,y)===yes,'測試前提：兩顆按鈕相鄰，12px內可滑到另一顆');
+   tabTouchEvent(I,no,'pointerdown',x0,y);tabTouchEvent(I,no,'pointerup',x1,y);await flush();eq(I.win.__ans,'none','從取消滑到確定時兩顆都不提前觸發');}
+  plain.disabled=true;fixedTouch(I,plain,p.x,p.y);eq(count.plain,2,'停用的按鈕不觸發');
+  const no=I.$('#askno'),q=tabCenter(no);fixedTouch(I,no,q.x,q.y);await flush();eq(I.win.__ans,false,'取消鍵生效');I.check('彈窗固定元件');I.destroy();
 });
 
 test('登入恢復提示：首次確認完成前不閃出訪客備份邀請', async () => {

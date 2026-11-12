@@ -23,24 +23,43 @@ function finishHabitEntry() {
 const eventElement = event => event.target?.nodeType === 1 ? event.target : event.target?.parentElement;
 const navTouch = { down: null, suppress: [], fallback: null, firing: false };
 const navTouchButton = event => eventElement(event)?.closest('#nav button[data-act="tab"]');
+// 分頁列以外、同樣固定在畫面上的可點元素（大海工具列與水面、彈窗、專注畫面）也可能有同樣的 hit-test 位移。
+// 需要瀏覽器使用者手勢才能開視窗／檔案／分享／剪貼簿的動作，以及輸入元件和連結，維持原生 click。
+const NATIVE_ONLY_ACTS = ['login', 'introbackup', 'export', 'import', 'clouddel', 'clouddeleteconfirm', 'copydiagnostics'];
+// 慣性捲動中「點一下停住」瀏覽器不會送 click，這裡也不能當成點按。
+let navTouchScrollAt = -1e9;
+document.addEventListener('scroll', () => { navTouchScrollAt = performance.now(); }, { capture: true, passive: true });
+function fixedTapTarget(event) {
+  const element = eventElement(event); if (!element || performance.now() - navTouchScrollAt < 150) return null;
+  if (element.id === 'tank') return element;
+  if (!element.closest('.seabar, .seaempty, .ov, #focus') || element.closest('input, select, textarea, a, label, [contenteditable]')) return null;
+  const target = element.closest('button, [data-act]');
+  if (!target || target.disabled || target.closest('#nav') || NATIVE_ONLY_ACTS.includes(target.dataset.act)) return null;
+  return target;
+}
+// 按住期間有彈窗或專注畫面蓋上來：放開點落在不包含目標的遮罩裡，就不替使用者觸發底下的元素。
+function coveredByOverlay(target, x, y) {
+  const cover = document.elementFromPoint(x, y)?.closest('.ov, #focus');
+  return !!cover && !cover.contains(target);
+}
 function rememberNavTouch(down, x, y) {
   navTouch.suppress = navTouch.suppress.filter(item => item.until >= performance.now()).slice(-7);
-  navTouch.suppress.push({ key: down.key, x, y, until: performance.now() + 800 });
+  navTouch.suppress.push({ key: down.key, el: down.el || null, x, y, until: performance.now() + 800 });
 }
 // Mobile tabs activate at touch-up; WebKit's later synthetic click is optional.
 // Keep the existing click route for keyboard, mouse and accessibility.
 document.addEventListener('pointerdown', event => {
   const previous = navTouch.down; navTouch.down = null; navTouch.fallback = null;
   if (event.pointerType === 'touch' && event.isPrimary === false) {
-    if (previous) rememberNavTouch(previous, previous.x, previous.y);
+    if (previous && previous.key != null) rememberNavTouch(previous, previous.x, previous.y);
     return;
   }
-  const button = navTouchButton(event);
-  if (!button || event.pointerType !== 'touch' || getComputedStyle(button.parentElement).position !== 'fixed') {
-    navTouch.suppress = event.pointerType === 'touch' ? navTouch.suppress.map(item => ({ ...item, navOnly: true })) : [];
-    return;
-  }
-  navTouch.down = { id: event.pointerId, key: button.dataset.v, x: event.clientX, y: event.clientY, distance: 0, at: performance.now() };
+  const touch = event.pointerType === 'touch', button = navTouchButton(event);
+  const tab = !!button && touch && getComputedStyle(button.parentElement).position === 'fixed';
+  if (!tab) navTouch.suppress = touch ? navTouch.suppress.map(item => ({ ...item, navOnly: true })) : [];
+  const target = tab ? button : touch && !button ? fixedTapTarget(event) : null;
+  if (!target) return;
+  navTouch.down = { id: event.pointerId, key: tab ? button.dataset.v : null, el: tab ? null : target, x: event.clientX, y: event.clientY, distance: 0, at: performance.now() };
 }, { capture: true, passive: true });
 document.addEventListener('pointermove', event => {
   const down = navTouch.down; if (!down || event.pointerId !== down.id) return;
@@ -49,12 +68,32 @@ document.addEventListener('pointermove', event => {
 document.addEventListener('pointerup', event => {
   const down = navTouch.down; if (!down || event.pointerId !== down.id) return;
   navTouch.down = null;
+  if (down.key == null) {
+    // 其他固定元素：短而穩的點按在放開時直接觸發；慢按、位移或元素已不在畫面上就交回原生 click。
+    const el = down.el, moved = Math.max(down.distance, Math.hypot(event.clientX - down.x, event.clientY - down.y));
+    // 放開時明確落在另一顆按鈕上（例如從「取消」滑到「確定」）就不觸發；沒命中任何按鈕時仍以按下的那顆為準。
+    const other = document.elementFromPoint(event.clientX, event.clientY)?.closest('button, [data-act]');
+    const crossed = !!other && other !== el && !el.contains(other) && !other.contains(el);
+    if (!crossed && !coveredByOverlay(el, event.clientX, event.clientY) && navTouchScrollAt < down.at && moved <= 12 && performance.now() - down.at <= 700 && el.isConnected && !el.disabled && el.getClientRects().length) {
+      rememberNavTouch(down, event.clientX, event.clientY);
+      navTouch.firing = true;
+      try {
+        if (el.id === 'tank') el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, detail: 1, clientX: event.clientX, clientY: event.clientY }));
+        else el.click();
+      } finally { navTouch.firing = false; }
+    } else navTouch.suppress = navTouch.suppress.filter(item => item.el !== el);
+    return;
+  }
+  // iOS 的固定底部列，畫面位置和 hit-test 位置可能差一個工具列高度（實機錄影：按壓變色卻不切換）。
+  // 所以用按下時瀏覽器已判定的那顆分頁，不再要求放開時 elementFromPoint 也命中它；只有明確滑到別顆分頁才取消。
   const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest('#nav button[data-act="tab"]');
+  const target = [...document.querySelectorAll('#nav button[data-act="tab"]')].find(button => button.dataset.v === down.key);
+  const crossed = !!hit && hit.dataset.v !== down.key;
   const distance = Math.max(down.distance, Math.hypot(event.clientX - down.x, event.clientY - down.y));
-  if (hit && hit.dataset.v === down.key && !hit.disabled && distance <= 12 && performance.now() - down.at <= 700) {
+  if (target && !crossed && !coveredByOverlay(target, event.clientX, event.clientY) && !target.disabled && distance <= 12 && performance.now() - down.at <= 700) {
     rememberNavTouch(down, event.clientX, event.clientY);
-    navTouch.firing = true; try { hit.click(); } finally { navTouch.firing = false; }
-  } else if ((hit && hit.dataset.v !== down.key) || distance > 24) rememberNavTouch(down, event.clientX, event.clientY);
+    navTouch.firing = true; try { target.click(); } finally { navTouch.firing = false; }
+  } else if (crossed || distance > 24) rememberNavTouch(down, event.clientX, event.clientY);
   else {
     navTouch.suppress = navTouch.suppress.filter(item => item.key !== down.key);
     navTouch.fallback = { key: down.key, until: performance.now() + 800 };
@@ -63,7 +102,7 @@ document.addEventListener('pointerup', event => {
 document.addEventListener('pointercancel', event => {
   const down = navTouch.down;
   if (down && event.pointerId !== down.id) return;
-  if (down) rememberNavTouch(down, event.clientX, event.clientY);
+  if (down && down.key != null) rememberNavTouch(down, event.clientX, event.clientY);
   navTouch.down = null; navTouch.fallback = null;
 }, { capture: true, passive: true });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { navTouch.down = null; navTouch.suppress = []; navTouch.fallback = null; } });
@@ -74,7 +113,8 @@ window.addEventListener('click', event => {
   if (navTouch.fallback && navTouch.fallback.until >= performance.now() && button?.dataset.v === navTouch.fallback.key) {
     rememberNavTouch(navTouch.fallback, event.clientX, event.clientY); navTouch.fallback = null; return;
   }
-  const index = navTouch.suppress.findIndex(item => button?.dataset.v === item.key || (!item.navOnly && Math.hypot(event.clientX - item.x, event.clientY - item.y) <= 24));
+  const element = eventElement(event);
+  const index = navTouch.suppress.findIndex(item => (item.key != null && button?.dataset.v === item.key) || (!!item.el && !!element && item.el.contains(element) && !element.closest('input, select, textarea, a, label') && Math.hypot(event.clientX - item.x, event.clientY - item.y) <= 24) || (!item.navOnly && Math.hypot(event.clientX - item.x, event.clientY - item.y) <= 24));
   if (index >= 0) {
     navTouch.suppress.splice(index, 1); event.preventDefault(); event.stopImmediatePropagation();
   }
