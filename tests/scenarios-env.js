@@ -751,3 +751,13 @@ test('更新按鈕：大海畫面桌面與手機都能實際點擊，不被畫�
     eq(I.S.tossed||0,0,'點更新沒有被當成撒飼料');I.check('更新按鈕層級');I.destroy();
   }
 });
+
+test('安裝到主畫面：設定檔可解析、圖示存在且尺寸相符，首頁與其腳本沒有使用Service Worker', async () => {
+  const res=await fetch('../manifest.webmanifest',{cache:'no-store'});ok(res.ok,'設定檔可讀取');const m=await res.json();
+  eq(m.display,'standalone','以獨立視窗開啟');eq(m.start_url,'./','從首頁啟動');eq(m.scope,'./','範圍限於本網站');ok(m.name&&m.short_name&&m.short_name.length<=12,'有完整名稱與短名稱');
+  for(const size of ['192x192','512x512'])for(const purpose of ['any','maskable'])ok(m.icons.some(i=>i.sizes===size&&i.purpose===purpose&&i.type==='image/png'),`圖示 ${size} ${purpose}`);
+  for(const icon of m.icons){const img=new Image();await new Promise((done,fail)=>{img.onload=done;img.onerror=()=>fail(new Error('圖示載入失敗：'+icon.src));img.src=new URL(icon.src,new URL('../manifest.webmanifest',location.href)).href});eq(img.naturalWidth+'x'+img.naturalHeight,icon.sizes,'圖示實際尺寸：'+icon.src)}
+  const html=await (await fetch('../index.html',{cache:'no-store'})).text();ok(/<link rel="manifest" href="manifest\.webmanifest">/.test(html),'首頁有連到設定檔');
+  for(const file of [...html.matchAll(/src="(js\/[\w.-]+\.js)/g)].map(x=>x[1])){const reply=await fetch('../'+file,{cache:'no-store'});ok(reply.ok,'腳本可讀取：'+file);const code=await reply.text();ok(!/serviceWorker/.test(code),'首頁載入的腳本未使用Service Worker（更新由版本號機制負責）：'+file)}
+  ok(!/serviceWorker/.test(html),'首頁內嵌內容未使用Service Worker');
+});
