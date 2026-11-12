@@ -244,6 +244,7 @@ function nextChest() {
   if (it.level !== undefined) {
     m.innerHTML = `<div class="label">升級了</div><div class="big-lv pop" style="margin:10px 0"><span>Lv.</span>${it.level}</div>
       ${it.title ? `<h2>取得稱號：${it.title}</h2><p class="dim">${RANKS[rankIdx(it.level)][3]}</p>` :`<p class="dim">${RANKS[rankIdx(it.level)][1]}</p>`}
+      ${it.title ? '<p class="mini">此為遊戲稱號，不代表潛水證照或專業資格。</p>' : ''}
       <button class="pri" data-act="close">繼續</button>${it.title ? '<button class="ghost" data-act="seeranks">看所有稱號</button>' : ''}`;
     SFX.rank(); return;
   }

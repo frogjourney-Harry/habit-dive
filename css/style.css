@@ -387,7 +387,7 @@ body.sea-on .brand,body.sea-on #banner,body.sea-on #updateNotice{position:relati
 
 /* Google 登入按鈕：照 Google 品牌規範，白底、灰框、原色 G */
 .gbtn { display: inline-flex; align-items: center; gap: 10px; margin-top: 8px; background: #fff; color: #1f1f1f; border: 1px solid #747775; border-radius: 4px; padding: 8px 14px; font-weight: 500; box-shadow: none; }
-.gbtn svg { flex: none; }
+.gbtn svg,.gbtn img { flex: none; width:18px; height:18px; }
 
 /* 每日任務頁：一列一個任務，左邊打勾圈、中間名稱、右邊金幣或領取 */
 .qhead .qsum{font-size:15px;margin:2px 0 8px;color:var(--ink-muted)}

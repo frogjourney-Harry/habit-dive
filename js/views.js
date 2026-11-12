@@ -975,7 +975,7 @@ function ranks(D) {
   const lv = levelOf(D.xp), ri = rankIdx(lv), nxt = RANKS[ri + 1];
   const pct = nxt ? Math.max(0, Math.min(100, (D.xp - xpFor(RANKS[ri][0])) / (xpFor(nxt[0]) - xpFor(RANKS[ri][0])) * 100)) : 100;
   return `<section class="px">${sh('潛水稱號', 'RANKS', `<span class="dim">${ri + 1} / ${RANKS.length}</span><button data-act="logview" data-v="">返回紀錄</button>`)}
-    <div class="mini">跟著潛水證照（PADI）的進階路線往下潛，點稱號看介紹。</div>
+    <div class="mini">以潛水進階概念設計的遊戲稱號，不代表潛水證照或專業資格。點稱號看介紹。</div>
     <div class="dive">${RANKS.map(([at, name, en, desc], i) => {
       // 每個稱號一行：名稱和等級；只有目前的稱號和點開的那一個才顯示英文名稱和介紹，不然太密
       const st = i < ri ? 'got' : i === ri ? 'cur' : 'lock', open = i === ri || UI.rkOpen === i;
@@ -1072,6 +1072,7 @@ function about() {
       <a class="link" href="privacy.html" target="_blank" rel="noopener">閱讀完整隱私說明 ↗</a>
     </div></details>
     <details class="more-detail"><summary>關於習慣深潛</summary><div class="more-content">
+      <a class="link" href="credits.html" target="_blank" rel="noopener">素材與來源 ↗</a>
       <p>我是 Harry，喜歡潛水。這個遊戲是我為了持續寫作和運動做的；稱號、鬼蝠魟和翻車魚，都來自我的潛水經驗。</p>
       <h3>我的沙龍</h3><div class="salon"><b>${SALON.name}</b><p class="dim">${SALON.desc}</p><a class="link" href="${SALON.url}" target="_blank" rel="noopener">前往沙龍 ↗</a></div>
       <h3>推薦文章</h3>${ABOUT_LINKS.map(l=>`<a class="link" href="${l.url}" target="_blank" rel="noopener"><span class="sp"><b>${esc(l.title)}</b><br><small>${esc(l.sub)}</small></span><span>↗</span></a>`).join('')}
