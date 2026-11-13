@@ -6,31 +6,64 @@
 <title>隱私說明｜習慣深潛 Habit Dive</title>
 <meta name="description" content="習慣深潛的本機儲存、Google 登入、Firebase 同步與刪除資料說明。">
 <link rel="icon" href="img/favicon-32.png" type="image/png">
-<link rel="stylesheet" href="css/style.css?v=202611111140">
+<link rel="stylesheet" href="css/style.css?v=202611131116">
 <link rel="canonical" href="https://frogjourney-harry.github.io/habit-dive/privacy.html">
 </head>
 <body><div class="wrap">
 <div class="brand"><b>習慣深潛</b><em>HABIT DIVE</em></div>
 <main class="px privacy-document">
-<h1>隱私說明</h1><div class="mini">更新日期：2026 年 11 月 10 日</div>
-<p>這是 Harry（Frog Journey）製作的習慣養成遊戲。不需註冊即可使用；Google 登入與雲端同步由你自行選擇。</p>
-<h2>未登入時</h2>
-<p>清單、習慣、運動與專注紀錄、獎勵、生物收藏及設定，保存在這個瀏覽器的 localStorage。未登入時，遊戲不會把這些紀錄上傳至 Firebase。清除網站資料、使用無痕模式或更換瀏覽器，可能無法保留紀錄，建議定期下載備份。</p>
-<h2>Google 登入與同步</h2>
-<p>Google 與 Firebase Authentication 提供帳號驗證，會處理帳號識別資料，例如 UID、電子郵件與 Google 提供的基本個人資料。登入後，上述遊戲紀錄會同步至 Google Firebase 的 Cloud Firestore，讓你在其他裝置接續使用。</p>
-<p>登入入口出現時，網站會向 Google 載入登入元件；Google 服務可能接收提供連線所需的網路與裝置資訊。遊戲紀錄在登入後才會同步。本網站沒有要求存取 Gmail、Google Drive 或聯絡人的權限。</p>
-<p>網站的資料庫規則設計為：一般使用者只能存取自己帳號的紀錄。資料儲存在第三方雲端服務，不代表開發者或服務供應商在技術上完全無法存取，請不要填入密碼、證件號碼等敏感資料。</p>
-<h2>備份、登出與刪除</h2>
+<h1>隱私說明</h1><div class="mini">更新日期：2026 年 11 月 13 日</div>
+<p>我是 Harry（Frog Journey），習慣深潛的製作者。這裡說明遊戲紀錄怎麼保存，以及你可以怎麼管理自己的資料。</p>
 <ul>
-<li>在「更多 → 備份與還原」下載或還原備份；備份檔含遊戲紀錄與可能的帳號識別資料，請自行妥善保存，不需傳給開發者。</li>
-<li>「登出」會停止此帳號的同步，但本機紀錄仍會保留。</li>
-<li>登入後可在「更多 → 雲端同步」刪除雲端資料與登入帳號。先前下載的備份、此瀏覽器與其他裝置的本機副本，不會一併刪除。</li>
-<li>刪除前請先登出其他裝置，避免其他仍登入的裝置或後續操作重新上傳本機紀錄。刪除時會再次驗證帳號；若只完成部分刪除，此裝置會暫停同步，可重試刪除或登出。也可明確選擇取消刪除並恢復同步；若雲端紀錄已移除，恢復前會提醒你將重新上傳本機紀錄。</li>
-<li>若重新驗證的彈出視窗被阻擋，請允許此網站的彈出視窗，或改用一般 Safari／Chrome 分頁登入後再操作。</li>
-<li>若要移除此裝置的本機紀錄，請在瀏覽器設定清除此網站的儲存資料；操作前可先下載備份。</li>
+<li><strong>不登入也能玩：</strong>遊戲進度留在目前的瀏覽器。</li>
+<li><strong>登入由你選擇：</strong>使用 Google 登入後，可將紀錄同步到其他裝置。</li>
+<li><strong>資料可以自己管理：</strong>可在遊戲裡查看、修改、下載備份，也能刪除雲端紀錄與遊戲登入帳號。</li>
 </ul>
-<h2>問題回報</h2>
-<p>遊戲的診斷複製功能提供版本、瀏覽器、畫面與連線狀態，不包含清單內容、Email 或帳號資料。回報表單由 Google Forms 提供，只有你開啟並自行送出時才提交你填寫的內容；請不要附上私人備份或敏感資料。</p>
-<p>有遊戲或資料處理問題，可透過<a href="https://forms.gle/RwXYcmxtstLFPbf76" target="_blank" rel="noopener">問題回報表單</a>聯絡製作者。</p>
-<p><a href="index.html">返回遊戲</a></p>
+<p class="mini">你的遊戲紀錄不會公開給其他玩家。Harry 與服務供應商可能在維護服務或處理資料請求時存取雲端資料。</p>
+<p class="mini">想了解細節，可展開下方項目。</p>
+<details class="more-detail" id="data"><summary>會用到哪些資料？</summary><div class="more-content">
+<ul>
+<li><strong>遊戲紀錄：</strong>清單、習慣、運動與專注紀錄、獎勵、生物收藏及設定，儲存在此瀏覽器的 localStorage。未登入時，不會將這些遊戲紀錄上傳至 Firebase；登入後才會同步至 Cloud Firestore。</li>
+<li><strong>帳號與連線：</strong>Google／Firebase Authentication 處理 UID、Email、Google 提供的基本個人資料，以及驗證、安全防護所需的 IP 與裝置資訊。本站未要求 Gmail、Google Drive 或聯絡人的存取權限。</li>
+<li><strong>回報內容：</strong>你主動送出的問題描述、選填的聯絡 Email 與診斷資訊，用於回覆、排查及處理資料或權利請求。不留聯絡方式仍可回報一般問題，但可能無法取得回覆或完成需要身分確認的請求。</li>
+</ul>
+<p>網站由 GitHub Pages 提供。即使不登入，GitHub 仍會為安全目的記錄訪客 IP。顯示登入入口時也會載入 Google 元件；服務商會依下方的隱私政策處理這些連線資訊。</p>
+</div></details>
+<details class="more-detail" id="locations"><summary>資料存在哪裡、由誰處理？</summary><div class="more-content">
+<p>雲端遊戲紀錄的 Firestore 資料庫位於<strong>台灣（asia-east1）</strong>；Firebase Authentication 的帳號驗證資料在<strong>美國</strong>處理。網站連線、登入及 Google Forms 回報也可能涉及供應商依其服務安排的跨境處理，各項服務的處理地區因此可能不同。</p>
+<p>資料使用對象包括你本人、處理維護或請求所必要的 Harry，以及提供服務的 Google／Firebase、GitHub。資料透過瀏覽器儲存、網路傳輸、雲端同步及人工處理回報等方式使用，不向其他玩家公開你的遊戲紀錄。維護者及供應商可依服務維護與支援需要存取資料；請避免在紀錄中填寫密碼、證件等敏感資料。</p>
+</div></details>
+<details class="more-detail" id="retention"><summary>紀錄會留多久？</summary><div class="more-content">
+<ul>
+<li><strong>本機紀錄及復原副本：</strong>一般留在該瀏覽器，可能隨還原等操作被更新或取代，也可能因清除網站資料或瀏覽器／裝置回收儲存空間而移除。登出不會清除它們；不同帳號的紀錄會分開保存。</li>
+<li><strong>雲端紀錄及遊戲登入帳號：</strong>在提供同步服務所必要的期間保存，目前沒有依固定天數自動到期刪除。你可使用下方方式刪除；目的消失、不再有保存必要或依法應刪除時，也應停止利用並處理刪除。</li>
+<li><strong>回報與權利申請：</strong>在回覆、排查及處理請求所必要的期間保存；結案且不再需要時刪除或去識別化，依法需留存的案件紀錄除外。供應商的安全紀錄及技術備份依其適用政策處理，不同服務的副本清除時間可能不同。</li>
+</ul>
+</div></details>
+<details class="more-detail" id="rights"><summary>如何查看、修改或刪除資料？</summary><div class="more-content">
+<p>你可以請求查詢、閱覽或取得資料副本，補充或更正資料，停止蒐集、處理或利用，以及刪除資料。我們會依適用法律處理，你的法定資料權利不因使用遊戲而改變。</p>
+<ul>
+<li><strong>自行操作：</strong>在遊戲內查看及編輯紀錄；到「更多 → 手動備份與還原」下載副本；登入後可在「更多 → 資料與同步」刪除雲端資料與遊戲登入帳號。</li>
+<li><strong>向 Harry 申請：</strong>開啟<a href="https://forms.gle/RwXYcmxtstLFPbf76" target="_blank" rel="noopener">資料權利申請／問題回報表單</a>，選「其他」，在說明填寫「資料權利申請」、請求內容及可聯絡 Email。不要附上完整備份、密碼、驗證碼或證件影本。</li>
+<li>處理帳號相關請求前，可能需要以原 Google 帳號登入等必要方式確認身分，避免資料交給冒用者。請求將依適用法定期限回覆；若需延長，會說明原因。只留在你裝置上的紀錄，需要由你從該裝置查看或下載備份。</li>
+</ul>
+</div></details>
+<details class="more-detail" id="deletion"><summary>備份、登出與刪除有什麼差別？</summary><div class="more-content">
+<ul>
+<li>備份檔含遊戲紀錄與可能的帳號識別資料，請自行妥善保存，不需傳給開發者。</li>
+<li>「登出」會停止此帳號的同步，但本機紀錄仍會保留。</li>
+<li>「刪除雲端資料」會在驗證後刪除雲端遊戲紀錄及 Firebase 登入帳號，<strong>不會刪除你的 Google 帳號</strong>。下載的備份、此瀏覽器與其他裝置的本機副本不會一併刪除；共用裝置請另清除網站資料。</li>
+<li>刪除前請先登出其他裝置，避免其他仍登入的裝置或後續操作重新上傳。若只完成部分刪除，此裝置會暫停同步，可重試或登出；也可選擇取消刪除、恢復同步。若雲端紀錄已移除，恢復前會提醒將重新上傳本機紀錄。</li>
+<li>若重新驗證的彈出視窗被阻擋，請允許此網站的彈出視窗，或改用一般 Safari／Chrome 分頁登入後再操作。</li>
+</ul>
+</div></details>
+<details class="more-detail" id="reliability"><summary>換裝置或同步出問題時怎麼辦？</summary><div class="more-content">
+<p>離開或換裝置前，請確認顯示「已同步」，並定期下載備份。同步是為了讓裝置間接續使用；多台裝置同時操作、離線、空間不足或連線失敗，可能造成版本差異。遇到衝突時，程式可能採用雲端版本，不會逐項合併每台的所有修改。</p>
+<p>無痕模式、清除瀏覽資料、更換瀏覽器，以及加入主畫面後使用不同儲存空間，都可能影響本機進度。網站也可能維護或中斷。資料異常時請先保留現有備份再回報；維護者會依現有紀錄協助排查；已刪除且沒有備份的內容，可能無法恢復。本說明不限制依法應負的責任或你的資料權利。</p>
+</div></details>
+<details class="more-detail" id="providers"><summary>網站與回報使用哪些服務？</summary><div class="more-content">
+<p>診斷複製功能只提供版本、瀏覽器、畫面大小與連線狀態，不含清單內容、Email 或帳號資料。回報使用 Google Forms；開啟表單會連線 Google，你填寫的內容在自行送出後才提供給表單管理者。</p>
+<p>供應商政策：<a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase 隱私與資料處理</a>、<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google 隱私權政策</a>、<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub 隱私權聲明</a>。</p>
+</div></details>
+<p><a href="credits.html">素材與來源</a> · <a href="index.html">返回遊戲</a></p>
 </main></div></body></html>

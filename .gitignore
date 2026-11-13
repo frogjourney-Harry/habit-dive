@@ -11,9 +11,7 @@
 
 # Private preview input and local review artifacts stay on this computer.
 /size-preview/specimens.json
-/reviews/*.packet.txt
-/reviews/*.scope.json
-/reviews/*.review.md
+/reviews/
 /docs/prepublish-source-context.md
 
 # Local-only simulated previews

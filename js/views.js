@@ -1027,13 +1027,12 @@ function log(D) {
 }
 
 // 關於頁
-const SALON = { name: 'Frog Journey｜兩棲類的冒險生活', url: 'https://vocus.cc/salon/frog-journey',
-  desc: '一個真的去過、住過、做過的人的第一手紀錄。登山、潛水、旅居，還有一路上的成長。' };
+const SALON = { name: 'Frog Journey｜兩棲類的冒險生活', url: 'https://vocus.cc/salon/frog-journey' };
 const ABOUT_LINKS = [
-  { title: '潛水日誌 #1｜印尼・Nusa Penida・Manta Point：5 隻鬼蝠魟從頭頂飛過', sub: '圖鑑裡的鬼蝠魟，就是從這裡來的', url: 'https://vocus.cc/article/6a8ec287fd897800012e765a' },
-  { title: '潛水日誌 #2｜印尼・Nusa Penida・Crystal Bay：沒看到翻車魚！', sub: '想抽到翻車魚？先看看我在海裡等了多久', url: 'https://vocus.cc/article/6ad986a9fd89780001033212' },
-  { title: '潛水日誌 #3｜印尼・Nusa Penida・PED：蘇眉魚、桶狀海綿與一整片珊瑚花園', sub: '珊瑚、大魚、小生物通通有的一潛', url: 'https://vocus.cc/article/6ae17a47fd89780001bf3b6f' },
-  { title: 'OW 潛水考照心得｜課程都在學什麼？我的完整考照紀錄', sub: '從零開始學潛水的紀錄', url: 'https://vocus.cc/article/6a45ddadfd89780001dff50b' },
+  { title: '潛水日誌 #1｜Manta Point：5 隻鬼蝠魟從頭頂飛過', url: 'https://vocus.cc/article/6a8ec287fd897800012e765a' },
+  { title: '潛水日誌 #2｜Crystal Bay：沒看到翻車魚！', url: 'https://vocus.cc/article/6ad986a9fd89780001033212' },
+  { title: '潛水日誌 #3｜PED：珊瑚花園與大魚', url: 'https://vocus.cc/article/6ae17a47fd89780001bf3b6f' },
+  { title: 'OW 潛水考照心得｜我的完整考照紀錄', url: 'https://vocus.cc/article/6a45ddadfd89780001dff50b' },
 ];
 function manualBackupSection() {
   return `<details class="more-detail manual-backup" id="backupSection" ${UI.backupError ? 'open' : ''}><summary>手動備份與還原</summary><div class="more-content">
@@ -1058,6 +1057,10 @@ function about() {
     <details class="more-detail"><summary>常見問題</summary><div class="more-content">
       <h3>需要每天餵魚嗎？</h3><p class="mini">不用，生物不會餓死或退化，餵食只會幫助成長。</p>
       <h3>獎勵什麼時候領？</h3><p class="mini">六件事每天任意完成三件可獲獎勵，請到「任務」領取。每天午夜 00:00 換日，未領獎勵會自動入帳，可在「紀錄」查看來源。</p>
+      <h3>換裝置前要注意什麼？</h3>
+      <p class="mini"><strong>沒有使用雲端同步：</strong>先在舊裝置下載備份，再到新裝置的「手動備份與還原」還原。新裝置若已有紀錄，請先另存備份，避免被取代。</p>
+      <p class="mini"><strong>有使用雲端同步：</strong>舊裝置顯示「已同步」後，在新裝置登入同一個 Google 帳號即可接續。避免多台同時修改，仍建議定期下載備份。</p>
+      <a href="privacy.html#reliability" target="_blank" rel="noopener">資料保存與同步說明 ↗</a>
     </div></details>
     <details class="more-detail" ${UI.diagnostics ? 'open' : ''}><summary>回報問題</summary><div class="more-content">
       <p class="mini">回報時可附上診斷資訊，僅含版本、瀏覽器、畫面大小與連線狀態，不包含清單、Email 或帳號資料。</p><button data-act="copydiagnostics">複製診斷資訊</button>
@@ -1066,16 +1069,13 @@ function about() {
     </div></details>
   </section>
   <section class="px more-links">${sh('關於', '')}
-    <details class="more-detail"><summary>隱私說明</summary><div class="more-content">
-      <p class="mini">未登入時，紀錄只存在此瀏覽器。登出後，本機紀錄仍會保留；切換帳號不會帶入另一個帳號的紀錄。共用裝置請留意，登出不會清除本機資料。</p>
-      ${FIREBASE_CONFIG ? '<p class="mini">Google 登入用於辨識帳號，紀錄會存到 Firebase 供跨裝置同步。一般使用者只能存取自己的資料；可在上方刪除雲端資料與帳號。</p>' : ''}
-      <a class="link" href="privacy.html" target="_blank" rel="noopener">閱讀完整隱私說明 ↗</a>
-    </div></details>
+    <div class="more-detail"><a class="link" href="privacy.html" target="_blank" rel="noopener"><span class="sp">隱私說明</span><span aria-hidden="true">↗</span></a></div>
+    <div class="more-detail"><a class="link" href="credits.html" target="_blank" rel="noopener"><span class="sp">素材與來源</span><span aria-hidden="true">↗</span></a></div>
     <details class="more-detail"><summary>關於習慣深潛</summary><div class="more-content">
-      <a class="link" href="credits.html" target="_blank" rel="noopener">素材與來源 ↗</a>
-      <p>我是 Harry，喜歡潛水。這個遊戲是我為了持續寫作和運動做的；稱號、鬼蝠魟和翻車魚，都來自我的潛水經驗。</p>
-      <h3>我的沙龍</h3><div class="salon"><b>${SALON.name}</b><p class="dim">${SALON.desc}</p><a class="link" href="${SALON.url}" target="_blank" rel="noopener">前往沙龍 ↗</a></div>
-      <h3>推薦文章</h3>${ABOUT_LINKS.map(l=>`<a class="link" href="${l.url}" target="_blank" rel="noopener"><span class="sp"><b>${esc(l.title)}</b><br><small>${esc(l.sub)}</small></span><span>↗</span></a>`).join('')}
+      <p>我是 Harry，喜歡潛水。我做了這個養成遊戲，希望用養魚陪自己持續寫作和運動。</p>
+      <a class="link" href="${SALON.url}" target="_blank" rel="noopener">${SALON.name} ↗</a>
+      <h3>潛水文章</h3>
+      ${ABOUT_LINKS.map(l=>`<a class="link" href="${l.url}" target="_blank" rel="noopener"><span class="sp">${esc(l.title)}</span><span aria-hidden="true">↗</span></a>`).join('')}
     </div></details>
   </section></div>`;
 }

@@ -597,10 +597,12 @@ test('上線體驗：今日返回今天，運動錯誤留在欄位，彈窗管�
 test('上線體驗：同步失敗不顯示已同步，隱私在創作者內容前', async () => {
  const I=await startToday(); I.ev("CLOUD.user={uid:'test',email:'test@example.com'};CLOUD.last=Date.now();CLOUD.error='同步失敗，稍後會再試';UI.tab='about';render()");
  ok(I.$('#cloudStatus').textContent.includes('尚未同步'),'顯示本機已存而未同步');
- ok(!I.$('#main').textContent.includes('已同步'),'沒有矛盾的已同步承諾');
+ ok(!I.$('#cloudBox').textContent.includes('已同步'),'雲端狀態區沒有矛盾的已同步承諾');
  ok(I.$('[data-act=cloudretry]'),'可重試');
- const titles=I.$$('.more-detail > summary').map(x=>x.textContent);
- ok(titles.includes('隱私說明') && titles.indexOf('隱私說明')<titles.indexOf('關於習慣深潛'),'隱私有獨立入口並在創作者內容前');
+ const card=I.$('.more-links:last-child'), privacy=card.querySelector('a[href="privacy.html"]'), credits=card.querySelector('a[href="credits.html"]'), author=card.querySelector('details');
+ ok(privacy && !privacy.closest('details'),'隱私直接連到獨立文件');
+ ok(credits && !credits.closest('details'),'素材來源直接連到獨立文件');
+ ok((privacy.compareDocumentPosition(credits)&4) && (credits.compareDocumentPosition(author)&4),'隱私及素材來源在作者介紹前');
  eq(I.$$('.more-detail[open]').length,0,'說明預設收合');
  await I.click('.more-links .more-detail > summary');
  ok(I.$('.more-links .more-detail').open && I.has('需要每天餵魚嗎？'),'展開常見問題可讀取餵食說明');
