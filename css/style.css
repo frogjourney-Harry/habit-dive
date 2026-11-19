@@ -198,6 +198,8 @@ nav .badge{display:inline-block;min-width:18px;height:18px;margin-left:5px;paddi
 .dex .cell{background:var(--fill);padding:10px 4px 8px;text-align:center;cursor:pointer;border-radius:var(--r-lg);box-shadow:inset 0 -3px 0 var(--rc)}
 .dex .cell:hover{background:var(--fill-pressed)}
 .dex .cell.no{background:var(--fill);opacity:.55;cursor:default;box-shadow:none}
+.dex-art{height:72px;display:flex;align-items:center;justify-content:center}
+.dex-art .sprite{margin:0;max-height:64px}
 .dex .nm{font-size:13px}
 .grp{margin:16px 0 8px}
 

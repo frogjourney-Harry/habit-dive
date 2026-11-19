@@ -875,6 +875,21 @@ test('追食目標：路過碰到飼料可吃，仍保留原追逐目標', async
   ok(result.ate&&result.removed,'碰到身體即吃到，不會忽略近處投餵');ok(result.kept,'不因順路吃掉另一顆而忘記原追逐目標');I.check('順路吃食');I.destroy();
 });
 
+test('圖鑑長形生物：未知剪影與已解鎖型態皆不撐高卡片、管理與詳情有高度上限',async()=>{
+ for(const width of [393,1100]){
+  const I=await boot({state:base(...drops(['shark','seahorse'])),width,height:771});await I.dismiss();await I.tab('tank');await I.click('[data-act=tankview][data-v=dex]');
+  const unknown=I.ev(`(()=>{const cells=[...document.querySelectorAll('.dex .cell')],rare=cells.filter(c=>c.querySelector('img')?.getAttribute('src'));return {heights:rare.map(c=>c.getBoundingClientRect().height),images:rare.map(c=>c.querySelector('img').getBoundingClientRect().height),labels:rare.map(c=>c.querySelector('.nm').getBoundingClientRect().top-c.getBoundingClientRect().top)}})()`);
+  ok(unknown.heights.every(h=>h<145),'所有未知與已知卡片皆保持正常高度');ok(unknown.images.every(h=>h<=64.1),'直立花園鰻剪影不超過64px');ok(Math.max(...unknown.labels)-Math.min(...unknown.labels)<1,'不同生物的名稱位置對齊');
+  I.ev(`S.logs.push({id:'eel',t:3,d:'2026-10-02',k:'chest',drop:'moray',c:0,xp:0});save()`);
+  for(const fed of [0,10,30]){
+   I.ev(`S.fed={eel:${fed}};S.seen={moray:${fed===0?1:fed===10?2:3}};save();render()`);
+   ok(I.ev(`(()=>{const im=document.querySelector('[data-act=fact][data-v=moray] img');return im&&im.getBoundingClientRect().height<=64.1})()`),'花園鰻每個解鎖型態都有圖鑑高度上限');
+  }
+  await I.click('[data-act=fact][data-v=moray]');ok(I.ev(`[...document.querySelectorAll('#sheet img')].every(im=>im.getBoundingClientRect().height<=110.1)`),'詳情主圖與三階段不撐長彈窗');await I.click('[data-act=sheetclose]');
+  await I.click('[data-act=tankview][data-v=""]');await I.click('[data-act=tankedit]');ok(I.ev(`[...document.querySelectorAll('.tank-choice .sprite')].every(im=>im.getBoundingClientRect().height<=54.1)`),'管理生物也限制高度');I.check('長形生物卡片');I.destroy();
+ }
+});
+
 test('花園鰻：舊收藏進度、固定沙洞、縮回探頭及頭旁餵食', async () => {
  for(const width of [393,1100]){
   const state=base(...drops(['moray','moray','clown']));state.fed={dr0moray:9};state.names={dr0moray:'舊名字'};

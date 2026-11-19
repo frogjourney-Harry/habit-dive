@@ -351,12 +351,11 @@ function renderSheet() {
   ov.classList.remove('hidden');
   if (UI.sheet.creature) {   // 圖鑑放大：介紹、三種成長外觀、擁有幾隻
     const c = CR[UI.sheet.creature], R = RARITY[c.r], P = pets(c.id), seen = seenStage(c.id);
-    const big = Math.max(3, Math.min(8, Math.floor(110 / Math.max(...c.px.map(r => r.length)))));
     el.style.textAlign = 'center';
     el.innerHTML = `<div class="row"><span class="rar" style="background:${R.color}">${R.name}</span><span class="sp"></span><button class="ghost" data-act="sheetclose">✕</button></div>
-      ${stageImg(c, seen, big, false, 'pop')}
+      ${stageImgFit(c, seen, 110, 110, 8, false, 'pop')}
       <h2>${c.name}</h2>${c.alias ? `<div class="alias">俗稱 ${c.alias}</div>` : ''}<p class="dim" style="margin:0 0 8px">${c.fact}</p>
-      <div class="stages">${[1, 2, 3].map(s => `<div>${stageImg(c, s, 3, s > seen)}<small class="${s > seen ? 'dim' : ''}">${s > seen ? '？？？' : stageName(c, s)}</small></div>`).join('')}</div>
+      <div class="stages">${[1, 2, 3].map(s => `<div>${stageImgFit(c, s, 70, 70, 3, s > seen)}<small class="${s > seen ? 'dim' : ''}">${s > seen ? '？？？' : stageName(c, s)}</small></div>`).join('')}</div>
       <div class="mini">吃到 ${GROW[1]} 顆長成成體、${GROW[2]} 顆變成特殊型態</div><div class="mini">不用每天餵，牠們不會餓死，成長進度也不會倒退。</div>
       <div class="sub">${P.length ? `擁有 ${P.length}/${MAX_PETS} 隻` : derive().col[c.id] ? '都游走了，再抽到會回來。' : '還沒抽到，可以從商店的寶箱開出來。'}</div>`;
     return;
@@ -482,9 +481,11 @@ function pets(sp) {
 const seenStage = sp => Math.max(1, (S.seen && S.seen[sp]) || 1, ...pets(sp).map(p => stageOf(p.fed)));
 // 三種外觀：幼體用各自的幼體圖（JUV）、成體是原圖、特殊型態換成各自的稀有配色（MORPH）
 const stageUrl = {};
-function stageImg(c, s, scale, sil = false, cls = '') {
+function stageImg(c, s, scale, sil = false, cls = '', box = null) {
   const logical = stageSize(c, s), dpr = Math.max(1, window.devicePixelRatio || 1);
-  const source = stageThumbnail(c, s, Math.floor(logical.w * scale * dpr), Math.floor(logical.h * scale * dpr));
+  let width=logical.w*scale,height=logical.h*scale;
+  if(box){const art=stageCanvas(c,s),fit=Math.min(scale,box.w/art.width,box.h/art.height);width=art.width*fit;height=art.height*fit;}
+  const source = stageThumbnail(c, s, Math.max(1,Math.floor(width*dpr)), Math.max(1,Math.floor(height*dpr)));
   const key = c.id + s + sil + ':' + source.width + 'x' + source.height;
   if (!stageUrl[key]) {
     const src = source, cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
@@ -493,8 +494,9 @@ function stageImg(c, s, scale, sil = false, cls = '') {
     stageUrl[key] = { src: cv.toDataURL(), w: stageSize(c, s).w, h: stageSize(c, s).h };
   }
   const u = stageUrl[key];
-  return `<img class="sprite ${cls}" style="object-fit:contain" src="${u.src}" width="${u.w * scale}" height="${u.h * scale}" alt="">`;
+  return `<img class="sprite ${cls}" style="object-fit:contain${box?`;width:${width}px;height:${height}px`:''}" src="${u.src}" width="${width}" height="${height}" alt="">`;
 }
+const stageImgFit=(c,s,w,h,scale=3,sil=false,cls='')=>stageImg(c,s,scale,sil,cls,{w,h});
 
 function seaPageHeader(title, meta, actions) {
   return `<div class="sh sea-page-head"><div class="sea-page-title"><b>${title}</b>${meta}</div><div class="sea-page-actions">${actions}</div></div>`;
@@ -503,8 +505,8 @@ function dex(D) {
   return `<section class="px sea-collection">${seaPageHeader('水下生物圖鑑', `<div class="sea-page-meta">${Object.keys(D.col).length} / ${CREATURES.length} 種</div>`, '<button class="ghost" data-act="tankview" data-v="">返回大海</button>')}
     ${RARITY.map((R, r) => `<div class="grp row"><span class="rar" style="background:${R.color}">${R.name}</span></div>
       <div class="dex">${CREATURES.filter(c => c.r === r).map(c => D.col[c.id]
-        ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}">${stageImg(c, seenStage(c.id), Math.min(5, Math.floor(100 / stageSize(c, seenStage(c.id)).w)))}<div class="nm">${c.name}</div><small>${pets(c.id).length} 隻</small></div>`
-        : `<div class="cell no">${stageImg(c, 2, Math.min(5, Math.floor(100 / stageSize(c, 2).w)), true)}<div class="nm dim">？？？</div><small>&nbsp;</small></div>`).join('')}</div>`).join('')}</section>`;
+        ? `<div class="cell" style="--rc:${R.color}" data-act="fact" data-v="${c.id}"><div class="dex-art">${stageImgFit(c, seenStage(c.id), 100, 64, 5)}</div><div class="nm">${c.name}</div><small>${pets(c.id).length} 隻</small></div>`
+        : `<div class="cell no"><div class="dex-art">${stageImgFit(c, 2, 100, 64, 5, true)}</div><div class="nm dim">？？？</div><small>&nbsp;</small></div>`).join('')}</div>`).join('')}</section>`;
 }
 
 /* ========= 水族箱小遊戲 ========= */
@@ -640,7 +642,7 @@ function tankEditor(D) {
       const P = pets(c.id), numbers = new Map(S.logs.filter(l => l.drop === c.id).map((l, i) => [l.id, i + 1]));
       return `<div class="tset"><div class="row"><b class="sp">${c.name}</b></div>
         ${P.map(p => `<div class="entry" data-pet="${esc(p.id)}" data-species="${c.id}" data-location="${shown.has(p.id) ? 'shown' : 'stored'}" data-growth="${p.fed < GROW[2] ? 'growing' : 'complete'}"><label class="row sp tank-choice"><input type="checkbox" data-act="intank" data-v="${esc(p.id)}" ${draft.has(p.id) ? 'checked' : ''} ${!draft.has(p.id) && draft.size >= TANK_LIMIT ? 'disabled' : ''}>
-          ${stageImg(c, stageOf(p.fed), Math.min(3, 54 / stageSize(c, stageOf(p.fed)).w))}<small><b>${esc(petName(p.id) || c.name + ' ' + numbers.get(p.id) + ' 號')}</b><span class="tank-pet-meta" title="吃了 ${p.fed} 顆">${stageName(c, stageOf(p.fed))}<span class="tank-pet-status">・${shown.has(p.id) ? '海中' : '收藏'}${draft.has(p.id) !== shown.has(p.id) ? draft.has(p.id) ? ' → 海中' : ' → 收藏' : ''}</span></span><span class="tank-pet-growth">${growthText(p.fed)}</span></small></label>
+          ${stageImgFit(c, stageOf(p.fed), 54, 54, 3)}<small><b>${esc(petName(p.id) || c.name + ' ' + numbers.get(p.id) + ' 號')}</b><span class="tank-pet-meta" title="吃了 ${p.fed} 顆">${stageName(c, stageOf(p.fed))}<span class="tank-pet-status">・${shown.has(p.id) ? '海中' : '收藏'}${draft.has(p.id) !== shown.has(p.id) ? draft.has(p.id) ? ' → 海中' : ' → 收藏' : ''}</span></span><span class="tank-pet-growth">${growthText(p.fed)}</span></small></label>
           <div class="tank-pet-actions"><button class="ghost" data-act="petname" data-v="${esc(p.id)}">${petName(p.id) ? '改名' : '取名'}</button><button class="ghost" data-act="release" data-v="${esc(p.id)}">放走</button></div>
           ${UI.nameEdit === p.id ? `<div class="pname"><input data-nf="${esc(p.id)}" value="${esc(petName(p.id))}" maxlength="${PET_NAME_MAX}" placeholder="名字自動儲存" aria-label="${esc(c.name)}的名字"><button class="pri" data-act="petnamedone">完成</button></div>` : ''}</div>`).join('')}</div>`;
     }).join('') || '<div class="dim">還沒有生物，到商店買寶箱吧。</div>'}</section>`;
