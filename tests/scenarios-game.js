@@ -875,24 +875,23 @@ test('追食目標：路過碰到飼料可吃，仍保留原追逐目標', async
   ok(result.ate&&result.removed,'碰到身體即吃到，不會忽略近處投餵');ok(result.kept,'不因順路吃掉另一顆而忘記原追逐目標');I.check('順路吃食');I.destroy();
 });
 
-test('海鰻：各型態貼海底、重建維持位置，只吃接近沙底的飼料', async () => {
-  for(const width of [393,1100]){
-    const I=await boot({state:base(...drops(['moray','clown'])),width,height:771});await I.dismiss();await I.tab('tank');
-    I.ev(`cancelAnimationFrame(TANK.raf);window.__realRAF=requestAnimationFrame;window.requestAnimationFrame=cb=>{window.__step=cb;return 0};`);
-    for(const fed of [0,10,30]){
-      const result=I.ev(`(()=>{S.fed={dr0moray:${fed}};save();tankStart();const f=TANK.fish.find(f=>f.c.id==='moray'),start=performance.now();for(let i=1;i<=90;i++)window.__step(start+i*16.7);return{stage:f.st,ground:f.ground,bottom:f.y+f.h,floor:TANK.floorY,base:f.baseY,y:f.y,clownGround:TANK.fish.find(f=>f.c.id==='clown').ground}})()`);
-      eq(result.stage,[0,10,30].indexOf(fed)+1,'確實涵蓋三個不同成長型態');ok(result.ground,width+'px '+fed+'顆海鰻屬海底生物');ok(Math.abs(result.bottom-result.floor-2)<1e-8,width+'px各型態移動後仍貼海底');eq(result.base,result.y,'沒有中層魚的上下浮動');ok(!result.clownGround,'小丑魚仍在水中游動');
-    }
-    I.ev(`tankStart();window.__moray=TANK.fish.find(f=>f.c.id==='moray');TANK.fish=[window.__moray];TANK.food=[];`);
-    ok(I.ev(`findFishFood(window.__moray,[{x:window.__moray.x+window.__moray.w/2,y:TANK.floorY-10}],TANK.W,TANK.floorY)===null`),'不追仍懸在水中的食物');
-    for(const fed of [9,29]){
-      const result=I.ev(`(()=>{S.fed.dr0moray=${fed};save();tankStart();TANK.fish=TANK.fish.filter(f=>f.c.id==='moray');const f=TANK.fish[0];TANK.food=[{x:f.x+f.w/2,y:TANK.floorY-2,vy:0,age:0}];window.__step(performance.now()+16.7);return{fed:fedOf(f.key),bottom:f.y+f.h,floor:TANK.floorY}})()`);
-      eq(result.fed,fed+1,'海鰻吃到沉底飼料並成長');ok(Math.abs(result.bottom-result.floor-2)<1e-8,'升階改變體型後仍貼海底');
-    }
-    I.ev('window.requestAnimationFrame=window.__realRAF;save()');I.check('海鰻海底');I.destroy();
+test('花園鰻：舊收藏進度、固定沙洞、縮回探頭及頭旁餵食', async () => {
+ for(const width of [393,1100]){
+  const state=base(...drops(['moray','moray','clown']));state.fed={dr0moray:9};state.names={dr0moray:'舊名字'};
+  const I=await boot({state,width,height:771});await I.dismiss();await I.tab('tank');
+  I.ev(`cancelAnimationFrame(TANK.raf);window.__realRAF=requestAnimationFrame;window.requestAnimationFrame=cb=>{window.__step=cb;return 0};tankStart();`);
+  eq(I.ev('CR.moray.name'),'花園鰻','沿用ID更名');eq(I.S.names.dr0moray,'舊名字','舊名字保留');eq(I.S.fed.dr0moray,9,'舊餵食保留');
+  const movement=I.ev(`(()=>{const f=TANK.fish.find(f=>f.key==='dr0moray'),other=TANK.fish.find(f=>f.key==='dr1moray'),start=performance.now(),left=f.x;for(let i=1;i<=120;i++)window.__step(start+i*16.7);return{fixed:f.x===left,separate:Math.abs(f.x-other.x)>10,clownGround:TANK.fish.find(f=>f.c.id==='clown').ground}})()`);
+  ok(movement.fixed&&movement.separate,'多隻洞口分開且不游走');ok(!movement.clownGround,'小丑魚保持游動');
+  const hiding=I.ev(`(()=>{const f=TANK.fish.find(f=>f.key==='dr0moray'),now=performance.now(),before=feedLeft(),cv=document.getElementById('tank'),r=cv.getBoundingClientRect();f.garden=gardenEelPose(f,now,TANK.floorY);cv.onclick({clientX:r.left+(f.x+f.w/2)*r.width/TANK.W,clientY:r.top+(f.y+f.h/2)*r.height/TANK.H});const a=gardenEelPose(f,now+1000,TANK.floorY),b=gardenEelPose(f,now+5000,TANK.floorY);return{hidden:a.visible===0,below:a.head.y>TANK.floorY,returned:b.visible===1,free:before===feedLeft()}})()`);
+  ok(hiding.hidden&&hiding.below&&hiding.returned,'可完全縮回沙裡並重新探頭');ok(hiding.free,'點身體不扣飼料');
+  for(const fed of [9,29,30]){
+   const result=I.ev(`(()=>{S.fed.dr0moray=${fed};save();tankStart();TANK.fish=TANK.fish.filter(f=>f.key==='dr0moray');const f=TANK.fish[0];f.hideAt=null;const now=performance.now();f.garden=gardenEelPose(f,now,TANK.floorY);const anchor=f.x+f.w/2,far={x:f.garden.head.x+30,y:f.garden.head.y,vy:0,age:0};const ignored=findFishFood(f,[far],TANK.W,TANK.floorY)===null;TANK.food=[{x:f.garden.head.x+1,y:f.garden.head.y,vy:0,age:0}];window.__step(now+16.7);return{fed:fedOf(f.key),stage:f.st,anchor:f.x+f.w/2,original:anchor,ignored}})()`);
+   eq(result.fed,fed+1,'頭旁飼料可吃，滿階也能吃');eq(result.stage,fed===9?2:3,'升階外觀正確');ok(Math.abs(result.anchor-result.original)<1e-8,'成長不移動洞口');ok(result.ignored,'不追遠方飼料');
   }
+  I.ev('window.requestAnimationFrame=window.__realRAF;save()');I.check('花園鰻整合');I.destroy();
+ }
 });
-
 test('生物新稿：三家族完整型態共用圖，保留手機桌面佔位與吃食框', async () => {
   const expected={mola:[[16,14],[29,29],[32,32]],dolphin:[[17,7],[30,14],[33,16]],whaleshark:[[31,13],[47,23],[51,26]]};
   for(const width of [393,1100]){
@@ -905,7 +904,7 @@ test('生物新稿：三家族完整型態共用圖，保留手機桌面佔位�
     const art=I.ev(`(()=>{const results=[];for(const id of ['mola','dolphin','whaleshark'])for(const stage of [1,2,3]){const c=CR[id],cv=stageCanvas(c,stage),a=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;let count=0;for(let i=3;i<a.length;i+=4)if(a[i])count++;const v=CREATURE_ART[id+':'+stage],declared=v.rows.join('').split('').filter(ch=>ch!=='.').length,el=document.createElement('div');el.innerHTML=stageImg(c,stage,3);const im=el.firstElementChild;results.push({count,declared,src:im.getAttribute('src')===stageThumbnail(c,stage,Math.floor(stageSize(c,stage).w*3*devicePixelRatio),Math.floor(stageSize(c,stage).h*3*devicePixelRatio)).toDataURL(),fit:im.style.objectFit,w:im.width,expected:stageSize(c,stage).w*3});}return results})()`);
     for(const a of art){eq(a.count,a.declared,'所有像素色碼都有畫出');ok(a.src,'UI與海中共用同一貼圖');eq(a.fit,'contain','UI不扭曲');eq(a.w,a.expected,'UI不因解析度放大');}
     ok(I.ev(`Object.values(CREATURE_ART).every(v=>v.rows.every(r=>r.length===v.rows[0].length)&&v.rows[0].includes('k')&&v.rows[v.rows.length-1].includes('k')&&v.rows.some(r=>r[0]!=='.')&&v.rows.some(r=>r[r.length-1]!=='.'))`),'新圖列寬一致且四邊無透明外列');
-    ok(I.ev(`(()=>{for(const c of CREATURES.filter(c=>!['mola','dolphin','whaleshark'].includes(c.id)))for(const st of [1,2,3]){const rows=st===1?JUV[c.id]:st===3&&MORPH[c.id].px?MORPH[c.id].px:c.px,cv=document.createElement('canvas');cv.width=Math.max(...rows.map(r=>r.length));cv.height=rows.length;const x=cv.getContext('2d'),map={...SPECIES_PAL[c.id],...(st===3?MORPH[c.id].map:{})};rows.forEach((r,y)=>[...r].forEach((ch,i)=>{if(ch==='.'||!PAL[ch])return;x.fillStyle=map[ch]||PAL[ch];x.fillRect(i,y,1,1);}));if(cv.toDataURL()!==stageCanvas(c,st).toDataURL())return false;}return true;})()`),'其餘17種51型態像素與舊繪法完全一致');
+    ok(I.ev(`(()=>{for(const c of CREATURES.filter(c=>!['mola','dolphin','whaleshark','moray','shark'].includes(c.id)))for(const st of [1,2,3]){const rows=st===1?JUV[c.id]:st===3&&MORPH[c.id].px?MORPH[c.id].px:c.px,cv=document.createElement('canvas');cv.width=Math.max(...rows.map(r=>r.length));cv.height=rows.length;const x=cv.getContext('2d'),map={...SPECIES_PAL[c.id],...(st===3?MORPH[c.id].map:{})};rows.forEach((r,y)=>[...r].forEach((ch,i)=>{if(ch==='.'||!PAL[ch])return;x.fillStyle=map[ch]||PAL[ch];x.fillRect(i,y,1,1);}));if(cv.toDataURL()!==stageCanvas(c,st).toDataURL())return false;}return true;})()`),'其餘15種45型態像素與舊繪法完全一致');
     ok(I.ev(`(()=>{for(const c of [CR.mola,CR.dolphin,CR.whaleshark])for(const st of [1,2,3])for(const scale of [2,3,5,10,Math.min(3,54/stageSize(c,st).w)]){const box=stageSize(c,st),cv=stageThumbnail(c,st,Math.floor(box.w*scale),Math.floor(box.h*scale));if(cv.width>box.w*scale+1e-8||cv.height>box.h*scale+1e-8)return false;}return true;})()`),'DPR1所有實際UI倍率含54px管理圖不會再被瀏覽器縮小');
     I.check('高解析度生物整合');I.destroy();
   }

@@ -482,6 +482,7 @@ const CREATURE_ART = {
 };
 const stageCv = {};
 function stageSize(c, s) {
+  if (c.id === 'moray') return { w: 7, h: [19, 28, 31][s - 1] };
   const rows = s === 1 ? JUV[c.id] : s === 3 && MORPH[c.id].px ? MORPH[c.id].px : c.px;
   return { w: Math.max(...rows.map(r => r.length)), h: rows.length };
 }

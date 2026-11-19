@@ -513,12 +513,19 @@ function dex(D) {
 const TANK_SPECIES = {
   clown: [1, .45], damsel: [.9, .6], butterfly: [1, .4], star: [1, .05, 1], hermit: [1, .18, 1], urchin: [1, .04, 1],
   turtle: [1.2, .2], octopus: [1.3, .25], nudi: [.9, .07, 1], lion: [1.3, .2], puffer: [1.1, .25], cuttle: [1, .35],
-  seahorse: [1, .1], shark: [1.6, .7], moray: [1.3, .3, 1], jelly: [1.3, .08], manta: [1.7, .35], mola: [1.8, .15],
+  seahorse: [1, .1], shark: [1.6, .7], moray: [1, 0, 1], jelly: [1.3, .08], manta: [1.7, .35], mola: [1.8, .15],
   dolphin: [1.2, .9], whaleshark: [2.6, .2],
 };
 const SWIM = .5;   // 游動速度倍率（水族箱每格 3 像素，原本的速度看起來太快）
 const FOOD_RANGE = { notice: 1 / 3, abandon: 1 / 2, groundGap: 3 };
 function findFishFood(f, foods, width, floor, tutorialId = null) {
+  if (f.c?.id === 'moray') {
+    if (!f.garden || f.garden.visible < .85) return f.foodTarget = null;
+    const head=f.garden.head,range=Math.min(10,width*FOOD_RANGE.notice);
+    const reachable=p=>Math.hypot(p.x-head.x,p.y-head.y)<=range;
+    if(f.foodTarget&&foods.includes(f.foodTarget)&&reachable(f.foodTarget))return f.foodTarget;
+    return f.foodTarget=foods.filter(reachable).sort((a,b)=>Math.hypot(a.x-head.x,a.y-head.y)-Math.hypot(b.x-head.x,b.y-head.y))[0]||null;
+  }
   const distance = p => Math.hypot(p.x - (f.x + f.w / 2), p.y - (f.y + f.h / 2));
   const reachable = p => !f.ground || p.y >= floor - FOOD_RANGE.groundGap;
   const guided = tutorialId && f.key === tutorialId;
@@ -767,6 +774,11 @@ function tankStart() {
       const q = prev.get(f.key);
       if (q) { f.foodTarget = q.foodTarget; f.vx = q.vx; f.ph = q.ph; f.rest = q.rest; f.mx = q.mx || 0; f.my = q.my || 0; f.x = Math.min(q.x, Math.max(0, W - f.w)); f.baseY = ground ? floorY - f.h + 2 : Math.min(q.baseY, floorY - f.h + 2); f.y = ground ? f.baseY : q.y; }
       else { f.x = Math.random() * Math.max(1, W - f.w); f.y = f.baseY = ground ? floorY - f.h + 2 : 6 + Math.random() * Math.max(1, floorY - f.h - 24); }
+      if(c.id==='moray'){
+        f.vx=0;f.hideAt=q?.hideAt;f.hideUntil=q?.hideUntil;f.hideFrom=q?.hideFrom;f.reach=q?.reach||0;
+        if(!q){const gardenPets=[...residents].filter(id=>pets('moray').some(p=>p.id===id)),index=gardenPets.indexOf(p.id);f.x=(index+1)*W/(gardenPets.length+1)-f.w/2;}
+        f.garden=gardenEelPose(f,performance.now(),floorY);
+      }
       TANK.fish.push(f);
     });
   }
@@ -790,6 +802,8 @@ function tankStart() {
   const weeds = Array.from({ length: Math.max(3, Math.floor(W / 60)) }, (_, i) => ({ x: 12 + i * (W - 24) / Math.max(1, Math.floor(W / 60) - 1), h: 18 + (i * 7) % 20 }));
   cv.onclick = e => {
     const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width, py = (e.clientY - r.top) * H / r.height;
+    const eel=TANK.fish.find(f=>f.c.id==='moray'&&Math.abs(px-(f.x+f.w/2))<=Math.max(3,f.w/2)&&py>=f.garden.head.y-2&&py<=floorY+2);
+    if(eel){hideGardenEel(eel,performance.now(),floorY);return;}
     if (py >= floorY - 4) return;
     if (!useFeed()) { toast(`飼料用完了，明天會再送 ${FEED.free} 顆，也可以用金幣買`); return; }
     TANK.food.push({ x: px, y: py, vy: .25 }); ac(); SFX.tap();
@@ -823,6 +837,20 @@ function tankStart() {
       [feedingOrder[i], feedingOrder[j]] = [feedingOrder[j], feedingOrder[i]];
     }
     for (const f of feedingOrder) {
+      if(f.c.id==='moray'){
+        f.garden=gardenEelPose(f,now,floorY);
+        const food=findFishFood(f,TANK.food,W,floorY),target=food?Math.max(-5,Math.min(5,(food.x-f.garden.base)/f.garden.scale)):0;
+        f.reach=(f.reach||0)+(target-(f.reach||0))*(1-Math.exp(-dt*.05));
+        f.garden=gardenEelPose(f,now,floorY);
+        if(food&&Math.hypot(food.x-f.garden.head.x,food.y-f.garden.head.y)<=Math.max(3,5*f.garden.scale)){
+          TANK.food.splice(TANK.food.indexOf(food),1);f.foodTarget=null;SFX.eat();
+          const before=f.st,center=f.x+f.w/2;S.fed=S.fed||{};S.fed[f.key]=fedOf(f.key)+1;
+          updateFeedTipProgress();markTutorialFed(f.key);const after=stageOf(fedOf(f.key));
+          if(after>before){S.seen=S.seen||{};S.seen.moray=Math.max(S.seen.moray||1,after);look(f);f.x=center-f.w/2;f.y=f.baseY=floorY-f.h+2;SFX.rank();toast(`${f.name||f.c.name}長成${stageName(f.c,after)}了！`);}
+          save();
+        }
+        continue;
+      }
       const sp0 = Math.abs(f.vx);
       // 追逐目標保持穩定，但飼料已碰到身體仍可順路吃掉，不必先追完另一顆。
       const touching = TANK.food.find(p => (!f.ground || p.y >= floorY - FOOD_RANGE.groundGap) && eats(f, p));
@@ -869,6 +897,7 @@ function tankStart() {
     }
     // 仍依原本大小順序繪圖，小魚留在前景。
     for (const f of TANK.fish) {
+      if(f.c.id==='moray'){drawGardenEel(x,f,now,floorY,W,rp);continue;}
       x.save();
       if (f.vx < 0) {
         x.translate(rp(f.x + f.w), rp(f.y)); x.scale(-1, 1);
@@ -882,6 +911,7 @@ function tankStart() {
     x.font = '4.5px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'alphabetic'; x.lineWidth = 1.2; x.lineJoin = 'round';
     for (const f of TANK.fish) {
       if (!f.name) continue;
+      if(f.c.id==='moray'&&gardenEelPose(f,now,floorY).visible<.85)continue;
       const tw = x.measureText(f.name).width, cx = Math.max(tw / 2 + 1, Math.min(W - tw / 2 - 1, f.x + f.w / 2)), ty = f.y > 7 ? f.y - 1.5 : f.y + f.h + 5;
       x.strokeStyle = 'rgba(8,24,48,.85)'; x.strokeText(f.name, rp(cx), rp(ty)); x.fillStyle = '#eaf2ff'; x.fillText(f.name, rp(cx), rp(ty));
     }
