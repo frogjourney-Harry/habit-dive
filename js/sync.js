@@ -1,6 +1,6 @@
 // 雲端同步（選擇性）：用 Google 登入後，紀錄存到 Firebase，換手機、換瀏覽器都能接續。
 // 沒看到登入畫面的人不會載入任何外部程式；看到登入畫面時先載入登入程式（不送出紀錄）；登入過的裝置下次打開會自動恢復登入。
-// 資料放在 Firestore 的 users/{uid}，整份紀錄存成一個 JSON 字串；以 S.mtime（最後修改時間）決定哪一份比較新。
+// 資料放在 Firestore 的 users/{uid}，整份紀錄存成一個 JSON 字串；先比對雲端版本，再於已知相同版本時比較本機修改時間。
 const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const CLOUD = { ready: false, loading: null, authKnown: false, user: null, last: 0, timer: 0, pending: false, error: '', session: 0, writes: new Set(), suspended: false };
 
@@ -132,7 +132,7 @@ function adopt(cloud, keepTimer = false) {
 const PRE_KEY = KEY + '.prelogin';
 function preLogin() { if (!sameDataContext(dataContext())) return null; try { return JSON.parse(localStorage.getItem(PRE_KEY)); } catch (e) { return null; } }
 // 登入以雲端紀錄為準；只有帳號沒有雲端存檔時才詢問是否儲存試玩。
-async function cloudPull(first) {
+async function cloudPull(first, resumeLocal = false) {
   if (CLOUD.suspended || !cloudAccountActive() || !CLOUD.user || cloudDeletionPending() || CLOUD.choice) return;
   first = first || !!S.cloudChoicePending;
   if (!first && (CLOUD.pending || (CLOUD.pushSession === CLOUD.session && CLOUD.pushPromise))) { await cloudPush(); return; }
@@ -140,6 +140,7 @@ async function cloudPull(first) {
   try {
     const snap = await userDoc().get();
     if (session !== CLOUD.session || !cloudAccountActive() || cloudDeletionPending()) return;
+    if (snap.metadata?.fromCache) throw new Error('等待伺服器確認版本');
     if (!snap.exists) {
       if (CLOUD.saveTrialFor === CLOUD.user.uid) {
         CLOUD.saveTrialFor = null; delete S.cloudChoicePending;
@@ -164,7 +165,11 @@ async function cloudPull(first) {
       if (hasProgress(S)) localStorage.setItem(PRE_KEY, JSON.stringify({ t: Date.now(), s: S }));
       adopt(cloud); toast('已載入你的雲端紀錄');
     }
-    else if (cm === lm) { if (previousBase !== CLOUD.base) adopt(cloud); CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); cloudListen(); return; }
+    // Reading a version is not proof that this device's state was based on it.
+    // A returning/offline device may have a newer clock but an older entire save.
+    // Keep its pre-adoption backup; never authorize overwriting an unseen cloud version.
+    else if (!resumeLocal && previousBase !== CLOUD.base) adopt(cloud);
+    else if (cm === lm) { CLOUD.last = Date.now(); CLOUD.pending = false; CLOUD.error = ''; renderCloud(); catchUp(); cloudListen(); return; }
     else if (!hasProgress(S)) adopt(cloud);
     else if (cm > lm) adopt(cloud);
     else { await cloudPush(); if (CLOUD.error) return; }
@@ -239,7 +244,7 @@ function cloudListen() {
   if (CLOUD.suspended || !cloudAccountActive() || !CLOUD.user || cloudDeletionPending() || CLOUD.unsub) return;
   const session = CLOUD.session;
   CLOUD.unsub = userDoc().onSnapshot(snap => {
-    if (CLOUD.suspended || !cloudAccountActive() || cloudDeletionPending() || session !== CLOUD.session || S.cloudChoicePending || CLOUD.choice || !snap.exists || (snap.metadata && snap.metadata.hasPendingWrites)) return;
+    if (CLOUD.suspended || !cloudAccountActive() || cloudDeletionPending() || session !== CLOUD.session || S.cloudChoicePending || CLOUD.choice || !snap.exists || snap.metadata?.fromCache || snap.metadata?.hasPendingWrites) return;
     const d = snap.data(), ver = verOf(d);
     // 已經看過的版本、這台自己剛寫上去的、或這台還有沒上傳的變動（上傳時會處理衝突）：都不換
     if (ver === CLOUD.base || (d.wid && d.wid === CLOUD.writing) || CLOUD.pending) return;
@@ -378,7 +383,7 @@ async function resumeCloudSync() {
   try {
     localStorage.removeItem(deletionKey(user.uid)); CLOUD.deletedUid = null; CLOUD.dataRemoved = null; CLOUD.error = '';
     if (state === 'data-removed') CLOUD.base = null;
-    await cloudPull(false); renderCloud();
+    await cloudPull(false, true); renderCloud();
   } catch (_) { CLOUD.error = '無法恢復同步，請稍後重試。'; renderCloud(); }
 }
 

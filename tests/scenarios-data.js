@@ -3,6 +3,20 @@ const loginAs = async (I, uid = 'u1') => { window.__cloudDb.nextUser = { uid }; 
 const hide = (I, hidden) => { Object.defineProperty(I.doc, 'visibilityState', { get: () => hidden ? 'hidden' : 'visible', configurable: true }); I.doc.dispatchEvent(new I.win.Event('visibilitychange')); return flush(12); };
 const resetCloud = () => { Object.assign(window.__cloudDb, { docs: {}, fail: false, log: [], listeners: {}, popupBlocked: false, redirected: false, deletedAccounts: [], nextUser: null }); };
 
+test('同步回退：手機舊清單即使時間戳較新也不得覆蓋電腦已儲存內容',async()=>{
+ resetCloud();const A=await boot({state:mkState()});await A.dismiss();await A.plan(['編輯前']);await A.saveList();await loginAs(A);await A.ev('cloudPush()');
+ const stale=JSON.parse(JSON.stringify(A.S));
+ await A.tab('today');await A.plan(['電腦編輯後']);await A.tick(0);await A.ev('cloudPush()');await flush(12);
+ const remote=JSON.parse(window.__cloudDb.docs.u1.data),day=Object.keys(remote.plans).find(d=>remote.plans[d].some(it=>it.text==='電腦編輯後'));
+ ok(!!day&&remote.plans[day][0].done,'電腦的新文字和勾選已上雲端');
+ stale.mtime=(remote.mtime||0)+3600000;
+ const B=await boot({state:stale,cloudUser:{uid:'u1'},width:393});await B.dismiss();await flush(20);await B.ev('CLOUD.pending?cloudPush():0');await flush(16);
+ const final=JSON.parse(window.__cloudDb.docs.u1.data);
+ eq(final.plans[day][0].text,'電腦編輯後','手機啟動不覆蓋雲端新文字');ok(final.plans[day][0].done,'雲端勾選保留');
+ eq(B.S.plans[day][0].text,'電腦編輯後','手機載入真正雲端版本');eq(A.S.plans[day][0].text,'電腦編輯後','電腦不被手機舊資料連帶回退');
+ A.check('電腦');B.check('手機');A.destroy();B.destroy();
+});
+
 test('雲端刪除：待上傳、切頁與帳號刪除等待期間都不重建資料', async () => {
   resetCloud();const I=await boot({state:mkState()});await I.dismiss();await loginAs(I);
   try {
