@@ -432,6 +432,14 @@ test('運動紀錄：各種運動、怪數字、補登昨天', async () => {
   I.check('運動紀錄'); I.destroy();
 });
 
+test('漏打卡誤報：昨天已完成不提示漏了、同步前不判定、舊自動假退回',async()=>{
+ const h={id:'h1',n:'看書',kind:'custom',weeks:0,target:1};
+ const I=await boot({state:mkState({habits:[h],strictFrom:'2026-10-01',checks:{'2026-11-01':{h1:[{t:1}]}},leaves:{h1:{'2026-11-01':'a'}}})});await I.dismiss();
+ ok(!I.has('昨天漏了'),'已打卡不能因舊自動假誤報');ok(!I.ev("autoLeaveOf(habit('h1'),'2026-11-01')"),'已完成的舊自動假退回');
+ const result=I.ev(`(()=>{S.checks={};S.checks['2026-10-31']={h1:[{t:1}]};S.leaves={};S.cloudUid='u1';CLOUD.base=null;CLOUD.user=null;render();const warned=document.body.innerText.includes('昨天漏了');autoLeave();return{warned,used:Object.keys(S.leaves.h1||{}).length}})()`);
+ ok(!result.warned,'雲端尚未載入時不發漏打卡提醒');eq(result.used,0,'同步前不自動扣假或保護卡');I.destroy();
+});
+
 test('連勝：每天習慣漏一天不斷、連漏兩天歸零；每週習慣漏一週就斷', async () => {
   const mk = days => Object.fromEntries(days.map(d => [d, { h1: [{ t: 1 }] }]));
   const hab = { id: 'h1', n: '看書', kind: 'custom', weeks: 0, target: 1 };

@@ -176,6 +176,7 @@ function today(D) {
   const yd = addDays(td, -1), cards = freezeLeft(D);
   const risky = activeHabits().map(h => {
     const p = h.weeks ? addDays(periodKey(td, h.weeks), -7 * h.weeks) : yd;
+    if(!habitHistoryReady()||(h.weeks?periodDone(D,h,p):dayDone(D,p,h.id)))return '';
     if (h.weeks ? perCount(D, h, periodKey(td, h.weeks)) : dayDone(D, td, h.id)) return '';
     const v = autoLeaveOf(h, p), when = h.weeks ? (h.weeks === 1 ? '上週' : '上兩週') : '昨天';
     if (v) return `<div class="mini riskrow">${when}漏了「${esc(h.n)}」，自動用掉 1 ${v === 'f' ? `張連勝保護卡（還剩 ${cards} 張）` : `${h.weeks ? '次' : '天'}假（本月還剩 ${leaveLeft(h.id, td)} ${h.weeks ? '次' : '天'}）`}，連勝保住了。</div>`;
@@ -385,7 +386,8 @@ function renderSheet() {
   if (!(h.weeks ? periodDone(D, h, periodKey(d, h.weeks)) : list.length)) {
     const left = leaveLeft(h.id, d), unit = h.weeks ? '次' : '天';
     const who = h.weeks ? (periodKey(d, h.weeks) === p0 ? periodWord(h) : h.weeks === 1 ? '上週' : '上兩週') : day < 0 ? '昨天' : '今天';
-    const auto = autoLeaveOf(h, h.weeks ? periodKey(d, h.weeks) : d);
+    const complete=h.weeks?periodDone(D,h,periodKey(d,h.weeks)):dayDone(D,d,h.id);
+    const auto = !habitHistoryReady()||complete?'':autoLeaveOf(h, h.weeks ? periodKey(d, h.weeks) : d);
     body += auto ? `<div class="mini" style="margin-top:8px">${who}漏了，自動用掉 1 ${auto === 'f' ? '張連勝保護卡' : unit + '假'}保住連勝；補打卡就會退回。</div>`
       : leaveHere(h, d) ? `<button class="wide" data-act="leave">${who}已請假，點一下取消</button>`
       : `<button class="wide" data-act="leave" ${left ? '' : 'disabled'}>${who}請假（本月還剩 ${left} ${unit}）</button>`;

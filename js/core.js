@@ -323,12 +323,22 @@ function freezeLeft(D = derive()) {
 const autoLeaveOf = (h, d) => { const L = leavesOf(h.id); const k = h.weeks ? Object.keys(L).find(x => x >= d && x <= addDays(d, 7 * h.weeks - 1)) : d; return k && (L[k] === 'a' || L[k] === 'f') ? L[k] : ''; };
 // 漏掉的日子（每週型是漏掉的那一期）自動請假：先用當月的免費假，不夠再用保護卡。
 // 只補 strictFrom 之後、而且前面真的有連勝的缺口；整段缺口補不完就一張都不用（反正會斷，不白白浪費）
+const habitHistoryReady=()=>!S.cloudUid||(typeof CLOUD!=='undefined'&&CLOUD.user?.uid===S.cloudUid&&!!CLOUD.base&&!CLOUD.error);
 function autoLeave() {
+  if(!habitHistoryReady())return false;
   const td = dayKey(), D = derive(), first = Object.keys(D.days).sort()[0] || td;
   let cards = freezeLeft(D), changed = false;
   for (const h of activeHabits()) {
     const step = h.weeks ? p => addDays(p, -7 * h.weeks) : d => addDays(d, -1);
     const done = h.weeks ? p => periodDone(D, h, p) : d => dayDone(D, d, h.id);
+    // A later check-in/sync can complete a date that an earlier device auto-protected.
+    // Remove only automatic markers; manual leave choices remain untouched.
+    for(const [date,value] of Object.entries(S.leaves?.[h.id]||{})){
+      if((value==='a'||value==='f')&&done(h.weeks?periodKey(date,h.weeks):date)){
+        if(value==='f')cards++;
+        delete S.leaves[h.id][date];changed=true;
+      }
+    }
     const lv = h.weeks ? p => periodLeave(h, p) : d => onLeave(h.id, d);
     const endOf = h.weeks ? p => addDays(p, 7 * h.weeks - 1) : d => d;
     const gap = []; let k = step(h.weeks ? periodKey(td, h.weeks) : td);
